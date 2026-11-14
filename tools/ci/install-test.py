@@ -93,7 +93,11 @@ class Shell:
         self.chan = chan
         self.counter = 0
 
-    def login(self, user=LOGIN, password=PASSWORD, timeout=900):
+    def login(self, user=None, password=None, timeout=900):
+        # Defaults are resolved here because the credentials are defined below
+        # the class definitions.
+        user = user or LOGIN
+        password = password or PASSWORD
         matched, _ = self.chan.expect(r"login:", timeout=timeout)
         if not matched:
             record("FAIL: no login prompt on the serial console")
