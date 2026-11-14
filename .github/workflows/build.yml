@@ -35,14 +35,22 @@ jobs:
           sudo docker run --rm --privileged --network host \
             -v "$PWD:/build" -w /build \
             hunter-build:1.0 sh -c './build.sh native' 2>&1 | tee build.log
+          # The container runs as root; give the workspace back to the runner
+          # user so later steps can write checksums and upload artefacts.
+          sudo chown -R "$(id -u):$(id -g)" .
 
       - name: Inspect the result
+        if: always()
         run: |
-          ls -lh *.iso
-          sha256sum *.iso | tee Hunter-Linux-v1.0-amd64.iso.sha256
-          file *.iso
+          ls -lh *.iso || true
+          if ls *.iso >/dev/null 2>&1; then
+            sha256sum *.iso > Hunter-Linux-v1.0-amd64.iso.sha256
+            cat Hunter-Linux-v1.0-amd64.iso.sha256
+            file *.iso
+          fi
 
       - name: Upload ISO
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: iso
