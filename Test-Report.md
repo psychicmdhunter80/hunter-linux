@@ -168,7 +168,36 @@ above:
 
 ---
 
-## 8. Limitations and what is not tested
+## 8. Cockpit
+
+Cockpit is part of every image (`cockpit`, `cockpit-system`), enabled in the
+live session and carried into the installed system by the installer's service
+list and by the finish-up script.
+
+| Check | Result |
+|---|---|
+| `cockpit.socket` active in the live session | **PASS** (BIOS and UEFI run) |
+| Cockpit answers on port 9090 inside the live session | **PASS** - HTTP 200 |
+| An outside client reaches the login page | **PASS** - 200 and the Cockpit shell is served |
+| An outside client authenticates as the live user | **PASS** - HTTP 200 on `/cockpit/login` with basic auth |
+| `hunter-cockpit` prints the address | **PASS** - printed `https://<address>:9090` |
+| `cockpit.socket` active in the installed system | see section 7 |
+
+The "outside client" is the test machine itself, reaching the guest over a
+forwarded TCP port (`hostfwd` 9090), which is the same path a browser on
+another computer takes. Authentication used the live account `user` with
+password `live` through Cockpit's `/cockpit/login` endpoint; that endpoint is
+the one the login form posts to. A full browser session (clicking through the
+Terminal page) was not automated - see the limitations below.
+
+Nothing is exposed beyond the local network: Cockpit listens on 9090 on the
+machine itself, no firewall rule opens it to the internet, no credentials or
+certificates are stored in the image, and the installed system authenticates
+with the account created during installation.
+
+---
+
+## 9. Limitations and what is not tested
 
 * **No physical hardware.** Every boot and install test ran in QEMU. Firmware,
   GPU, Wi-Fi, Bluetooth, suspend/resume and audio hardware are untested on real
@@ -185,7 +214,7 @@ above:
 
 ---
 
-## 9. Reproducing this test
+## 10. Reproducing this test
 
 Everything used here is in the project:
 
