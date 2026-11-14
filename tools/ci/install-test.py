@@ -289,9 +289,14 @@ class Display:
         return path
 
     def click(self, x, y):
+        # The release matters: a VNC pointer event carries the button mask, so
+        # without mouseUp the widget only sees a press that is released by the
+        # next pointer move - which is why the wizard never advanced.
         self.client.mouseMove(x, y)
         time.sleep(0.3)
         self.client.mousePress(1)
+        time.sleep(0.15)
+        self.client.mouseUp(1)
         time.sleep(1.2)
 
     def press(self, key):
@@ -668,18 +673,30 @@ def main():
                 "DISPLAY=:0 xwininfo -root 2>/dev/null | grep -E 'Width:|Height:'",
                 timeout=120)
             pchunks = panel.split("---")
-            found = (re.search(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", pchunks[1])
-                     if len(pchunks) > 1 else None)
             screen = (re.search(r"Height:\s*(\d+)", pchunks[2])
                       if len(pchunks) > 2 else None)
+            # The panel owns three windows: a 10x10 helper, the 3px reveal
+            # strip and the panel itself.  The last geometry on each xwininfo
+            # line is the absolute one, and the tallest wide window is the
+            # panel.
+            boxes = []
+            for line in (pchunks[1].splitlines() if len(pchunks) > 1 else []):
+                if "xfce4-panel" not in line:
+                    continue
+                sizes = re.findall(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", line)
+                if sizes:
+                    width, height, x, y = (int(v) for v in sizes[-1])
+                    boxes.append((width, height, x, y))
+            boxes.sort(key=lambda box: (box[0], box[1]))
+            found = boxes[-1] if boxes else None
             record("PASS: the panel starts automatically in the installed session"
                    if "panel-running" in pchunks[0]
                    else "FAIL: the panel does not start in the installed session")
             record("PASS: the installed panel is along the bottom edge"
                    if found and screen and
-                   int(found.group(4)) + int(found.group(2)) >= int(screen.group(1)) - 6
+                   found[3] + found[1] >= int(screen.group(1)) - 6
                    else f"FAIL: the installed panel is not at the bottom "
-                        f"({found.group(0) if found else 'no window'})")
+                        f"({found if found else 'no window'})")
 
             window = re.search(r"(0x[0-9a-f]+)", pchunks[1]) if len(pchunks) > 1 else None
             if window:
@@ -687,7 +704,8 @@ def main():
                 time.sleep(4)
                 hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
                                    "| grep 'Map State'", timeout=60)
-                shell.run("DISPLAY=:0 xdotool mousemove 640 790", timeout=30)
+                edge = (int(screen.group(1)) - 2) if screen else 798
+                shell.run(f"DISPLAY=:0 xdotool mousemove 640 {edge}", timeout=30)
                 time.sleep(4)
                 shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
                                   "| grep 'Map State'", timeout=60)

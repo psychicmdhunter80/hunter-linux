@@ -44,6 +44,26 @@ for agent in /usr/lib/mate-polkit/polkit-mate-authentication-agent-1 \
 	break
 done
 
+# Audio: PipeWire with WirePlumber.  The user units are enabled globally in
+# the image, but a session that started before the user manager was ready gets
+# no sound server at all, so start them here too and fall back to the binaries.
+if command -v systemctl >/dev/null 2>&1; then
+	if ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
+		systemctl --user start pipewire.socket pipewire-pulse.socket \
+			wireplumber.service >>"$log" 2>&1 || true
+	fi
+fi
+if ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1 && \
+   command -v pipewire >/dev/null 2>&1; then
+	echo "$(date '+%F %T') starting pipewire directly" >>"$log"
+	pipewire >>"$log" 2>&1 &
+fi
+if ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1 && \
+   command -v wireplumber >/dev/null 2>&1; then
+	echo "$(date '+%F %T') starting wireplumber directly" >>"$log"
+	wireplumber >>"$log" 2>&1 &
+fi
+
 # Network, Bluetooth, notifications, battery and power handling.
 start nm-applet nm-applet
 start blueman-applet blueman-applet

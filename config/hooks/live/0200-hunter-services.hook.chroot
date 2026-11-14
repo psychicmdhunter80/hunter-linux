@@ -17,6 +17,17 @@ for unit in NetworkManager bluetooth lightdm zramswap systemd-timesyncd; do
 	fi
 done
 
+# PipeWire for every user, enabled globally: the user units ship with the
+# package but nothing enables them, so the sound server never started and the
+# session had no audio at all.  Socket activation means it starts on demand.
+for unit in pipewire.socket pipewire-pulse.socket wireplumber.service; do
+	if systemctl --global enable "${unit}" >/dev/null 2>&1; then
+		echo "hunter:   enabled (user) ${unit}"
+	else
+		echo "hunter:   warning: could not enable user unit ${unit}" >&2
+	fi
+done
+
 # Serial console login.  The kernel command line carries console=ttyS0, but the
 # installed system needs its own getty instance; the drop-in in
 # serial-getty@ttyS0.service.d keeps it from running on hardware without a

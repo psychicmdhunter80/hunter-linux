@@ -6,6 +6,7 @@
 pipewire
 pipewire-audio
 pipewire-pulse
+pulseaudio-utils
 pipewire-alsa
 libspa-0.2-bluetooth
 wireplumber

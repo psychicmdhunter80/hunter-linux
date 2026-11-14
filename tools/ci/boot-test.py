@@ -395,26 +395,39 @@ def main():
             "DISPLAY=:0 xwininfo -root 2>/dev/null | grep -E 'Width:|Height:'",
             timeout=90)
         parts = panel.split("---")
-        found = re.search(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", parts[1]) if len(parts) > 1 else None
         screen = re.search(r"Height:\s*(\d+)", parts[2]) if len(parts) > 2 else None
+        # The panel owns three windows: a 10x10 helper, the reveal strip and
+        # the panel itself.  The last geometry on an xwininfo line is the
+        # absolute one; the tallest wide window is the panel.
+        boxes = []
+        for line in (parts[1].splitlines() if len(parts) > 1 else []):
+            if "xfce4-panel" not in line:
+                continue
+            sizes = re.findall(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", line)
+            if sizes:
+                width, height, x, y = (int(v) for v in sizes[-1])
+                boxes.append((width, height, x, y, re.search(r"(0x[0-9a-f]+)", line).group(1)))
+        boxes.sort(key=lambda box: (box[0], box[1]))
+        panel_box = boxes[-1] if boxes else None
         check(results, "the panel is running in the live session",
               "panel-running" in parts[0])
         check(results, "the panel is along the bottom edge",
-              bool(found and screen and
-                   int(found.group(4)) + int(found.group(2)) >= int(screen.group(1)) - 6))
-        record(f"INFO: panel window {found.group(0) if found else 'not found'} "
+              bool(panel_box and screen and
+                   panel_box[3] + panel_box[1] >= int(screen.group(1)) - 6))
+        record(f"INFO: panel window {panel_box[:4] if panel_box else 'not found'} "
                f"on a {screen.group(1) if screen else '?'}px high screen")
 
-        window = re.search(r"(0x[0-9a-f]+)", parts[1]) if len(parts) > 1 else None
         if window:
             shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
             time.sleep(4)
-            hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+            hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
                                "| grep 'Map State'", timeout=60)
-            # The pointer at the very bottom edge is how the panel is revealed.
-            shell.run("DISPLAY=:0 xdotool mousemove 640 790", timeout=30)
+            # The pointer has to reach the last pixel row: the hidden panel
+            # leaves only its three pixel reveal strip there.
+            edge = (int(screen.group(1)) - 2) if screen else 798
+            shell.run(f"DISPLAY=:0 xdotool mousemove 640 {edge}", timeout=30)
             time.sleep(4)
-            shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+            shown = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
                               "| grep 'Map State'", timeout=60)
             record(f"INFO: panel map state with the pointer away: {hidden.strip()[:70]}")
             record(f"INFO: panel map state at the bottom edge: {shown.strip()[:70]}")
