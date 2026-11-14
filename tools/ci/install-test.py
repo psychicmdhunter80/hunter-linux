@@ -532,12 +532,13 @@ def main():
             "for d in dev proc sys; do mkdir -p /mnt/root/$d; "
             "mount --bind /$d /mnt/root/$d; done; "
             "ls -l /mnt/root/boot/efi/EFI/ ; "
-            "chroot /mnt/root grub-mkconfig -o /tmp/probe.cfg > /tmp/probe.out 2>&1; "
-            "echo GRUB-MKCONFIG-RC=$? ; tail -20 /tmp/probe.out ; "
-            "echo --- ; chroot /mnt/root grub-install --target=x86_64-efi "
-            "--efi-directory=/boot/efi --bootloader-id=Hunter_Linux "
-            "--recheck --no-nvram --force > /tmp/gi.out 2>&1; "
-            "echo GRUB-INSTALL-RC=$? ; tail -20 /tmp/gi.out ; "
+            "mount | grep calamares-root ; "
+            "cat /mnt/root/etc/default/grub ; echo --- ; "
+            "ls /mnt/root/etc/grub.d/ ; echo --- ; "
+            "ls -l /mnt/root/boot/ ; echo --- ; "
+            "chroot /mnt/root sh -x /usr/sbin/grub-mkconfig -o /tmp/probe.cfg "
+            "> /tmp/probe.out 2>&1; echo GRUB-MKCONFIG-RC=$? ; "
+            "tail -40 /tmp/probe.out ; "
             "umount -R /mnt/root 2>/dev/null; true'", timeout=600)
         if "GRUB-MKCONFIG-RC=0" in probe:
             record("PASS: the installed system builds a GRUB configuration")
