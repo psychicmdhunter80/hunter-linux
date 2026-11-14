@@ -237,9 +237,11 @@ desktop ("Keyboard Shortcuts") and on `Super+F1`.
 | `Super+Shift+L` | Lock the screen |
 | Volume / brightness keys | Work as labelled |
 
-The bottom panel holds the application menu, the window list, workspaces,
-network and Bluetooth status, the clock (hover for the date), volume, battery
-percentage on laptops, and the power menu.
+The panel holds the application menu, the window list, workspaces, network and
+Bluetooth status, the clock (hover for the date), volume, battery percentage on
+laptops, and the power menu. It sits along the top edge: i3 places dock clients
+there, so the XFCE panel asks for that position rather than fighting the window
+manager.
 
 ---
 

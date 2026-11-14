@@ -243,6 +243,8 @@ class Display:
         time.sleep(1.2)
 
     def press(self, key):
+        # vncdotool knows "esc"/"return", not the longer spellings.
+        key = {"escape": "esc", "enter": "return"}.get(key, key)
         self.client.keyPress(key)
         time.sleep(1.2)
 
@@ -277,6 +279,26 @@ class Display:
             return (x, y)
         return None
 
+    def button(self, path):
+        """Find the primary button of the wizard.
+
+        Small grey captions are unreliable for OCR, so the fallback measures
+        from the Cancel button, which is always rendered in plain black text.
+        """
+        in_row = lambda x, y: y > 620  # noqa: E731
+        for word in ("Next", "Continue", "Install"):
+            point = self.find(path, word, region=in_row)
+            if point:
+                return point
+        cancel = self.find(path, "Cancel", region=in_row)
+        if cancel:
+            # Back, Next, Cancel sit in that order along the bottom right.
+            return (cancel[0] - 100, cancel[1])
+        back = self.find(path, "Back", region=in_row)
+        if back:
+            return (back[0] + 95, back[1])
+        return None
+
     def advance(self, label, expect, tries=15):
         """Move to the next wizard page and confirm it arrived.
 
@@ -293,22 +315,13 @@ class Display:
                 return path
             # Only ever click the button row.  Enter is not used: on the
             # welcome page it opens the language combo box instead of moving on.
-            point = None
-            for word in ("Next", "Continue", "Install"):
-                point = self.find(path, word, region=lambda x, y: y > 620)
-                if point:
-                    break
+            point = self.button(path)
             if point:
                 self.click(*point)
             else:
-                self.press("escape")
-                time.sleep(2)
-                path = self.shot(f"{label}-{attempt}-esc")
-                for word in ("Next", "Continue", "Install"):
-                    point = self.find(path, word, region=lambda x, y: y > 620)
-                    if point:
-                        self.click(*point)
-                        break
+                record(f"WARN: no button found on {label}; pressing Tab then Enter")
+                self.press("tab")
+                self.press("return")
             time.sleep(7)
         record(f"FAIL: never reached the '{expect}' page after {label}")
         with open(os.path.join(WORK, f"ocr-stuck-{label}.txt"), "w",
