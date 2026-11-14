@@ -1,112 +1,0 @@
-[!p]104[?7h[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
-Hunter Linux 1.0 hunter ttyS0
-hunter login: user
-Password: 
-Linux hunter 6.12.117+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64
-
-The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
-
-Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-[?2004huser@hunter:~$ echo HUNTER1_BEGIN; (cat /proc/cmdline) 2>&1 | head -40; echo HUNTER1_END
-[?2004lHUNTER1_BEGIN
-echo HUNTER2_BEGIN; (uname -r; id) 2>&1 | head -40; echo HUNTER2_END
-BOOT_IMAGE=/live/vmlinuz boot=live components quiet splash console=ttyS0,115200 hostname=hunter username=user autologin initrd=/live/initrd.img
-HUNTER1_END
-[?2004huser@hunter:~$ echo HUNTER2_BEGIN; (uname -r; id) 2>&1 | head -40; echo HUNTER2_END
-[?2004lHUNTER2_BEGIN
-6.12.117+deb13-amd64
-uid=1000(user) gid=1000(user) groups=1000(user),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),102(bluetooth)
-HUNTER2_END
-[?2004huser@hunter:~$ echo HUNTER3_BEGIN; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo HUNTER3_END
-[?2004lecho HUNTER4_BEGIN; (pgrep -a i3; pgrep -a xfce4-panel; pgrep -a xfsettingsd; pgrep -a nm-applet; pgrep -a lightdm) 2>&1 | head -40; echo HUNTER4_END
-HUNTER3_BEGIN
-echo HUNTER5_BEGIN; (free -m) 2>&1 | head -40; echo HUNTER5_END
-echo HUNTER6_BEGIN; (xrandr 2>&1 | head -3; echo DISPLAY=$DISPLAY) 2>&1 | head -40; echo HUNTER6_END
-echo HUNTER7_BEGIN; (ls /usr/share/xsessions/) 2>&1 | head -40; echo HUNTER7_END
-echo HUNTER8_BEGIN; (cat /var/log/lightdm/lightdm.log 2>/dev/null | tail -20) 2>&1 | head -40; echo HUNTER8_END
-11/14/2026 03:20:45 AM - ERROR: Duplicate keybinding in config file:
-  state mask 0x41 with keysym Right, command "move container to workspace next"
-11/14/2026 03:20:45 AM - ERROR: Duplicate keybinding in config file:
-  state mask 0x41 with keysym Left, command "move container to workspace prev"
-echo HUNTER9_BEGIN; (systemctl --user --no-pager status xfce4-panel 2>&1 | head -12) 2>&1 | head -40; echo HUNTER9_END
-echo HUNTER10_BEGIN; (DISPLAY=:0 xfce4-terminal --version) 2>&1 | head -40; echo HUNTER10_END
-rc=1
-HUNTER3_END
-[?2004huser@hunter:~$ echo HUNTER4_BEGIN; (pgrep -a i3; pgrep -a xfce4-panel; pgrep -a xfsettingsd; pgrep -a nm-applet; pgrep -a lightdm) 2>&1 | head -40; echo HUNTER4_END
-[?2004lHUNTER4_BEGIN
-1152 /usr/sbin/lightdm
-1227 lightdm --session-child 14 17
-HUNTER4_END
-[?2004huser@hunter:~$ echo HUNTER5_BEGIN; (free -m) 2>&1 | head -40; echo HUNTER5_END
-[?2004lHUNTER5_BEGIN
-               total        used        free      shared  buff/cache   available
-Mem:            1973         288        1260          16         576        1684
-Swap:            493           0         493
-HUNTER5_END
-[?2004huser@hunter:~$ echo HUNTER6_BEGIN; (xrandr 2>&1 | head -3; echo DISPLAY=$DISPLAY) 2>&1 | head -40; echo HUNTER6_END
-[?2004lHUNTER6_BEGIN
-Can't open display 
-DISPLAY=
-HUNTER6_END
-[?2004huser@hunter:~$ echo HUNTER7_BEGIN; (ls /usr/share/xsessions/) 2>&1 | head -40; echo HUNTER7_END
-[?2004lHUNTER7_BEGIN
-hunter.desktop
-i3.desktop
-i3-with-shmlog.desktop
-lightdm-xsession.desktop
-HUNTER7_END
-[?2004huser@hunter:~$ echo HUNTER8_BEGIN; (cat /var/log/lightdm/lightdm.log 2>/dev/null | tail -20) 2>&1 | head -40; echo HUNTER8_END
-[?2004lHUNTER8_BEGIN
-HUNTER8_END
-[?2004huser@hunter:~$ echo HUNTER9_BEGIN; (systemctl --user --no-pager status xfce4-panel 2>&1 | head -12) 2>&1 | head -40; echo HUNTER9_END
-[?2004lHUNTER9_BEGIN
-Unit xfce4-panel.service could not be found.
-HUNTER9_END
-[?2004huser@hunter:~$ echo HUNTER10_BEGIN; (DISPLAY=:0 xfce4-terminal --version) 2>&1 | head -40; echo HUNTER10_END
-[?2004lHUNTER10_BEGIN
-echo HUNTER11_BEGIN; (DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &) 2>&1 | head -40; echo HUNTER11_END
-
-(xfce4-terminal:1298): dbind-WARNING **: 03:20:48.028: AT-SPI: Error retrieving accessibility bus address: org.freedesktop.DBus.Error.ServiceUnknown: The name org.a11y.Bus was not provided by any .service files
-xfce4-terminal 1.1.4 (Xfce 4.20)
-
-Copyright (c) 2003-2024
-	The Xfce development team. All rights reserved.
-
-Written by Benedikt Meurer <benny@xfce.org>,
-Nick Schermer <nick@xfce.org>,
-Igor Zakharov <f2404@yandex.ru>,
-Sergios - Anestis Kefalidis <sergioskefalidis@gmail.com>.
-
-Please report bugs to <https://gitlab.xfce.org/apps/xfce4-terminal/>.
-HUNTER10_END
-[?2004huser@hunter:~$ echo HUNTER11_BEGIN; (DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &) 2>&1 | head -40; echo HUNTER11_END
-[?2004lHUNTER11_BEGIN
-HUNTER11_END
-[?2004huser@hunter:~$ echo HUNTER12_BEGIN; (pgrep -c -f '^thunar') 2>&1 | head -40; echo HUNTER12_END
-[?2004lHUNTER12_BEGIN
-1
-HUNTER12_END
-[?2004huser@hunter:~$ echo HUNTER13_BEGIN; (DISPLAY=:0 setsid firefox-esr 'about:blank' >/tmp/firefox.log 2>&1 &) 2>&1 | head -40; echo HUNTER13_END
-[?2004lHUNTER13_BEGIN
-HUNTER13_END
-[?2004huser@hunter:~$ echo HUNTER14_BEGIN; (pgrep -c -f '^firefox') 2>&1 | head -40; echo HUNTER14_END
-[?2004lHUNTER14_BEGIN
-1
-HUNTER14_END
-[?2004huser@hunter:~$ echo HUNTER15_BEGIN; (DISPLAY=:0 setsid falkon --no-sandbox 'about:blank' >/tmp/falkon.log 2>&1 &) 2>&1 | head -40; echo HUNTER15_END
-[?2004lHUNTER15_BEGIN
-HUNTER15_END
-[?2004huser@hunter:~$ echo HUNTER16_BEGIN; (pgrep -c -f '^falkon') 2>&1 | head -40; echo HUNTER16_END
-[?2004lHUNTER16_BEGIN
-1
-HUNTER16_END
-[?2004huser@hunter:~$ echo HUNTER17_BEGIN; (DISPLAY=:0 setsid sudo -n calamares -d >/tmp/calamares.log 2>&1 &) 2>&1 | head -40; echo HUNTER17_END
-[?2004lHUNTER17_BEGIN
-HUNTER17_END
-[?2004huser@hunter:~$ echo HUNTER18_BEGIN; (pgrep -a calamares | head -3; tail -5 /tmp/calamares.log) 2>&1 | head -40; echo HUNTER18_END
-[?2004lecho HUNTER19_BEGIN; (pgrep -c calamares) 2>&1 | head -40; echo HUNTER19_END
-HUNTER18_BEGIN
-echo HUNTER20_BEGIN; (pkill -f firefox-esr; pkill -f falkon; pkill -f xfce4-terminal; sleep 5; free -m) 2>&1 | head -40; echo HUNTER20_END

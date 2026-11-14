@@ -1,4 +1,0 @@
-accelerator: tcg
-PASS: logged in as user on the serial console
-PASS: live system reached a login console
-FAIL: the X display never came up

@@ -18,6 +18,11 @@ on:
         required: false
         default: "0"
         type: string
+      diag:
+        description: Stop after probing the installed bootloader
+        required: false
+        default: "0"
+        type: string
 
 jobs:
   install:
@@ -49,6 +54,7 @@ jobs:
       - name: Install to a virtual disk and boot the result
         env:
           EXPLORE: ${{ inputs.explore }}
+          DIAG: ${{ inputs.diag }}
         run: |
           chmod +x tools/ci/install-test.py
           "$HOME/venv/bin/python" tools/ci/install-test.py \

@@ -19,3 +19,5 @@ dist/
 # python
 __pycache__/
 *.pyc
+# test artifacts
+art*/

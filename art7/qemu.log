@@ -1,1 +1,0 @@
-qemu-system-x86_64: -device usb-tablet: No 'usb-bus' bus found for device 'usb-tablet'

@@ -1,124 +1,0 @@
-[!p]104[?7h[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
-Hunter Linux 1.0 hunter ttyS0
-hunter login: user
-Password: 
-Linux hunter 6.12.117+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64
-
-The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
-
-Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-[?2004huser@hunter:~$ echo "HUNTERMARK""1BEGIN"; (cat /proc/cmdline; uname -r; id) 2>&1 | head -40; echo "HUNTERMARK""1END"
-[?2004lHUNTERMARK1BEGIN
-BOOT_IMAGE=/live/vmlinuz boot=live components quiet splash console=ttyS0,115200 hostname=hunter username=user autologin initrd=/live/initrd.img
-6.12.117+deb13-amd64
-uid=1000(user) gid=1000(user) groups=1000(user),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),102(bluetooth)
-HUNTERMARK1END
-[?2004huser@hunter:~$ echo "HUNTERMARK""2BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""2END"
-[?2004lHUNTERMARK2BEGIN
-WAIT
-1154 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
-X0
-HUNTERMARK2END
-[?2004huser@hunter:~$ echo "HUNTERMARK""3BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""3END"
-[?2004lHUNTERMARK3BEGIN
-READY
-1154 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
-X0
-HUNTERMARK3END
-[?2004huser@hunter:~$ echo "HUNTERMARK""4BEGIN"; (pgrep -a lightdm | head -2; pgrep -a i3 | head -2; pgrep -a xfce4-panel | head -2; pgrep -a xfsettingsd | head -2) 2>&1 | head -40; echo "HUNTERMARK""4END"
-[?2004lHUNTERMARK4BEGIN
-1147 /usr/sbin/lightdm
-1226 lightdm --session-child 14 17
-1233 i3
-1398 i3-nagbar -f pango:DejaVu Sans 10 -t error -m You have an error in your i3 config file! -b edit config i3-sensible-editor "/home/user/.config/i3/config" && i3-msg reload  -b show errors i3-sensible-pager "/run/user/1000/i3/errorlog.1233" 
-1409 xfce4-panel --disable-wm-check
-1278 xfsettingsd --replace
-HUNTERMARK4END
-echo "HUNTERMARK""5BEGIN"; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo "HUNTERMARK""5END"
-[?2004huser@hunter:~$ echo "HUNTERMARK""5BEGIN"; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo "HUNTERMARK""5END"
-[?2004lHUNTERMARK5BEGIN
-11/14/2026 03:47:17 AM - ERROR: Duplicate keybinding in config file:
-  state mask 0x41 with keysym Right, command "move container to workspace next"
-11/14/2026 03:47:17 AM - ERROR: Duplicate keybinding in config file:
-  state mask 0x41 with keysym Left, command "move container to workspace prev"
-rc=1
-HUNTERMARK5END
-echo "HUNTERMARK""6BEGIN"; (pgrep -a i3; ls -l ~/.config/i3/config) 2>&1 | head -40; echo "HUNTERMARK""6END"
-[?2004huser@hunter:~$ echo "HUNTERMARK""6BEGIN"; (pgrep -a i3; ls -l ~/.config/i3/config) 2>&1 | head -40; echo "HUNTERMARK""6END"
-[?2004lHUNTERMARK6BEGIN
-1233 i3
-1398 i3-nagbar -f pango:DejaVu Sans 10 -t error -m You have an error in your i3 config file! -b edit config i3-sensible-editor "/home/user/.config/i3/config" && i3-msg reload  -b show errors i3-sensible-pager "/run/user/1000/i3/errorlog.1233" 
--rw-r--r-- 1 user user 5491 Nov 14 03:45 /home/user/.config/i3/config
-HUNTERMARK6END
-echo "HU[?2004huser@hunter:~$ echo "HUNTERMARK""7BEGIN"; (pgrep -a xfce4-panel; xfce4-panel --version 2>&1) 2>&1 | head -40; echo "HUNTERMARK""7END"
-[?2004lHUNTERMARK7BEGIN
-1409 xfce4-panel --disable-wm-check
-
-(xfce4-panel:1455): Gtk-WARNING **: 03:47:17.829: cannot open display: 
-HUNTERMARK7END
-[?2004huser@hunter:~$ echo "HUNTERMARK""8BEGIN"; (xfconf-query -c xfce4-panel -p /panels -v 2>&1; xfconf-query -c xfce4-panel -l 2>&1 | head -10) 2>&1 | head -40; echo "HUNTERMARK""8END"
-[?2004lHUNTERMARK8BEGIN
-Failed to init libxfconf: Cannot autolaunch D-Bus without X11 $DISPLAY.
-Failed to init libxfconf: Cannot autolaunch D-Bus without X11 $DISPLAY.
-HUNTERMARK8END
-echo "HUNTERMARK""9BEGIN"; (free -m) 2>&1 | head -40; echo "HUNTERMARK""9END"
-[?2004huser@hunter:~$ echo "HUNTERMARK""9BEGIN"; (free -m) 2>&1 | head -40; echo "HUNTERMARK""9END"
-[?2004lHUNTERMARK9BEGIN
-               total        used        free      shared  buff/cache   available
-Mem:            1973         401        1059          16         667        1572
-Swap:            493           0         493
-HUNTERMARK9END
-[?2004huser@hunter:~$ echo "HUNTERMARK""10BEGIN"; (xrandr 2>&1 | head -3) 2>&1 | head -40; echo "HUNTERMARK""10END"
-[?2004lHUNTERMARK10BEGIN
-Can't open display 
-HUNTERMARK10END
-[?2004huser@hunter:~$ echo "HUNTERMARK""11BEGIN"; (tail -15 /var/log/lightdm/lightdm.log 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""11END"
-[?2004lHUNTERMARK11BEGIN
-HUNTERMARK11END
-[?2004huser@hunter:~$ echo "HUNTERMARK""12BEGIN"; (DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""12END"
-[?2004lHUNTERMARK12BEGIN
-HUNTERMARK12END
-[?2004huser@hunter:~$ echo "HUNTERMARK""13BEGIN"; (pgrep -c -f '^[a-z]*thunar') 2>&1 | head -40; echo "HUNTERMARK""13END"
-[?2004lHUNTERMARK13BEGIN
-1
-HUNTERMARK13END
-[?2004huser@hunter:~$ echo "HUNTERMARK""14BEGIN"; (DISPLAY=:0 setsid firefox-esr 'about:blank' >/tmp/firefox.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""14END"
-[?2004lHUNTERMARK14BEGIN
-HUNTERMARK14END
-[?2004huser@hunter:~$ echo "HUNTERMARK""15BEGIN"; (pgrep -c -f '^[a-z]*firefox') 2>&1 | head -40; echo "HUNTERMARK""15END"
-[?2004lHUNTERMARK15BEGIN
-1
-HUNTERMARK15END
-[?2004huser@hunter:~$ echo "HUNTERMARK""16BEGIN"; (DISPLAY=:0 setsid falkon --no-sandbox 'about:blank' >/tmp/falkon.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""16END"
-[?2004lHUNTERMARK16BEGIN
-HUNTERMARK16END
-[?2004huser@hunter:~$ echo "HUNTERMARK""17BEGIN"; (pgrep -c -f '^[a-z]*falkon') 2>&1 | head -40; echo "HUNTERMARK""17END"
-[?2004lHUNTERMARK17BEGIN
-1
-HUNTERMARK17END
-[?2004huser@hunter:~$ echo "HUNTERMARK""18BEGIN"; (DISPLAY=:0 setsid sudo -n calamares -d >/tmp/calamares.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""18END"
-[?2004lHUNTERMARK18BEGIN
-HUNTERMARK18END
-[?2004huser@hunter:~$ echo "HUNTERMARK""19BEGIN"; (pgrep -c calamares; echo ---; tail -25 /tmp/calamares.log) 2>&1 | head -40; echo "HUNTERMARK""19END"
-[?2004lHUNTERMARK19BEGIN
-0
----
-Authorization required, but no authorization protocol specified
-
-qt.qpa.xcb: could not connect to display :0
-qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
-qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
-This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
-
-Available platform plugins are: eglfs, linuxfb, minimal, minimalegl, offscreen, vkkhrdisplay, xcb.
-
-HUNTERMARK19END
-[?2004huser@hunter:~$ echo "HUNTERMARK""20BEGIN"; (pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; sleep 8; free -m) 2>&1 | head -40; echo "HUNTERMARK""20END"
-[?2004lHUNTERMARK20BEGIN
-               total        used        free      shared  buff/cache   available
-Mem:            1973         499         784         129         959        1474
-Swap:            493          11         482
-HUNTERMARK20END

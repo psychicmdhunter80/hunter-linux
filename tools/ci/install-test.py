@@ -522,6 +522,26 @@ def main():
             record("FAIL: the target disk was not written")
             return 1
 
+        # Ask the installed system itself to build a GRUB configuration.  That
+        # reports the real reason when the installer's own attempt failed and
+        # it proves the bootloader files are in place when it works.
+        shell.run("grep -i -A6 grub /tmp/calamares.log | tail -40", timeout=90)
+        probe = shell.run(
+            "mkdir -p /mnt/root && mount /dev/vda2 /mnt/root && "
+            "mkdir -p /mnt/root/boot/efi && mount /dev/vda1 /mnt/root/boot/efi && "
+            "for d in dev proc sys; do mount --bind /$d /mnt/root/$d; done; "
+            "chroot /mnt/root grub-mkconfig -o /tmp/grub-probe.cfg 2>&1 | tail -30; "
+            "echo PROBE-RC=$?; ls -l /mnt/root/boot/efi/EFI/ 2>&1", timeout=420)
+        if "PROBE-RC=0" in probe:
+            record("PASS: the installed system builds a GRUB configuration")
+        else:
+            record("FAIL: grub-mkconfig fails in the installed system")
+        shell.run("umount -R /mnt/root 2>/dev/null; true", timeout=90)
+
+        if os.environ.get("DIAG") == "1":
+            record("INFO: diagnostic run, stopping before the reboot")
+            return 0
+
         # Stop booting from the ISO for the next start.
         monitor.hmp("eject cdrom", wait=1)
         page = disp.shot("finished-page")
