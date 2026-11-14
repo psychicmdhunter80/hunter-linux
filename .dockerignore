@@ -1,0 +1,8 @@
+binary/
+chroot/
+cache/
+.build/
+.lock
+*.iso
+*.hybrid.iso
+*.zsync

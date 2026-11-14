@@ -1,0 +1,17 @@
+# Hunter Linux - firmware from Debian's non-free-firmware archive area
+#
+# These are the packages that make common Intel/AMD/NVIDIA graphics, Wi-Fi,
+# Bluetooth and audio hardware work.  They are installed into the image;
+# live-build's automatic hardware detection (--firmware-chroot) is disabled
+# on purpose because it would only collect firmware for the build machine.
+firmware-linux-free
+firmware-linux-nonfree
+firmware-misc-nonfree
+firmware-amd-graphics
+firmware-iwlwifi
+firmware-realtek
+firmware-atheros
+firmware-brcm80211
+firmware-mediatek
+firmware-intel-sound
+firmware-sof-signed

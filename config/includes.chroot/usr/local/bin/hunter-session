@@ -1,0 +1,61 @@
+#!/bin/sh
+# Hunter Linux 1.0 - graphical session.
+#
+# Starts the pieces i3 does not provide (XFCE panel, tray applets, settings
+# daemon) and then hands the session over to i3.  LightDM runs this through
+# /usr/share/xsessions/hunter.desktop, both in the live session and on an
+# installed system.
+
+export XDG_SESSION_DESKTOP=hunter
+export XDG_CURRENT_DESKTOP=HUNTER:XFCE
+export DESKTOP_SESSION=hunter
+export XDG_SESSION_TYPE=x11
+
+# Create ~/Desktop, ~/Downloads, ~/Documents, ... on first login.
+if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+	xdg-user-dirs-update
+fi
+
+# GTK theme, fonts, icons and cursor (reads xsettings.xml from xfconf).
+if command -v xfsettingsd >/dev/null 2>&1; then
+	xfsettingsd --replace >/dev/null 2>&1 &
+fi
+
+# The panel needs a window manager.  Wait for i3, then keep the panel running
+# if it ever exits.  --disable-wm-check stops it from quitting during startup.
+(
+	while ! i3-msg -t get_version >/dev/null 2>&1; do
+		sleep 1
+	done
+	while :; do
+		xfce4-panel --disable-wm-check
+		sleep 2
+	done
+) >/dev/null 2>&1 &
+
+# Tray / status applets.
+if command -v nm-applet >/dev/null 2>&1; then
+	nm-applet >/dev/null 2>&1 &
+fi
+if command -v blueman-applet >/dev/null 2>&1; then
+	blueman-applet >/dev/null 2>&1 &
+fi
+if command -v xfce4-notifyd >/dev/null 2>&1; then
+	xfce4-notifyd >/dev/null 2>&1 &
+fi
+
+# Power management: battery status, lid switch, brightness keys, suspend.
+if command -v xfce4-power-manager >/dev/null 2>&1; then
+	xfce4-power-manager >/dev/null 2>&1 &
+fi
+
+# Booted from the "Install Hunter Linux" menu entry?  Open the installer.
+if grep -qw 'hunter.installer=1' /proc/cmdline 2>/dev/null; then
+	(
+		sleep 5
+		/usr/local/bin/hunter-install
+	) >/dev/null 2>&1 &
+fi
+
+# i3 stays in the foreground: when it exits, the session ends.
+exec i3

@@ -1,0 +1,53 @@
+#!/bin/sh
+# Hunter Linux 1.0 - first-boot cleanup, run inside the target system by
+# Calamares (module "shellprocess", dontChroot: false) after the live
+# filesystem has been unpacked and the boot loader installed.
+#
+# Purpose: turn the copied live image into a plain installed system.
+
+set -u
+
+log() { echo "hunter-postinstall: $*"; }
+
+# 1. Remove live-session-only configuration.
+rm -f /etc/lightdm/lightdm.conf.d/50-hunter-live.conf
+rm -f /etc/sudoers.d/90-hunter-live
+rm -f /usr/share/applications/hunter-install.desktop
+rm -f /usr/local/bin/hunter-install
+rm -f /etc/skel/Desktop/hunter-install.desktop
+for desktop in /home/*/Desktop/hunter-install.desktop; do
+	[ -e "${desktop}" ] && rm -f "${desktop}"
+done
+
+# 2. Purge the live-boot / live-config / installer packages.  live-config
+#    diverts update-initramfs, so this must happen before the initramfs is
+#    regenerated (step 3).
+if command -v apt-get >/dev/null 2>&1; then
+	apt-get -y purge \
+		live-boot live-boot-initramfs-tools \
+		live-config live-config-systemd \
+		live-tools calamares \
+		>/dev/null 2>&1 || log "apt purge reported errors (see /var/log/apt)"
+	apt-get -y --purge autoremove >/dev/null 2>&1 || true
+	apt-get clean >/dev/null 2>&1 || true
+fi
+
+# 3. Rebuild the initramfs without the live-boot hooks.
+update-initramfs -u -k all >/dev/null 2>&1 || log "update-initramfs reported errors"
+
+# 4. Remove the live session account if it made it into the image.
+if getent passwd user >/dev/null 2>&1; then
+	humans=$(getent passwd | awk -F: '$3 >= 1000 && $3 < 65000 { c++ } END { print c + 0 }')
+	if [ "${humans}" -gt 1 ]; then
+		deluser --remove-home user >/dev/null 2>&1 || log "could not remove live user"
+	fi
+fi
+
+# 5. Make sure the services an installed system needs are enabled.
+systemctl enable lightdm >/dev/null 2>&1 || true
+systemctl enable NetworkManager >/dev/null 2>&1 || true
+systemctl enable bluetooth >/dev/null 2>&1 || true
+systemctl enable zramswap >/dev/null 2>&1 || true
+
+log "completed"
+exit 0

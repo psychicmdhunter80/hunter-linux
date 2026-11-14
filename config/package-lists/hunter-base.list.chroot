@@ -1,0 +1,27 @@
+# Hunter Linux - minimal base system
+#
+# Only what a bootable, updatable Debian system needs.  Package managers,
+# documentation tools and build toolchains are intentionally absent; users
+# install what they need with APT.
+linux-image-amd64
+initramfs-tools
+systemd
+systemd-timesyncd
+dbus
+dbus-x11
+polkitd
+pkexec
+sudo
+ca-certificates
+openssl
+tzdata
+locales
+console-setup
+keyboard-configuration
+lsb-release
+zram-tools
+nano
+less
+file
+pciutils
+usbutils

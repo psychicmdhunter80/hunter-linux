@@ -1,0 +1,20 @@
+#!/bin/sh
+# Hunter Linux 1.0 - start the graphical installer with the privileges it needs.
+#
+# In the live session the live user has passwordless sudo, so this never asks
+# for a password.  On an installed system the installer is not present.
+
+if [ "$(id -u)" -eq 0 ]; then
+	exec calamares "$@"
+fi
+
+if sudo -n true 2>/dev/null; then
+	exec sudo -n calamares "$@"
+fi
+
+if command -v pkexec >/dev/null 2>&1; then
+	exec pkexec calamares "$@"
+fi
+
+echo "hunter-install: cannot obtain administrator privileges." >&2
+exit 1

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Hunter Linux 1.0 - final cleanup; keeps the squashfs small.
+set -e
+
+echo "hunter: cleaning up"
+
+# A fresh machine-id must be generated on every boot of the live system.
+: > /etc/machine-id
+
+apt-get clean || true
+rm -rf /var/cache/apt/archives/* \
+	/var/cache/apt/*.bin \
+	/var/lib/apt/lists/* \
+	/tmp/* \
+	/var/tmp/*
+
+rm -f /var/log/*.log /var/log/lastlog /var/log/wtmp /var/log/btmp || true
+rm -rf /var/log/journal || true
+
+# Leftover documentation of the build machine is not useful in the image.
+rm -f /root/.bash_history /home/*/.bash_history || true

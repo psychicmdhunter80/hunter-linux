@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Power Menu
+Comment=Lock the screen, log out, restart or shut down
+Exec=hunter-power
+Icon=system-shutdown
+Terminal=false
+Categories=System;
+StartupNotify=false

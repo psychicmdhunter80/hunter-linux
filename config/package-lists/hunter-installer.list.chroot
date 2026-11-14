@@ -1,0 +1,23 @@
+# Hunter Linux - Calamares graphical installer and the tools it needs
+calamares
+
+# Inspecting the live medium and writing the target filesystem
+squashfs-tools
+rsync
+parted
+dosfstools
+mtools
+ntfs-3g
+exfatprogs
+cryptsetup
+
+# Boot loader installation, BIOS and UEFI, including Debian's signed chain
+grub2-common
+grub-pc-bin
+grub-efi-amd64-bin
+grub-efi-amd64-signed
+shim-signed
+efibootmgr
+
+# Detecting existing Windows installations
+os-prober

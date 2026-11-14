@@ -1,0 +1,46 @@
+#!/bin/sh
+# Hunter Linux 1.0 - live-build configuration.
+#
+# live-build runs this script through `lb build` whenever config/ does not
+# exist yet (or after `lb clean`).  Every value below is a deliberate design
+# decision; see README.md for the reasoning behind the desktop stack.
+#
+# Override the Debian mirror without editing this file:
+#     HUNTER_MIRROR=http://ftp.de.debian.org/debian/ ./build.sh
+set -e
+
+MIRROR="${HUNTER_MIRROR:-http://deb.debian.org/debian/}"
+
+lb config noauto \
+	--mode debian \
+	--distribution trixie \
+	--parent-distribution trixie \
+	--architectures amd64 \
+	--binary-images iso-hybrid \
+	--image-name Hunter-Linux-v1.0 \
+	--linux-flavours amd64 \
+	--linux-packages linux-image \
+	--bootloaders syslinux,grub-efi \
+	--uefi-secure-boot auto \
+	--archive-areas "main contrib non-free non-free-firmware" \
+	--apt-recommends false \
+	--apt-indices false \
+	--apt-source-archives false \
+	--debian-installer none \
+	--memtest none \
+	--firmware-chroot false \
+	--firmware-binary false \
+	--compression xz \
+	--checksums sha256 \
+	--chroot-filesystem squashfs \
+	--initsystem systemd \
+	--bootappend-live "boot=live components quiet splash hostname=hunter username=user" \
+	--bootappend-live-failsafe "boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 hostname=hunter username=user" \
+	--iso-application "Hunter Linux 1.0" \
+	--iso-preparer "Hunter Linux build (live-build)" \
+	--iso-publisher "Hunter Linux Project" \
+	--iso-volume "HUNTER_LINUX_1_0" \
+	--mirror-bootstrap "${MIRROR}" \
+	--mirror-chroot "${MIRROR}" \
+	--mirror-binary "${MIRROR}" \
+	"$@"

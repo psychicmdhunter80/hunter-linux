@@ -1,0 +1,44 @@
+/* Hunter Linux 1.0 - rofi launcher and power menu appearance */
+
+configuration {
+    modi: "drun,run,window";
+    font: "DejaVu Sans 10";
+    show-icons: true;
+    icon-theme: "Adwaita";
+    drun-display-format: "{name}";
+    disable-history: false;
+}
+
+* {
+    background-color: #1d232b;
+    text-color: #e6e6e6;
+    border-color: #3d5a80;
+    selected-normal-background: #3d5a80;
+    selected-normal-foreground: #ffffff;
+    normal-background: #1d232b;
+    normal-foreground: #e6e6e6;
+}
+
+window {
+    width: 40%;
+    padding: 8px;
+    border: 2px;
+    border-color: #3d5a80;
+}
+
+element {
+    padding: 4px;
+}
+
+element-text {
+    vertical-align: 0.5;
+}
+
+element-icon {
+    size: 1.2em;
+}
+
+inputbar {
+    padding: 6px;
+    margin: 0 0 6px 0;
+}

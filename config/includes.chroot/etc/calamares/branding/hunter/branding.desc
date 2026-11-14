@@ -1,0 +1,29 @@
+---
+# Hunter Linux 1.0 - Calamares branding component.
+componentName: hunter
+
+strings:
+    productName:         "Hunter Linux 1.0"
+    shortProductName:    "Hunter Linux"
+    version:             "1.0"
+    shortVersion:        "1.0"
+    versionedName:       "Hunter Linux 1.0"
+    shortVersionedName:  "Hunter 1.0"
+    bootloaderEntryName: "Hunter Linux"
+    productUrl:          ""
+    supportUrl:          ""
+    releaseNotesUrl:     ""
+    knownIssuesUrl:      ""
+
+images:
+    productLogo:         "hunter-logo.png"
+    productIcon:         "hunter-icon.png"
+    productWelcome:      "hunter-welcome.png"
+
+slideshow:               "show.qml"
+slideshowAPI: 2
+
+style:
+    sidebarBackground:   "#1d232b"
+    sidebarText:         "#e6e6e6"
+    sidebarTextSelect:   "#3d5a80"

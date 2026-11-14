@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Hunter Linux
+Comment=i3 window manager with the XFCE panel
+Exec=/usr/local/bin/hunter-session
+TryExec=/usr/local/bin/hunter-session
+DesktopNames=HUNTER

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Hunter Linux 1.0 - power and session menu.
+#
+# Opened from the panel icon or with Super+Shift+E.  Everything here goes
+# through systemd-logind, so a normal user session may shut down and restart
+# without a root password (polkit allows active local sessions).
+
+set -u
+
+choice=$(
+	printf '%s\n' "Lock screen" "Log out" "Restart" "Shut down" "Cancel" |
+		rofi -dmenu -i -p "Hunter Linux"
+) || exit 0
+
+case "${choice}" in
+	"Lock screen") exec i3lock -c 1d232b ;;
+	"Log out") exec i3-msg exit ;;
+	"Restart") exec systemctl reboot ;;
+	"Shut down") exec systemctl poweroff ;;
+	*) exit 0 ;;
+esac

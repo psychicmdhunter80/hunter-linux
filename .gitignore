@@ -1,0 +1,21 @@
+# live-build output
+binary/
+chroot/
+cache/
+.build/
+.lock
+*.iso
+*.hybrid.iso
+*.zsync
+*.contents
+*.files
+*.packages
+*.list.tar.gz
+
+# release output
+/SHA256SUMS
+dist/
+
+# python
+__pycache__/
+*.pyc

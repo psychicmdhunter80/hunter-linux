@@ -1,0 +1,103 @@
+name: hunter-linux
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo apt-get clean
+          df -h /
+
+      - name: Restore file modes
+        run: |
+          chmod +x build.sh auto/config tools/ci/*.sh
+          chmod +x config/hooks/live/*.hook.chroot
+          chmod +x config/includes.chroot/usr/local/bin/* \
+                   config/includes.chroot/usr/local/sbin/*
+
+      - name: Build the build container
+        run: docker build --network host -t hunter-build:1.0 .
+
+      - name: Build the ISO
+        run: |
+          sudo docker run --rm --privileged --network host \
+            -v "$PWD:/build" -w /build \
+            hunter-build:1.0 sh -c './build.sh native' 2>&1 | tee build.log
+
+      - name: Inspect the result
+        run: |
+          ls -lh *.iso
+          sha256sum *.iso | tee Hunter-Linux-v1.0-amd64.iso.sha256
+          file *.iso
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: iso
+          path: |
+            Hunter-Linux-v1.0-amd64.iso
+            Hunter-Linux-v1.0-amd64.iso.sha256
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  boot-test:
+    name: Boot test (${{ matrix.mode }})
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [bios, uefi]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and OVMF
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf socat imagemagick
+          ls -l /dev/kvm || echo "no /dev/kvm (will fall back to TCG)"
+          ls /usr/share/OVMF/ | head
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: iso
+          path: iso
+
+      - name: Boot the ISO
+        run: |
+          chmod +x tools/ci/qemu-boot-test.sh
+          tools/ci/qemu-boot-test.sh iso/Hunter-Linux-v1.0-amd64.iso \
+            "${{ matrix.mode }}" "out-${{ matrix.mode }}"
+        timeout-minutes: 60
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-test-${{ matrix.mode }}
+          path: out-${{ matrix.mode }}/
+          retention-days: 7
+          if-no-files-found: warn

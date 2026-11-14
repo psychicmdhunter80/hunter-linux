@@ -1,0 +1,7 @@
+# Hunter Linux 1.0 - default keyboard layout (US).
+# The installer lets the user change this for the installed system.
+XKBMODEL="pc105"
+XKBLAYOUT="us"
+XKBVARIANT=""
+XKBOPTIONS=""
+BACKSPACE="guess"

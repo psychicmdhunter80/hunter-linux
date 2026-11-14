@@ -1,0 +1,10 @@
+# Hunter Linux - networking and Bluetooth
+network-manager
+network-manager-gnome
+iw
+rfkill
+wireless-regdb
+
+# Bluetooth stack; blueman provides the panel applet and the manager GUI
+bluez
+blueman

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Keyboard Shortcuts
+Comment=One-page reference for the Hunter Linux desktop
+Exec=xdg-open /usr/share/doc/hunter-linux/shortcuts.html
+Icon=help-browser
+Terminal=false
+Categories=Documentation;
+StartupNotify=true

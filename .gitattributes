@@ -1,0 +1,8 @@
+# Everything in this project is consumed by Linux tools (shell, live-build,
+# Calamares, syslinux). CRLF would break every hook and config file, so
+# disable all end-of-line conversion.
+* -text
+
+*.png binary
+*.iso binary
+*.zip binary

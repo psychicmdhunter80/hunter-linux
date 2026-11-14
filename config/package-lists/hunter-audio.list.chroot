@@ -1,0 +1,8 @@
+# Hunter Linux - audio: PipeWire with WirePlumber
+pipewire-audio
+pipewire-alsa
+libspa-0.2-bluetooth
+wireplumber
+alsa-utils
+alsa-ucm-conf
+pavucontrol

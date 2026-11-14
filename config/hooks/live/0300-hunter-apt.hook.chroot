@@ -1,0 +1,25 @@
+#!/bin/sh
+# Hunter Linux 1.0 - APT sources.
+#
+# Security and point-release updates must keep working after installation, so
+# the sources file is written explicitly rather than relying on whatever
+# live-build generated while bootstrapping.
+set -e
+
+MIRROR="${LB_MIRROR_CHROOT:-http://deb.debian.org/debian/}"
+
+echo "hunter: writing /etc/apt/sources.list for ${MIRROR}"
+
+mkdir -p /etc/apt/sources.list.d
+rm -f /etc/apt/sources.list.d/*.list 2>/dev/null || true
+
+cat > /etc/apt/sources.list <<EOF
+# Hunter Linux 1.0 - Debian 13 (trixie) plus security updates.
+deb ${MIRROR} trixie main contrib non-free non-free-firmware
+deb ${MIRROR} trixie-updates main contrib non-free non-free-firmware
+deb http://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware
+EOF
+
+# No package indices in the image (they cost ~60 MB); the first "apt update"
+# after installation fetches them.
+rm -rf /var/lib/apt/lists/*

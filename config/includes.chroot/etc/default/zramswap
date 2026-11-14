@@ -1,0 +1,8 @@
+# Hunter Linux 1.0 - compressed swap in RAM.
+#
+# A quarter of physical RAM is used as a zstd-compressed swap device.  This
+# keeps 2 GB machines usable under memory pressure without touching the disk.
+# Disable with: sudo systemctl disable --now zramswap
+ALGO=zstd
+PERCENT=25
+PRIORITY=100

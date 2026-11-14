@@ -1,0 +1,6 @@
+# Hunter Linux 1.0 - GTK2 appearance (only used by the few remaining GTK2 apps)
+gtk-theme-name = "Adwaita"
+gtk-icon-theme-name = "Adwaita"
+gtk-font-name = "DejaVu Sans 10"
+gtk-menu-images = 0
+gtk-button-images = 0

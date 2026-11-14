@@ -1,0 +1,18 @@
+#!/bin/sh
+# Hunter Linux 1.0 - enable the services the desktop needs and nothing else.
+#
+# The image deliberately installs no printing stack, no indexing service, no
+# software store, no avahi and no ModemManager, so there is nothing to disable
+# here; this hook only makes sure the required units are enabled.
+set -e
+
+echo "hunter: enabling services"
+
+for unit in NetworkManager bluetooth lightdm zramswap systemd-timesyncd; do
+	if systemctl enable "${unit}.service" >/dev/null 2>&1 || \
+	   systemctl enable "${unit}" >/dev/null 2>&1; then
+		echo "hunter:   enabled ${unit}"
+	else
+		echo "hunter:   warning: could not enable ${unit}" >&2
+	fi
+done

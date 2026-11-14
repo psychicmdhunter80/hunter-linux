@@ -1,0 +1,16 @@
+# Hunter Linux - default applications
+#
+# Two browsers only: Firefox ESR (primary) and Falkon (secondary).
+# Chromium is deliberately not installed.
+firefox-esr
+falkon
+
+# HTML5 / H.264 playback for the browsers, mpv and Falkon
+libavcodec-extra
+
+mpv
+ristretto
+xarchiver
+unzip
+zip
+xz-utils
