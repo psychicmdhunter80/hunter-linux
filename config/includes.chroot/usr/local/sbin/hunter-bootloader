@@ -58,9 +58,26 @@ EOF
 	log "wrote ${cfg}"
 }
 
-if [ -d /sys/firmware/efi ] && [ -d /boot/efi ]; then
-	esp=/boot/efi
-	log "installing GRUB for UEFI on ${esp}"
+# The installer does not always leave the EFI system partition mounted at
+# /boot/efi inside this chroot, so find it on the disk and mount it here.
+esp_partition=$(lsblk -no NAME,FSTYPE,PARTTYPE "${disk}" 2>/dev/null |
+	awk '$3 ~ /c12a7328-f81f-11d2-ba4b-00a0c93ec93b/ { print $1; exit }')
+if [ -z "${esp_partition}" ]; then
+	esp_partition=$(lsblk -no NAME,FSTYPE "${disk}" 2>/dev/null |
+		awk '$2 == "vfat" { print $1; exit }')
+fi
+
+esp=/boot/efi
+mounted_here=0
+if [ -n "${esp_partition}" ]; then
+	if ! mountpoint -q "${esp}" 2>/dev/null; then
+		mkdir -p "${esp}"
+		mount "/dev/${esp_partition}" "${esp}" && mounted_here=1
+	fi
+fi
+
+if [ -n "${esp_partition}" ]; then
+	log "installing GRUB for UEFI on ${esp} (/dev/${esp_partition})"
 	grub-install --target=x86_64-efi --efi-directory="${esp}" \
 		--bootloader-id=Hunter_Linux --recheck --no-nvram --force
 
@@ -105,4 +122,8 @@ else
 fi
 
 write_cfg /boot/grub/grub.cfg
+
+if [ "${mounted_here}" = 1 ]; then
+	umount "${esp}" 2>/dev/null || true
+fi
 log "done"
