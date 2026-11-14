@@ -53,7 +53,9 @@ def executable(relative_path):
 
 def collect():
     for base, dirs, files in os.walk(PROJECT):
-        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+        # "art" directories hold captured test artefacts, not project files.
+        dirs[:] = sorted(d for d in dirs
+                         if d not in SKIP_DIRS and not d.startswith("art"))
         for name in sorted(files):
             if name.endswith(SKIP_SUFFIXES):
                 continue
