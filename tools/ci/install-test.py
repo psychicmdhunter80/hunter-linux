@@ -645,6 +645,18 @@ def main():
                    f"FAIL: Cockpit does not answer inside the installed system ({code.strip()[:60]})")
             shell.run("/usr/local/bin/hunter-cockpit", timeout=60)
 
+            # The wallpaper has to survive the installation.
+            wall = shell.run("test -f /usr/share/backgrounds/smd/"
+                             "smd-linux-wallpaper.png && echo present || echo missing; "
+                             "echo ---; pgrep -a feh | head -2", timeout=60)
+            record("PASS: the wallpaper is present in the installed system"
+                   if "present" in wall.split("---")[0]
+                   else "FAIL: the wallpaper is missing in the installed system")
+            record("PASS: feh draws the wallpaper in the installed system"
+                   if "smd-linux-wallpaper" in wall
+                   else "FAIL: the installed desktop is not drawing the wallpaper")
+            monitor.screenshot("13-installed-desktop-wallpaper")
+
             outside = subprocess.run(
                 ["curl", "-sk", "-o", os.path.join(WORK, "cockpit-installed.html"),
                  "-w", "%{http_code}", f"https://127.0.0.1:{WEB_PORT}/"],

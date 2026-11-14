@@ -374,7 +374,17 @@ def main():
         # --- idle memory -----------------------------------------------------
         shell.run("pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; "
                   "sleep 8; free -m", timeout=60)
-        monitor.screenshot("04-final")
+
+        # --- wallpaper -------------------------------------------------------
+        art = shell.run("test -f /usr/share/backgrounds/smd/smd-linux-wallpaper.png "
+                        "&& echo present || echo missing; echo ---; "
+                        "pgrep -a feh | head -2", timeout=60)
+        check(results, "the SMD wallpaper is installed",
+              "present" in art.split("---")[0])
+        check(results, "feh draws the SMD wallpaper on the desktop",
+              "smd-linux-wallpaper" in art)
+        time.sleep(4)
+        monitor.screenshot("06-desktop")
         record("PASS: live session test finished")
         return 0
     finally:

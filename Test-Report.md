@@ -2,8 +2,8 @@
 
 **Date:** 14 November 2026
 **Version under test:** 1.0
-**Image:** `SMD-Linux-v1.0-amd64.iso`, 1,109,803,008 bytes (1.03 GiB)
-**SHA-256:** `379a72be3b211d3fbf441a330de0eb77d7eac0d099b00821227b01dacaa426c3`
+**Image:** `SMD-Linux-v1.0-amd64.iso`, 1,117,487,104 bytes (1.04 GiB)
+**SHA-256:** `0a9f57466de1e78229fb2cc0f5e24b8a1a46a12187fe9682c273ea9818b88979`
 
 ---
 
@@ -16,8 +16,9 @@ firmware.
 
 | Area | Result |
 |---|---|
-| ISO built from these sources | **PASS** - 8m01s on a GitHub Actions Ubuntu 24.04 runner |
+| ISO built from these sources | **PASS** - on a GitHub Actions Ubuntu 24.04 runner |
 | SHA-256 of the delivered file | **PASS** - recomputed locally, matches the build |
+| Cockpit installed, socket enabled, reachable | **PASS** - live session and installed system |
 | Boot to live desktop, BIOS (SeaBIOS) | **PASS** |
 | Boot to live desktop, UEFI (OVMF) | **PASS** |
 | i3 configuration valid | **PASS** - `i3 -C` exits 0 |
@@ -27,7 +28,9 @@ firmware.
 | Thunar launches | **PASS** |
 | Calamares installer starts | **PASS** |
 | Install to a virtual disk | see section 7 |
-| Idle memory in the live session | 417 MiB used of 1973 MiB, 1555 MiB available |
+| Installed system boots, logs in, desktop up | see section 7 |
+| Idle memory in the live session | 412 MiB used of 1967 MiB, 1555 MiB available |
+| Default wallpaper | the supplied SMD Linux artwork, scaled to the screen |
 
 Idle memory is measured inside the live session with i3, the panel, the
 settings daemon and the tray applets running, with no application windows open.
@@ -59,7 +62,7 @@ approached (the ISO is 1.03 GiB, under the 2 GiB per-file artifact limit).
 
 | File | Size | SHA-256 |
 |---|---|---|
-| `SMD-Linux-v1.0-amd64.iso` | 1,109,803,008 B | `379a72be3b211d3fbf441a330de0eb77d7eac0d099b00821227b01dacaa426c3` |
+| `SMD-Linux-v1.0-amd64.iso` | 1,117,487,104 B | `0a9f57466de1e78229fb2cc0f5e24b8a1a46a12187fe9682c273ea9818b88979` |
 | `SMD-Linux-Build-v1.0.zip` | build sources | see `SHA256SUMS` |
 | `SMD-Linux-v1.0-README.md` | documentation | see `SHA256SUMS` |
 | `SMD-Linux-v1.0-Test-Report.md` | this report | see `SHA256SUMS` |
@@ -82,8 +85,14 @@ and matched the value the build produced.
   systray, clock, PulseAudio and battery plugins, `xfce4-settings`, Thunar,
   `xfce4-terminal`, `xfce4-power-manager`.
 * Firefox ESR and Falkon, PipeWire + WirePlumber, NetworkManager, zram swap.
-* Calamares 3.3 with SMD branding, configured for offline installation from
-  the live image.
+* Calamares 3.3 with SMD branding and its own GRUB installation step,
+  configured for offline installation from the live image.
+* Cockpit (`cockpit`, `cockpit-system`) with `cockpit.socket` enabled in the
+  live session and in the installed system; `hunter-cockpit` prints the address
+  to open from another computer.
+* Desktop wallpaper: the supplied SMD Linux artwork, at
+  `/usr/share/backgrounds/smd/smd-linux-wallpaper.png`, drawn by `feh` from the
+  i3 configuration (no extra service).
 * Hybrid boot: isolinux for BIOS, GRUB for UEFI, with the project's own menu:
   **Start Live**, **Live (Safe Graphics)**, **Install SMD Linux**,
   **Advanced Boot Options**.
