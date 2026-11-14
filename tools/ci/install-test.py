@@ -409,11 +409,15 @@ def main():
         # Exploration: walk the pages with a fixed click on the Next button so
         # their layouts can be measured, then stop without installing.
         if os.environ.get("EXPLORE") == "1":
-            for step in range(6):
+            for step in range(8):
                 path = disp.shot(f"explore-{step}")
                 with open(os.path.join(WORK, f"ocr-explore-{step}.txt"), "w",
                           encoding="utf-8") as handle:
                     handle.write(disp.text(path))
+                if step == 4:
+                    # Partitioning page: choose "Erase disk" before going on.
+                    disp.click(313, 130)
+                    time.sleep(3)
                 disp.click(1005, 746)
                 time.sleep(6)
             disp.shot("explore-end")

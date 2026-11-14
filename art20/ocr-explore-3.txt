@@ -1,0 +1,54 @@
+HUP
+
+Keyboard
+
+Keyboard model:
+
+Bambara
+Bangla
+Belarusian
+Belgian
+Berber (Algeria, Latin)
+Bosnian
+Brail
+Bulgarian
+Burmese
+Chines
+Croatian
+Czech
+Danish
+
+ric 105-key PC
+
+Switch Keyboard:
+
+Cherokee
+Default
+
+DH ISO)
+DH Ortholinear)
+DH Wide ISO)
+DH Wide)
+h (Colemak-DH)
+h (Dvorak)
+h (Dvorak, Macintosh)
+h (Dvorak, alt. int
+h (Dvorak, inti, with dead keys)
+h (Dvorak, left-handed)
+h (Dvorak, right-handed)
+te
+
+h (US, alt. intl.)
+
+h (US, euro
+
+h (US, intl,
+
+h (Workman)
+
+h (Workman, intl, with dead keys)
+h (clas
+
+Dvorak)
+tonale the I
+
