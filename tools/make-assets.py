@@ -181,16 +181,16 @@ class Canvas:
 
     # -- logo -------------------------------------------------------------
     def mark(self, centre_x, centre_y, size, colour, opacity=1.0, underline=True):
-        """The SMD Linux mark: a compact 'H' with an accent rule."""
-        bar = max(2, int(round(size * 0.17)))
-        left = centre_x - size / 2
-        top = centre_y - size / 2
-        self.rect(left, top, bar, size, colour, opacity)
-        self.rect(left + size - bar, top, bar, size, colour, opacity)
-        self.rect(left + bar, centre_y - bar / 2, size - 2 * bar, bar, colour, opacity)
+        """The SMD Linux mark: the initial of the name with an accent rule."""
+        scale = max(1, int(round(size / 7.0)))
+        height = 7 * scale
+        width = self.text_width("S", scale)
+        left = int(round(centre_x - width / 2.0))
+        top = int(round(centre_y - height / 2.0))
+        self.text(left, top, "S", scale, colour, opacity)
         if underline:
-            rule_y = top + size + max(2, int(round(size * 0.12)))
-            self.rect(left, rule_y, size, max(2, int(round(size * 0.06))),
+            rule_y = top + height + max(2, int(round(size * 0.12)))
+            self.rect(left, rule_y, width, max(2, int(round(size * 0.06))),
                       ACCENT, opacity)
 
     # -- output -----------------------------------------------------------
