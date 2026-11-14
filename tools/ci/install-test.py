@@ -24,8 +24,120 @@ from PIL import Image
 import pytesseract
 from vncdotool import api
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from boot_test import Channel, Monitor, Shell  # noqa: E402  (shared transport)
+class Channel:
+    """A socket connection with a read-until helper."""
+
+    def __init__(self, port):
+        deadline = time.time() + 90
+        while True:
+            try:
+                self.sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+                break
+            except OSError:
+                if time.time() > deadline:
+                    raise
+                time.sleep(0.5)
+        self.sock.settimeout(5)
+        self.data = ""
+
+    def send(self, text):
+        self.sock.sendall(text.encode())
+
+    def expect(self, pattern, timeout=120):
+        deadline = time.time() + timeout
+        regex = re.compile(pattern, re.IGNORECASE | re.DOTALL)
+        while time.time() < deadline:
+            try:
+                chunk = self.sock.recv(65536).decode("utf-8", "replace")
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            if chunk:
+                self.data += chunk
+            match = regex.search(self.data)
+            if match:
+                return match, self.data
+        return None, self.data
+
+
+class Monitor:
+    """The QEMU monitor: screenshots and hotplug commands."""
+
+    def __init__(self):
+        self.chan = Channel(MON_PORT)
+        self.chan.expect(r"\(qemu\)", timeout=30)
+
+    def hmp(self, command, wait=1.0):
+        self.chan.send(command + "\n")
+        self.chan.expect(r"\(qemu\)", timeout=60)
+        time.sleep(wait)
+
+    def screenshot(self, name):
+        ppm = os.path.join(WORK, f"screen-{name}.ppm")
+        png = os.path.join(WORK, f"screen-{name}.png")
+        self.hmp(f"screendump {ppm}", wait=1.5)
+        subprocess.run(["convert", ppm, png], check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.exists(png):
+            os.unlink(ppm)
+        record(f"screenshot {os.path.basename(png)}")
+        return png
+
+
+class Shell:
+    """A login shell on the guest's serial console."""
+
+    def __init__(self, chan):
+        self.chan = chan
+        self.counter = 0
+
+    def login(self, timeout=900):
+        matched, _ = self.chan.expect(r"login:", timeout=timeout)
+        if not matched:
+            record("FAIL: no login prompt on the serial console")
+            return False
+        self.chan.send(LOGIN + "\r")
+        matched, _ = self.chan.expect(r"[Pp]assword:", timeout=60)
+        if matched:
+            self.chan.send(PASSWORD + "\r")
+        matched, _ = self.chan.expect(r"[$#] ", timeout=120)
+        if not matched:
+            record("FAIL: could not log in on the serial console")
+            return False
+        record(f"PASS: logged in as {LOGIN} on the serial console")
+        return True
+
+    def run(self, command, timeout=180, lines=40):
+        self.counter += 1
+        begin = f"INSTALLMARK{self.counter}BEGIN"
+        end = f"INSTALLMARK{self.counter}END"
+        wrapped = (
+            f'echo "{begin[:12]}""{begin[12:]}"; '
+            f"({command}) 2>&1 | head -{lines}; "
+            f'echo "{end[:12]}""{end[12:]}"'
+        )
+        self.chan.send(wrapped + "\r")
+        pattern = re.escape(begin) + r"(.*?)" + re.escape(end)
+        match, _ = self.chan.expect(pattern, timeout=timeout)
+        if not match:
+            record(f"WARN: command timed out: {command}")
+            return ""
+        text = re.sub(r"\r", "", match.group(1)).strip()
+        record(f"$ {command}\n{text}")
+        return text
+
+    def wait_for_x(self, timeout=600):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            probe = self.run("DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT",
+                             timeout=60)
+            if "READY" in probe:
+                record("PASS: the X display is up")
+                return True
+            time.sleep(10)
+        record("FAIL: the X display never came up")
+        return False
 
 ISO = sys.argv[1]
 WORK = sys.argv[2] if len(sys.argv) > 2 else "install-out"

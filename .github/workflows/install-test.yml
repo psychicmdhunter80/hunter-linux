@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Workflow run whose ISO artifact should be used
+        description: Workflow run whose ISO artifact should be installed
         required: true
         type: string
       firmware:
@@ -18,7 +18,7 @@ jobs:
   install:
     name: Install and boot (${{ inputs.firmware }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -27,26 +27,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             qemu-system-x86 qemu-utils ovmf socat tesseract-ocr \
-            python3-venv python3-pip
+            imagemagick python3-venv python3-pip
           python3 -m venv "$HOME/venv"
           "$HOME/venv/bin/pip" -q install --upgrade pip
           "$HOME/venv/bin/pip" -q install vncdotool pytesseract pillow
           ls -l /dev/kvm || echo "no /dev/kvm, using TCG"
 
-      - name: Fetch the ISO from the build run
+      - name: Fetch the ISO
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
           ls -lh iso/
-          sha256sum -c iso/Hunter-Linux-v1.0-amd64.iso.sha256 --ignore-missing --quiet 2>/dev/null \
-            || echo "checksum file not found; skipping"
+          cd iso && sha256sum -c Hunter-Linux-v1.0-amd64.iso.sha256
 
-      - name: Install to a virtual disk and boot it
+      - name: Install to a virtual disk and boot the result
         run: |
-          chmod +x tools/ci/install-test.sh
-          tools/ci/install-test.sh iso/Hunter-Linux-v1.0-amd64.iso out \
-            "${{ inputs.firmware }}" "$HOME/venv/bin/python"
+          chmod +x tools/ci/install-test.py
+          "$HOME/venv/bin/python" tools/ci/install-test.py \
+            iso/Hunter-Linux-v1.0-amd64.iso out "${{ inputs.firmware }}"
+        timeout-minutes: 150
 
       - name: Upload evidence
         if: always()
