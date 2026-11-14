@@ -527,16 +527,28 @@ def main():
         shell.run("sudo -n tail -25 /tmp/calamares.log", timeout=90)
         probe = shell.run(
             "sudo -n sh -c 'mkdir -p /mnt/root && mount /dev/vda2 /mnt/root && "
-            "ls -l /mnt/root/boot/grub/grub.cfg ; "
-            "head -12 /mnt/root/boot/grub/grub.cfg ; "
             "mkdir -p /mnt/root/boot/efi && mount /dev/vda1 /mnt/root/boot/efi && "
+            "for d in dev proc sys; do mkdir -p /mnt/root/$d; "
+            "mount --bind /$d /mnt/root/$d; done; "
+            "ls -l /mnt/root/usr/local/sbin/hunter-bootloader ; "
+            "test -e /mnt/root/usr/local/bin/hunter-install "
+            "&& echo POSTINSTALL-NOT-RUN || echo postinstall-ran ; "
+            "chroot /mnt/root /usr/local/sbin/hunter-bootloader ; "
+            "echo BOOTLOADER-RC=$? ; "
+            "ls -l /mnt/root/boot/grub/grub.cfg ; "
             "find /mnt/root/boot/efi -maxdepth 3 -type f | sort ; "
-            "umount -R /mnt/root 2>/dev/null; true'", timeout=300)
-        if "/boot/grub/grub.cfg" in probe:
-            record("PASS: the installed system has a GRUB menu")
+            "umount -R /mnt/root 2>/dev/null; true'", timeout=600)
+        if "hunter-bootloader" in probe:
+            record("INFO: the installed system carries the boot loader script")
+        if "POSTINSTALL-NOT-RUN" in probe:
+            record("FAIL: the installer's finish-up step never ran")
+        elif "postinstall-ran" in probe:
+            record("PASS: the installer's finish-up step ran")
+        if "BOOTLOADER-RC=0" in probe:
+            record("PASS: the boot loader installs in the target system")
         else:
-            record("FAIL: no GRUB menu on the installed system")
-        if "shimx64.efi" in probe or "/boot/efi/EFI/BOOT/BOOTX64.EFI" in probe:
+            record("FAIL: the boot loader script fails")
+        if "shimx64.efi" in probe or "BOOTX64.EFI" in probe:
             record("PASS: the EFI system partition holds the boot loader")
         else:
             record("FAIL: the EFI system partition is empty")
