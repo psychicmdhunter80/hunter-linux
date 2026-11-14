@@ -1,0 +1,48 @@
+started qemu as pid 2867
+$ cat /proc/cmdline
+; (cat /proc/cmdline) 2>&1 | head -40; echo
+$ uname -r; id
+; (uname -r; id) 2>&1 | head -40; echo
+screenshot screen-01-desktop.png
+$ i3 -C -c ~/.config/i3/config; echo rc=$?
+; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo
+$ pgrep -a i3; pgrep -a xfce4-panel; pgrep -a xfsettingsd; pgrep -a nm-applet; pgrep -a lightdm
+; (pgrep -a i3; pgrep -a xfce4-panel; pgrep -a xfsettingsd; pgrep -a nm-applet; pgrep -a lightdm) 2>&1 | head -40; echo
+$ free -m
+; (free -m) 2>&1 | head -40; echo
+$ xrandr 2>&1 | head -3; echo DISPLAY=$DISPLAY
+; (xrandr 2>&1 | head -3; echo DISPLAY=$DISPLAY) 2>&1 | head -40; echo
+$ ls /usr/share/xsessions/
+; (ls /usr/share/xsessions/) 2>&1 | head -40; echo
+$ cat /var/log/lightdm/lightdm.log 2>/dev/null | tail -20
+; (cat /var/log/lightdm/lightdm.log 2>/dev/null | tail -20) 2>&1 | head -40; echo
+$ systemctl --user --no-pager status xfce4-panel 2>&1 | head -12
+; (systemctl --user --no-pager status xfce4-panel 2>&1 | head -12) 2>&1 | head -40; echo
+$ DISPLAY=:0 xfce4-terminal --version
+; (DISPLAY=:0 xfce4-terminal --version) 2>&1 | head -40; echo
+screenshot screen-02-terminal-check.png
+$ DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &
+; (DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &) 2>&1 | head -40; echo
+$ pgrep -c -f '^thunar'
+; (pgrep -c -f '^thunar') 2>&1 | head -40; echo
+screenshot screen-03-thunar.png
+$ DISPLAY=:0 setsid firefox-esr 'about:blank' >/tmp/firefox.log 2>&1 &
+; (DISPLAY=:0 setsid firefox-esr 'about:blank' >/tmp/firefox.log 2>&1 &) 2>&1 | head -40; echo
+$ pgrep -c -f '^firefox'
+; (pgrep -c -f '^firefox') 2>&1 | head -40; echo
+screenshot screen-03-firefox.png
+$ DISPLAY=:0 setsid falkon --no-sandbox 'about:blank' >/tmp/falkon.log 2>&1 &
+; (DISPLAY=:0 setsid falkon --no-sandbox 'about:blank' >/tmp/falkon.log 2>&1 &) 2>&1 | head -40; echo
+$ pgrep -c -f '^falkon'
+; (pgrep -c -f '^falkon') 2>&1 | head -40; echo
+screenshot screen-03-falkon.png
+$ DISPLAY=:0 setsid sudo -n calamares -d >/tmp/calamares.log 2>&1 &
+; (DISPLAY=:0 setsid sudo -n calamares -d >/tmp/calamares.log 2>&1 &) 2>&1 | head -40; echo
+screenshot screen-04-installer.png
+$ pgrep -a calamares | head -3; tail -5 /tmp/calamares.log
+; (pgrep -a calamares | head -3; tail -5 /tmp/calamares.log) 2>&1 | head -40; echo
+$ pgrep -c calamares
+; (pgrep -c calamares) 2>&1 | head -40; echo
+$ pkill -f firefox-esr; pkill -f falkon; pkill -f xfce4-terminal; sleep 5; free -m
+; (pkill -f firefox-esr; pkill -f falkon; pkill -f xfce4-terminal; sleep 5; free -m) 2>&1 | head -40; echo
+screenshot screen-05-final.png

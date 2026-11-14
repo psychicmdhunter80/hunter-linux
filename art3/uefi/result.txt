@@ -1,0 +1,11 @@
+accelerator: tcg
+firmware: /usr/share/OVMF/OVMF_CODE_4M.fd
+PASS: logged in as user on the serial console
+PASS: live system booted to a usable console
+PASS: screenshot of the live desktop captured
+FAIL: i3 configuration invalid: ; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo
+PASS: thunar launched (2 processes)
+PASS: firefox launched (2 processes)
+PASS: falkon launched (2 processes)
+FAIL: the graphical installer did not start
+PASS: live session test finished

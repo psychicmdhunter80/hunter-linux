@@ -5,7 +5,7 @@
 
 The guest is driven over two channels:
 
-* the QEMU monitor (TCP) for screenshots and key presses,
+* the QEMU monitor (TCP) for screenshots,
 * the guest's serial console (TCP) for a login shell.
 
 Logging in on the serial console means the test can run actual commands -
@@ -24,9 +24,9 @@ import subprocess
 import sys
 import time
 
-WORK = sys.argv[3] if len(sys.argv) > 3 else "out"
 ISO = sys.argv[1]
 MODE = sys.argv[2] if len(sys.argv) > 2 else "bios"
+WORK = sys.argv[3] if len(sys.argv) > 3 else "out"
 
 MON_PORT = 4600
 SER_PORT = 4601
@@ -39,7 +39,7 @@ STEPS = os.path.join(WORK, "steps.txt")
 SERIAL_LOG = os.path.join(WORK, "serial.log")
 
 results = []
-seen = []  # serial traffic, for the log file
+seen = []
 
 
 def record(line):
@@ -54,9 +54,9 @@ def note(line):
 
 
 class Channel:
-    """A line-oriented socket connection with a read-until helper."""
+    """A socket connection with a read-until helper."""
 
-    def __init__(self, port, quiet=False):
+    def __init__(self, port):
         deadline = time.time() + 60
         while True:
             try:
@@ -67,16 +67,14 @@ class Channel:
                     raise
                 time.sleep(0.5)
         self.sock.settimeout(5)
-        self.buffer = ""
-        self.quiet = quiet
+        self.data = ""
 
     def send(self, text):
         self.sock.sendall(text.encode())
 
-    def expect(self, pattern, timeout=120, save=True):
-        """Read until the regex matches; return (matched_text, full_text)."""
+    def expect(self, pattern, timeout=120, keep=True):
+        """Read until the regex matches; return (match, everything read)."""
         deadline = time.time() + timeout
-        data = ""
         regex = re.compile(pattern, re.IGNORECASE | re.DOTALL)
         while time.time() < deadline:
             try:
@@ -85,16 +83,14 @@ class Channel:
                 continue
             except OSError:
                 break
-            if not chunk:
-                time.sleep(0.2)
-                continue
-            data += chunk
-            if not self.quiet:
-                seen.append(chunk)
-            match = regex.search(data)
+            if chunk:
+                self.data += chunk
+                if keep:
+                    seen.append(chunk)
+            match = regex.search(self.data)
             if match:
-                return match.group(0), data
-        return None, data
+                return match, self.data
+        return None, self.data
 
     def close(self):
         try:
@@ -105,12 +101,12 @@ class Channel:
 
 class Monitor:
     def __init__(self):
-        self.chan = Channel(MON_PORT, quiet=True)
-        self.chan.expect(r"\(qemu\)", timeout=30)
+        self.chan = Channel(MON_PORT)
+        self.chan.expect(r"\(qemu\)", timeout=30, keep=False)
 
     def hmp(self, command, wait=1.0):
         self.chan.send(command + "\n")
-        self.chan.expect(r"\(qemu\)", timeout=60)
+        self.chan.expect(r"\(qemu\)", timeout=60, keep=False)
         time.sleep(wait)
 
     def screenshot(self, name):
@@ -123,9 +119,6 @@ class Monitor:
             os.unlink(ppm)
         note(f"screenshot screen-{name}.png")
         return png
-
-    def key(self, combo, wait=1.0):
-        self.hmp(f"sendkey {combo}", wait=wait)
 
 
 class Shell:
@@ -144,32 +137,50 @@ class Shell:
         matched, _ = self.chan.expect(r"[Pp]assword:", timeout=60)
         if matched:
             self.chan.send(LIVE_PASS + "\r")
-        matched, data = self.chan.expect(r"[$#] ", timeout=90)
+        matched, _ = self.chan.expect(r"[$#] ", timeout=120)
         if not matched:
             record("FAIL: could not log in on the serial console")
             return False
         record(f"PASS: logged in as {LIVE_USER} on the serial console")
         return True
 
-    def run(self, command, timeout=120, wait_prompt=True):
-        """Run a command, echo a marker after it, and return its output."""
+    def run(self, command, timeout=180, lines=40):
+        """Run a command over the console and return its output.
+
+        The terminal echoes what is typed, so the markers below are written in
+        two quoted halves: the echoed line never contains the joined marker,
+        while the printed output does.
+        """
         self.counter += 1
-        marker = f"HUNTER{self.counter}"
-        # stderr merged into stdout, output bounded so a hung command cannot
-        # block the console forever.
+        begin = f"HUNTERMARK{self.counter}BEGIN"
+        end = f"HUNTERMARK{self.counter}END"
         wrapped = (
-            f"echo {marker}_BEGIN; ({command}) 2>&1 | head -40; "
-            f"echo {marker}_END"
+            f'echo "{begin[:10]}""{begin[10:]}"; '
+            f"({command}) 2>&1 | head -{lines}; "
+            f'echo "{end[:10]}""{end[10:]}"'
         )
         self.chan.send(wrapped + "\r")
-        matched, data = self.chan.expect(marker + r"_END", timeout=timeout)
-        text = data.split(f"{marker}_BEGIN", 1)[-1]
-        text = text.rsplit(f"{marker}_END", 1)[0]
-        text = re.sub(r"\r", "", text).strip()
-        note(f"$ {command}\n{text}")
-        if not matched:
+        pattern = re.escape(begin) + r"(.*?)" + re.escape(end)
+        match, _ = self.chan.expect(pattern, timeout=timeout)
+        if not match:
+            note(f"$ {command}\n<bounded timeout after {timeout}s>")
             record(f"WARN: command timed out: {command}")
+            return ""
+        text = re.sub(r"\r", "", match.group(1)).strip()
+        note(f"$ {command}\n{text}")
         return text
+
+    def wait_for_x(self, timeout=600):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if "READY" in self.run("xdpyinfo >/dev/null 2>&1 && echo READY || "
+                                   "echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null",
+                                   timeout=60):
+                record("PASS: the X display is up")
+                return True
+            time.sleep(10)
+        record("FAIL: the X display never came up")
+        return False
 
 
 def start_qemu():
@@ -185,22 +196,16 @@ def start_qemu():
         "-serial", f"tcp:127.0.0.1:{SER_PORT},server,nowait",
     ]
     if MODE == "uefi":
-        code = next(
-            (p for p in (
-                "/usr/share/OVMF/OVMF_CODE_4M.fd",
-                "/usr/share/OVMF/OVMF_CODE.fd",
-                "/usr/share/edk2/ovmf/OVMF_CODE.fd",
-            ) if os.path.exists(p)),
-            None,
-        )
-        var_src = next(
-            (p for p in (
-                "/usr/share/OVMF/OVMF_VARS_4M.fd",
-                "/usr/share/OVMF/OVMF_VARS.fd",
-                "/usr/share/edk2/ovmf/OVMF_VARS.fd",
-            ) if os.path.exists(p)),
-            None,
-        )
+        code = next((p for p in (
+            "/usr/share/OVMF/OVMF_CODE_4M.fd",
+            "/usr/share/OVMF/OVMF_CODE.fd",
+            "/usr/share/edk2/ovmf/OVMF_CODE.fd",
+        ) if os.path.exists(p)), None)
+        var_src = next((p for p in (
+            "/usr/share/OVMF/OVMF_VARS_4M.fd",
+            "/usr/share/OVMF/OVMF_VARS.fd",
+            "/usr/share/edk2/ovmf/OVMF_VARS.fd",
+        ) if os.path.exists(p)), None)
         if not code or not var_src:
             record("FAIL: no OVMF firmware found")
             return None
@@ -218,8 +223,13 @@ def start_qemu():
     args += ["-cdrom", ISO]
     log = open(os.path.join(WORK, "qemu.log"), "w", encoding="utf-8")
     process = subprocess.Popen(args, stdout=log, stderr=log)
-    note("started qemu as pid " + str(process.pid))
+    note(f"started qemu as pid {process.pid}")
     return process
+
+
+def check(results_text, label, ok):
+    record(("PASS: " if ok else "FAIL: ") + label)
+    return ok
 
 
 def main():
@@ -230,43 +240,44 @@ def main():
     qemu = start_qemu()
     if qemu is None:
         return 1
+    monitor = None
     try:
         monitor = Monitor()
-
-        # The console is the most reliable readiness signal: the getty only
-        # starts once the boot has finished.
         shell = Shell(Channel(SER_PORT))
         if not shell.login():
             monitor.screenshot("boot-failed")
-            record("FAIL: no live shell")
+            return 1
+        check(results, "live system reached a login console", True)
+
+        shell.run("cat /proc/cmdline; uname -r; id")
+        if not shell.wait_for_x():
+            monitor.screenshot("no-x")
             return 1
 
-        record("PASS: live system booted to a usable console")
-        shell.run("cat /proc/cmdline")
-        shell.run("uname -r; id")
-
+        time.sleep(60)
         monitor.screenshot("01-desktop")
-        record("PASS: screenshot of the live desktop captured")
 
-        # i3 validation and the running session processes
-        i3out = shell.run("i3 -C -c ~/.config/i3/config; echo rc=$?")
-        if "rc=0" in i3out:
-            record("PASS: i3 configuration is valid")
-        else:
-            record("FAIL: i3 configuration invalid: " + i3out.replace("\n", " | "))
+        # --- i3 -------------------------------------------------------------
+        i3out = shell.run("i3 -C -c ~/.config/i3/config; echo rc=$?", timeout=120)
+        check(results, "i3 configuration is valid",
+              bool(re.search(r"rc=0", i3out)) and "ERROR" not in i3out.upper())
+        shell.run("pgrep -a i3; ls -l ~/.config/i3/config")
 
-        shell.run("pgrep -a i3; pgrep -a xfce4-panel; pgrep -a xfsettingsd; "
-                  "pgrep -a nm-applet; pgrep -a lightdm")
+        # --- panel -----------------------------------------------------------
+        panel = shell.run("pgrep -a xfce4-panel; xfce4-panel --version 2>&1", timeout=60)
+        running = bool(re.search(r"\d+\s+\S*xfce4-panel", panel))
+        check(results, "the XFCE panel process is running", running)
+        if not running:
+            # Start it in the foreground so its own complaint is captured.
+            shell.run("DISPLAY=:0 timeout 20 xfce4-panel 2>&1 | head -20", timeout=60)
+        shell.run("xfconf-query -c xfce4-panel -p /panels -v 2>&1; "
+                  "xfconf-query -c xfce4-panel -l 2>&1 | head -10")
+
         shell.run("free -m")
-        shell.run("xrandr 2>&1 | head -3; echo DISPLAY=$DISPLAY")
-        shell.run("ls /usr/share/xsessions/")
-        shell.run("cat /var/log/lightdm/lightdm.log 2>/dev/null | tail -20")
-        shell.run("systemctl --user --no-pager status xfce4-panel 2>&1 | head -12")
+        shell.run("xrandr 2>&1 | head -3")
+        shell.run("tail -15 /var/log/lightdm/lightdm.log 2>/dev/null")
 
-        # Launch the desktop applications on the live display.
-        shell.run("DISPLAY=:0 xfce4-terminal --version")
-        monitor.screenshot("02-terminal-check")
-
+        # --- applications ----------------------------------------------------
         for name, command, proc, wait in (
             ("thunar", "thunar", "thunar", 25),
             ("firefox", "firefox-esr 'about:blank'", "firefox", 90),
@@ -275,38 +286,35 @@ def main():
             shell.run(f"DISPLAY=:0 setsid {command} >/tmp/{name}.log 2>&1 &",
                       timeout=30)
             time.sleep(wait)
-            count = shell.run(f"pgrep -c -f '^{proc}'")
-            monitor.screenshot(f"03-{name}")
-            number = re.search(r"\b(\d+)\b", count)
-            if number and int(number.group(1)) > 0:
-                record(f"PASS: {name} launched ({number.group(1)} processes)")
-            else:
-                record(f"FAIL: {name} did not launch")
+            count = shell.run(f"pgrep -c -f '^[a-z]*{proc}'")
+            monitor.screenshot(f"02-{name}")
+            number = re.search(r"^(\d+)$", count.strip(), re.M)
+            check(results, f"{name} launched",
+                  bool(number) and int(number.group(1)) > 0)
 
-        # The installer must start from the live session.
+        # --- installer -------------------------------------------------------
         shell.run("DISPLAY=:0 setsid sudo -n calamares -d >/tmp/calamares.log "
                   "2>&1 &", timeout=30)
-        time.sleep(60)
-        monitor.screenshot("04-installer")
-        shell.run("pgrep -a calamares | head -3; tail -5 /tmp/calamares.log")
-        cal = shell.run("pgrep -c calamares")
-        if cal.strip().isdigit() and int(cal.strip()) > 0:
-            record("PASS: the graphical installer started")
-        else:
-            record("FAIL: the graphical installer did not start")
+        time.sleep(75)
+        monitor.screenshot("03-installer")
+        log = shell.run("pgrep -c calamares; echo ---; tail -25 /tmp/calamares.log",
+                        timeout=60)
+        number = re.search(r"^(\d+)$", log.split("---")[0].strip(), re.M)
+        check(results, "the graphical installer started",
+              bool(number) and int(number.group(1)) > 0)
 
-        # Idle memory with everything above closed again.
-        shell.run("pkill -f firefox-esr; pkill -f falkon; "
-                  "pkill -f xfce4-terminal; sleep 5; free -m")
-        monitor.screenshot("05-final")
-
+        # --- idle memory -----------------------------------------------------
+        shell.run("pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; "
+                  "sleep 8; free -m", timeout=60)
+        monitor.screenshot("04-final")
         record("PASS: live session test finished")
         return 0
     finally:
-        try:
-            monitor.hmp("quit", wait=0.5)
-        except Exception:
-            pass
+        if monitor:
+            try:
+                monitor.hmp("quit", wait=0.5)
+            except Exception:
+                pass
         time.sleep(2)
         if qemu.poll() is None:
             qemu.kill()
