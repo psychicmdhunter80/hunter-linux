@@ -250,46 +250,86 @@ class Display:
         self.client.typewrite(value)
         time.sleep(0.8)
 
-    def find(self, path, needle):
+    def find(self, path, needle, region=None):
+        """Return the centre of a word on screen, optionally within a region."""
         from pytesseract import Output
         data = pytesseract.image_to_data(Image.open(path), output_type=Output.DICT)
         for i, word in enumerate(data["text"]):
             if not word or needle.lower() not in word.lower():
                 continue
             try:
-                if int(float(data["conf"][i])) < 30:
+                if int(float(data["conf"][i])) < 20:
                     continue
             except ValueError:
                 continue
-            return (data["left"][i] + data["width"][i] // 2,
-                    data["top"][i] + data["height"][i] // 2)
+            x = data["left"][i] + data["width"][i] // 2
+            y = data["top"][i] + data["height"][i] // 2
+            if region and not region(x, y):
+                continue
+            return (x, y)
         return None
 
-    def advance(self, label, expect, timeout=240):
-        """Click Next/Continue/Install until the expected page is on screen.
+    def advance(self, label, expect, tries=15):
+        """Move to the next wizard page and confirm it arrived.
 
-        A button is only pressed while the next page is still missing, so a
-        failed OCR read can never make the wizard skip a page.
+        Enter activates the default button on every Calamares page, which is
+        far more reliable than OCR on a greyed-out button.  Clicking is only a
+        fallback, and only on the button row at the bottom of the window, so a
+        word in a heading can never be mistaken for a button.
         """
-        deadline = time.time() + timeout
         path = None
-        while time.time() < deadline:
-            path = self.shot(label)
+        for attempt in range(tries):
+            path = self.shot(f"{label}-{attempt}")
             if self.contains(path, expect):
                 record(f"PASS: reached the '{expect}' page")
                 return path
-            point = self.find(path, "next") or self.find(path, "continue") \
-                or self.find(path, "install")
-            if point:
-                self.click(*point)
-            else:
-                self.press("enter")
-            time.sleep(6)
+            self.press("enter")
+            time.sleep(7)
+            path = self.shot(f"{label}-{attempt}-enter")
+            if self.contains(path, expect):
+                record(f"PASS: reached the '{expect}' page")
+                return path
+            for word in ("Next", "Continue", "Install"):
+                point = self.find(path, word, region=lambda x, y: y > 620)
+                if point:
+                    self.click(*point)
+                    time.sleep(7)
+                    break
         record(f"FAIL: never reached the '{expect}' page after {label}")
         with open(os.path.join(WORK, f"ocr-stuck-{label}.txt"), "w",
                   encoding="utf-8") as handle:
             handle.write(self.text(path))
         return path
+
+    def select_erase(self, path):
+        """Pick the 'Erase disk' radio button on the partitioning page."""
+        in_body = lambda x, y: 150 < y < 650 and 150 < x < 1150  # noqa: E731
+        point = self.find(path, "Erase", region=in_body) \
+            or self.find(path, "disk", region=in_body)
+        if point:
+            self.click(point[0] - 22, point[1])
+            record("PASS: selected 'Erase disk'")
+        else:
+            record("WARN: 'Erase disk' not found by OCR; using the keyboard")
+            for _ in range(4):
+                self.press("tab")
+            self.press("space")
+        time.sleep(3)
+        return self.shot("partition-selected")
+
+    def fill_users(self, path):
+        """Fill name, login name and password on the users page."""
+        in_body = lambda x, y: 150 < y < 650 and 150 < x < 1150  # noqa: E731
+        point = self.find(path, "name", region=in_body)
+        if point:
+            self.click(point[0] + 170, point[1])
+        self.type(FULL_NAME)
+        for _ in range(3):
+            self.press("tab")
+        self.type(PASSWORD)
+        self.press("tab")
+        self.type(PASSWORD)
+        return self.shot("users-filled")
 
 
 def main():
@@ -324,30 +364,11 @@ def main():
         disp.advance("keyboard", "erase")
 
         # Partitioning: explicitly select "Erase disk".
-        page = disp.shot("partition")
-        point = disp.find(page, "Erase")
-        if point:
-            disp.click(point[0] - 20, point[1])
-            record("PASS: selected 'Erase disk'")
-            time.sleep(3)
-            disp.shot("partition-selected")
-        else:
-            record("WARN: could not find the 'Erase disk' option")
+        disp.select_erase(disp.shot("partition"))
         disp.advance("partition", "name")
 
         # User account.
-        page = disp.shot("users")
-        point = disp.find(page, "name")
-        if point:
-            disp.click(point[0] + 140, point[1])
-        disp.type(FULL_NAME)
-        disp.press("tab")
-        disp.press("tab")
-        disp.press("tab")
-        disp.type(PASSWORD)
-        disp.press("tab")
-        disp.type(PASSWORD)
-        disp.shot("users-filled")
+        disp.fill_users(disp.shot("users"))
         disp.advance("users", "summary")
 
         # Summary: start the installation.
