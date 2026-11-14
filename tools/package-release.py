@@ -3,9 +3,9 @@
 
 Creates, in the directory above this project:
 
-    SMD-Linux-Build-v1.0.zip          the build sources, with file modes
-    SMD-Linux-v1.0-README.md          user documentation
-    SMD-Linux-v1.0-Test-Report.md     test status and measurements
+    SMD-Linux-Build-v1.1.zip          the build sources, with file modes
+    SMD-Linux-v1.1-README.md          user documentation
+    SMD-Linux-v1.1-Test-Report.md     test status and measurements
     SHA256SUMS                           checksums of the files above
 
 File permissions are stored in the archive (0755 for scripts), so the project
@@ -24,11 +24,11 @@ PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.dirname(PROJECT)
 PROJECT_NAME = os.path.basename(PROJECT)
 
-ZIP_NAME = "SMD-Linux-Build-v1.0.zip"
-ISO_NAME = "SMD-Linux-v1.0-amd64.iso"
+ZIP_NAME = "SMD-Linux-Build-v1.1.zip"
+ISO_NAME = "SMD-Linux-v1.1-amd64.iso"
 DOCS = {
-    "README.md": "SMD-Linux-v1.0-README.md",
-    "Test-Report.md": "SMD-Linux-v1.0-Test-Report.md",
+    "README.md": "SMD-Linux-v1.1-README.md",
+    "Test-Report.md": "SMD-Linux-v1.1-Test-Report.md",
 }
 
 SKIP_DIRS = {".git", ".tmp", "__pycache__", "binary", "chroot", "cache",

@@ -1,10 +1,13 @@
-# SMD Linux - networking and Bluetooth
+# SMD Linux - networking.
+#
+# wpasupplicant is listed explicitly on purpose: live-build runs with
+# --apt-recommends false, and NetworkManager only *recommends* it.  Without it
+# the interface is detected, networks are listed, and every WPA2 connection
+# fails - which is exactly what v1.0 did on the Acer.
 network-manager
 network-manager-gnome
+wpasupplicant
 iw
 rfkill
 wireless-regdb
-
-# Bluetooth stack; blueman provides the panel applet and the manager GUI
 bluez
-blueman

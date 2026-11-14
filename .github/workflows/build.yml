@@ -42,8 +42,8 @@ jobs:
         run: |
           ls -lh *.iso || true
           if ls *.iso >/dev/null 2>&1; then
-            sha256sum *.iso > SMD-Linux-v1.0-amd64.iso.sha256
-            cat SMD-Linux-v1.0-amd64.iso.sha256
+            sha256sum *.iso > SMD-Linux-v1.1-amd64.iso.sha256
+            cat SMD-Linux-v1.1-amd64.iso.sha256
             file *.iso
           fi
 
@@ -53,8 +53,8 @@ jobs:
         with:
           name: iso
           path: |
-            SMD-Linux-v1.0-amd64.iso
-            SMD-Linux-v1.0-amd64.iso.sha256
+            SMD-Linux-v1.1-amd64.iso
+            SMD-Linux-v1.1-amd64.iso.sha256
           retention-days: 7
           compression-level: 0
 

@@ -1,0 +1,47 @@
+#!/bin/sh
+# SMD Linux - start the session applets i3 does not provide.
+#
+# Called from the i3 configuration with exec_always, so it runs in the live
+# session and on an installed system even if the session wrapper was bypassed,
+# and on every i3 reload.  Each applet is guarded, so a reload never leaves two
+# copies of nm-applet, a duplicate polkit agent or a second power manager.
+
+set -u
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/smd"
+mkdir -p "$cache" 2>/dev/null || true
+log="$cache/applets.log"
+
+start() {
+	name=$1
+	shift
+	command -v "$name" >/dev/null 2>&1 || return 0
+	if pgrep -u "$(id -u)" -x "$name" >/dev/null 2>&1; then
+		return 0
+	fi
+	echo "$(date '+%F %T') starting $name" >>"$log"
+	"$@" >>"$log" 2>&1 &
+}
+
+# GTK theme, fonts, icons and cursor for everything running under i3.
+start xfsettingsd xfsettingsd --replace
+
+# Authentication agent: without one, NetworkManager's "connect to this
+# network" prompts and the logind power actions fail with "interactive
+# authentication required".
+start xfce-polkit xfce-polkit
+start polkit-gnome-authentication-agent-1 polkit-gnome-authentication-agent-1
+
+# Network, Bluetooth, notifications, battery and power handling.
+start nm-applet nm-applet
+start blueman-applet blueman-applet
+start xfce4-notifyd xfce4-notifyd
+start xfce4-power-manager xfce4-power-manager
+
+# Report anything that is missing, so a slimmed image is diagnosable.
+for wanted in xfce4-panel nm-applet xfce4-power-manager; do
+	command -v "$wanted" >/dev/null 2>&1 || \
+		echo "$(date '+%F %T') missing: $wanted" >>"$log"
+done
+
+exit 0

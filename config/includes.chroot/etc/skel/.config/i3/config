@@ -1,10 +1,17 @@
-# SMD Linux 1.0 - i3 configuration
+# SMD Linux - i3 configuration
 #
-# Goals: usable without i3 experience, no compositing, no i3bar (the XFCE
-# panel is the taskbar).  Super (Windows key) is the modifier throughout.
-# A one-page cheat sheet is on the desktop and on Super+F1.
+# Modifier: LEFT ALT.  The Chromebook's Search key (Super) is only the
+# launcher: pressed on its own it opens the application menu.  Super is kept
+# out of the other shortcuts so the browser and the launcher never fight over
+# it, and Alt+Left/Right are left to the applications (Firefox back/forward),
+# which is why window focus uses Alt+H/J/K/L instead of the arrow keys.
+#
+# No compositing and no i3bar: the XFCE panel along the bottom edge is the
+# taskbar, started here so it exists in the live session and after install.
+#
+# A one-page cheat sheet is on the desktop and on Alt+F1.
 
-set $mod Mod4
+set $mod Mod1
 set $term xfce4-terminal
 
 font pango:DejaVu Sans 10
@@ -18,17 +25,32 @@ default_floating_border pixel 2
 hide_edge_borders smart
 
 # ---------------------------------------------------------------------------
+# Session processes: panel, applets, polkit agent
+# ---------------------------------------------------------------------------
+# Both scripts are idempotent, so i3 reloads do not stack panels or applets.
+exec_always --no-startup-id hunter-panel
+exec_always --no-startup-id hunter-applets
+
+# ---------------------------------------------------------------------------
 # Desktop: wallpaper and automatic display detection
 # ---------------------------------------------------------------------------
 exec_always --no-startup-id feh --no-fehbg --bg-fill /usr/share/backgrounds/smd/smd-linux-wallpaper.png
 exec_always --no-startup-id xrandr --auto
 
 # ---------------------------------------------------------------------------
+# Launcher
+# ---------------------------------------------------------------------------
+# Search key on its own.  --release makes it fire when the key comes back up,
+# so holding Search as a modifier does not open the menu by accident.
+bindsym --release Super_L exec --no-startup-id rofi -show drun
+bindsym --release XF86Search exec --no-startup-id rofi -show drun
+bindsym $mod+d exec --no-startup-id rofi -show drun
+bindsym $mod+Tab exec --no-startup-id rofi -show window
+
+# ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
 bindsym $mod+Return exec --no-startup-id $term
-bindsym $mod+d exec --no-startup-id rofi -show drun
-bindsym $mod+Tab exec --no-startup-id rofi -show window
 bindsym $mod+e exec --no-startup-id thunar
 bindsym $mod+p exec --no-startup-id xfce4-display-settings --minimal
 bindsym $mod+F1 exec --no-startup-id xdg-open /usr/share/doc/hunter-linux/shortcuts.html
@@ -37,21 +59,22 @@ bindsym $mod+F1 exec --no-startup-id xdg-open /usr/share/doc/hunter-linux/shortc
 # Windows
 # ---------------------------------------------------------------------------
 bindsym $mod+Shift+q kill
+bindsym $mod+F4 kill
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+space floating toggle
 bindsym $mod+space focus mode_toggle
 
-bindsym $mod+Left focus left
-bindsym $mod+Down focus down
-bindsym $mod+Up focus up
-bindsym $mod+Right focus right
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
 
-bindsym $mod+Shift+Left move left
-bindsym $mod+Shift+Down move down
-bindsym $mod+Shift+Up move up
-bindsym $mod+Shift+Right move right
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
 
-bindsym $mod+h split h
+bindsym $mod+g split h
 bindsym $mod+v split v
 bindsym $mod+s layout stacking
 bindsym $mod+w layout tabbed
@@ -82,8 +105,6 @@ bindsym $mod+Shift+8 move container to workspace number 8
 bindsym $mod+Shift+9 move container to workspace number 9
 bindsym $mod+Shift+0 move container to workspace number 10
 
-# Send the focused window to the next/previous workspace.  Super+Shift+arrows
-# are already taken by move left/right above, so this uses Super+Ctrl.
 bindsym $mod+Control+Right move container to workspace next
 bindsym $mod+Control+Left move container to workspace prev
 
@@ -92,7 +113,7 @@ bindsym $mod+Control+Left move container to workspace prev
 # ---------------------------------------------------------------------------
 bindsym $mod+Shift+e exec --no-startup-id hunter-power
 bindsym XF86PowerOff exec --no-startup-id hunter-power
-bindsym $mod+Shift+l exec --no-startup-id i3lock -c 1d232b
+bindsym $mod+Shift+x exec --no-startup-id i3lock -c 1d232b
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 
@@ -107,9 +128,13 @@ bindsym XF86MonBrightnessUp exec --no-startup-id brightnessctl set 5%+
 bindsym XF86MonBrightnessDown exec --no-startup-id brightnessctl set 5%-
 
 # ---------------------------------------------------------------------------
-# Resize mode: Super+r, then arrow keys, Enter or Escape to leave
+# Resize mode: Alt+R, then H/J/K/L or the arrow keys, Enter or Escape to leave
 # ---------------------------------------------------------------------------
 mode "resize" {
+	bindsym h resize shrink width 10 px or 10 ppt
+	bindsym j resize grow height 10 px or 10 ppt
+	bindsym k resize shrink height 10 px or 10 ppt
+	bindsym l resize grow width 10 px or 10 ppt
 	bindsym Left resize shrink width 10 px or 10 ppt
 	bindsym Down resize grow height 10 px or 10 ppt
 	bindsym Up resize shrink height 10 px or 10 ppt

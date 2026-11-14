@@ -1,0 +1,42 @@
+// SMD Linux - polkit rules for a single-user desktop.
+//
+// The desktop has no administrative user session by design: a person sitting at
+// the machine, logged into the local seat, may manage the network and power the
+// machine off.  This is deliberately narrower than passwordless sudo - it grants
+// two specific groups of polkit actions, it requires an active local session,
+// and it grants nothing to remote or inactive sessions.
+
+polkit.addRule(function (action, subject) {
+    if (!subject.local || !subject.active) {
+        return null;
+    }
+    if (!subject.isInGroup("users")) {
+        return null;
+    }
+
+    // Power and session control: the panel menu, logind, UPower.
+    var power = [
+        "org.freedesktop.login1.power-off",
+        "org.freedesktop.login1.power-off-multiple-sessions",
+        "org.freedesktop.login1.reboot",
+        "org.freedesktop.login1.reboot-multiple-sessions",
+        "org.freedesktop.login1.suspend",
+        "org.freedesktop.login1.suspend-multiple-sessions",
+        "org.freedesktop.login1.hibernate",
+        "org.freedesktop.consolekit.system.stop",
+        "org.freedesktop.consolekit.system.restart",
+        "org.freedesktop.UPower.Suspend",
+        "org.freedesktop.UPower.Hibernate"
+    ];
+    if (power.indexOf(action.id) !== -1) {
+        return polkit.Result.YES;
+    }
+
+    // NetworkManager: joining a Wi-Fi network must not ask for a password that
+    // the owner of a Chromebook does not have.
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0) {
+        return polkit.Result.YES;
+    }
+
+    return null;
+});

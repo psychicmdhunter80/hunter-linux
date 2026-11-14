@@ -29,6 +29,11 @@ kernel_name=${kernel#/boot/}
 initrd=/boot/initrd.img-${kernel_name#vmlinuz-}
 log "kernel ${kernel_name}, initramfs ${initrd}"
 
+# The menu below deliberately does not call `load_video`: that is a shell
+# function defined by grub-mkconfig's 00_header, not a GRUB command, and this
+# file is written directly.  Calling it produced "can't find command
+# 'load_video'" and a "Press any key to continue" stop on every boot of the
+# installed system.  `insmod all_video` above does the same job.
 write_cfg() {
 	cfg=$1
 	mkdir -p "$(dirname "${cfg}")"
@@ -44,13 +49,11 @@ set gfxpayload=keep
 search --no-floppy --fs-uuid --set=root ${root_uuid}
 
 menuentry 'SMD Linux' {
-	load_video
 	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }
 
 menuentry 'SMD Linux (recovery mode)' {
-	load_video
 	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }

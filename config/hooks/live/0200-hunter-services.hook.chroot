@@ -16,3 +16,13 @@ for unit in NetworkManager bluetooth lightdm zramswap systemd-timesyncd; do
 		echo "hunter:   warning: could not enable ${unit}" >&2
 	fi
 done
+
+# Serial console login.  The kernel command line carries console=ttyS0, but the
+# installed system needs its own getty instance; the drop-in in
+# serial-getty@ttyS0.service.d keeps it from running on hardware without a
+# serial port.  This is also how the automated tests log in after installation.
+if systemctl enable serial-getty@ttyS0.service >/dev/null 2>&1; then
+	echo "hunter:   enabled serial-getty@ttyS0"
+else
+	echo "hunter:   warning: could not enable serial-getty@ttyS0" >&2
+fi

@@ -46,9 +46,29 @@ fi
 # 5. Make sure the services an installed system needs are enabled.
 systemctl enable lightdm >/dev/null 2>&1 || true
 systemctl enable NetworkManager >/dev/null 2>&1 || true
-systemctl enable bluetooth >/dev/null 2>&1 || true
+if command -v bluetoothd >/dev/null 2>&1; then
+	systemctl enable bluetooth >/dev/null 2>&1 || true
+fi
 systemctl enable zramswap >/dev/null 2>&1 || true
 systemctl enable cockpit.socket >/dev/null 2>&1 || true
+# Serial console login, as on the live image (the unit is skipped when the
+# machine has no ttyS0, see /etc/systemd/system/serial-getty@ttyS0.service.d).
+systemctl enable serial-getty@ttyS0.service >/dev/null 2>&1 || true
+
+# 6. The installed system must keep the SMD session: a display manager that
+#    fell back to a plain i3 session would start no panel and no applets.
+if [ -f /usr/share/xsessions/hunter.desktop ]; then
+	if [ -f /etc/lightdm/lightdm.conf.d/60-hunter-session.conf ]; then
+		grep -q '^user-session=hunter' /etc/lightdm/lightdm.conf.d/60-hunter-session.conf ||
+			printf '[Seat:*]\nuser-session=hunter\ngreeter-session=lightdm-gtk-greeter\n' \
+				>>/etc/lightdm/lightdm.conf.d/60-hunter-session.conf
+	else
+		printf '[Seat:*]\nuser-session=hunter\ngreeter-session=lightdm-gtk-greeter\n' \
+			>/etc/lightdm/lightdm.conf.d/60-hunter-session.conf
+	fi
+else
+	log "warning: /usr/share/xsessions/hunter.desktop is missing"
+fi
 
 log "completed"
 exit 0

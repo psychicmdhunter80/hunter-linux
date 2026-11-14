@@ -1,7 +1,8 @@
-# SMD Linux - display server, window manager, panel and desktop utilities
+# SMD Linux - desktop.
 #
-# Xorg + i3 + xfce4-panel only.  No GNOME, KDE, Cinnamon, MATE and no
-# xfce4-session/xfwm4 (the XFCE meta desktop is deliberately not installed).
+# i3, the XFCE panel and exactly the pieces it needs.  xfce-polkit is the
+# authentication agent: without it NetworkManager's connection prompts and the
+# logind power actions fail with "interactive authentication required".
 xserver-xorg
 xserver-xorg-video-intel
 xserver-xorg-video-amdgpu
@@ -15,42 +16,31 @@ x11-xserver-utils
 x11-utils
 xinit
 xinput
+xdotool
 brightnessctl
-
-# Window manager and session
 i3-wm
 i3lock
 rofi
 lightdm
 lightdm-gtk-greeter
-
-# Panel and its plugins (no full XFCE desktop)
 xfce4-panel
 xfce4-settings
 xfce4-power-manager
-xfce4-power-manager-plugins
 xfce4-whiskermenu-plugin
 xfce4-pulseaudio-plugin
 xfce4-battery-plugin
 xfce4-notifyd
+xfce-polkit
 thunar
-thunar-volman
-thunar-archive-plugin
 gvfs
 gvfs-fuse
 udisks2
 xfce4-terminal
-mousepad
 feh
-
-# Look and feel
 adwaita-icon-theme
-gnome-themes-extra
 librsvg2-common
 fonts-dejavu-core
 fonts-liberation
-
-# XDG desktop integration (Downloads/Documents folders, default applications)
 xdg-utils
 xdg-user-dirs
 xdg-user-dirs-gtk

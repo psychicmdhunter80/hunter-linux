@@ -1,12 +1,12 @@
 #!/bin/sh
-# SMD Linux 1.0 - desktop wiring inside the chroot.
+# SMD Linux - desktop wiring inside the chroot.
 set -e
 
 echo "hunter: configuring desktop files"
 
 # i3 falls back to /etc/i3/config when a user has no configuration of their own
-# (for example the root account on a console login).  Edit the file in
-# /etc/skel/.config/i3/config - this copy is derived from it.
+# (for example the root account on a console login).  The file in
+# /etc/skel/.config/i3/config is the source of truth - this copy is derived.
 mkdir -p /etc/i3
 cp -f /etc/skel/.config/i3/config /etc/i3/config
 
@@ -14,10 +14,12 @@ cp -f /etc/skel/.config/i3/config /etc/i3/config
 # before xdg-user-dirs-update runs.
 mkdir -p /etc/skel/Desktop /etc/skel/Downloads /etc/skel/Documents \
 	/etc/skel/Music /etc/skel/Pictures /etc/skel/Videos
+mkdir -p /etc/skel/.cache
 
 # Permissions
 chmod 0755 /usr/local/bin/hunter-session /usr/local/bin/hunter-power \
-	/usr/local/bin/hunter-install /usr/local/bin/hunter-cockpit
+	/usr/local/bin/hunter-install /usr/local/bin/hunter-cockpit \
+	/usr/local/bin/hunter-panel /usr/local/bin/hunter-applets
 chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader
 chmod 0644 /usr/share/xsessions/hunter.desktop
 chmod 0644 /usr/share/applications/hunter-install.desktop \
@@ -27,6 +29,25 @@ chmod 0644 /usr/share/applications/hunter-install.desktop \
 chmod 0755 /etc/skel/Desktop/hunter-install.desktop \
 	/etc/skel/Desktop/hunter-shortcuts.desktop
 chmod 0440 /etc/sudoers.d/90-hunter-live
+
+# Only SMD's own session may be offered by the display manager.  i3-wm ships an
+# "i3" session file as well, and a display manager that picks it starts plain i3
+# with no panel, no applets and no polkit agent - the v1.0 "panel does not
+# appear after install" report.
+rm -f /usr/share/xsessions/i3.desktop
+
+# Keep the menu to what the machine is for: the launcher, the browser, the file
+# manager, a terminal, network/display settings and the power menu.  The
+# settings tools stay installed (xfsettingsd and the dialogs are what make GTK
+# applications look right under i3); only their menu entries go.
+for entry in xfce4-settings-manager xfce4-about xfce4-accessibility-settings \
+	xfce4-color-settings xfce4-mime-settings xfce4-settings-editor \
+	xfce4-keyboard-settings xfce4-ui-settings thunar-settings \
+	xfce4-notes rofi-theme-selector; do
+	rm -f "/usr/share/applications/${entry}.desktop"
+done
+# The installer entry is created by the live image itself.
+rm -f /usr/share/applications/hunter-install.desktop.bak 2>/dev/null || true
 
 # Cockpit is reachable from another computer as soon as the network is up.
 echo "hunter: enabling cockpit.socket"

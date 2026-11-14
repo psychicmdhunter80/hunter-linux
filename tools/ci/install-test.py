@@ -621,7 +621,7 @@ def main():
         monitor.screenshot("11-login")
 
         shell = Shell(Channel(SER_PORT))
-        installed_shell = shell.login(timeout=300)
+        installed_shell = shell.login(timeout=420)
         record("PASS: logged into the installed system" if installed_shell
                else "FAIL: could not log into the installed system")
 
@@ -645,17 +645,101 @@ def main():
                    f"FAIL: Cockpit does not answer inside the installed system ({code.strip()[:60]})")
             shell.run("/usr/local/bin/hunter-cockpit", timeout=60)
 
-            # The wallpaper has to survive the installation.
+            # The wallpaper has to survive the installation.  feh sets the root
+            # pixmap and exits, so the pixmap on the root window is the proof.
             wall = shell.run("test -f /usr/share/backgrounds/smd/"
                              "smd-linux-wallpaper.png && echo present || echo missing; "
-                             "echo ---; pgrep -a feh | head -2", timeout=60)
+                             "echo ---; DISPLAY=:0 xprop -root _XROOTPMAP_ID 2>&1 | head -2",
+                             timeout=60)
             record("PASS: the wallpaper is present in the installed system"
                    if "present" in wall.split("---")[0]
                    else "FAIL: the wallpaper is missing in the installed system")
-            record("PASS: feh draws the wallpaper in the installed system"
-                   if "smd-linux-wallpaper" in wall
+            record("PASS: the installed desktop draws the wallpaper"
+                   if "PIXMAP" in wall.split("---")[-1]
                    else "FAIL: the installed desktop is not drawing the wallpaper")
             monitor.screenshot("13-installed-desktop-wallpaper")
+
+            # --- the desktop after login: panel, audio, apps, launcher --------
+            panel = shell.run(
+                "pgrep -x xfce4-panel >/dev/null && echo panel-running "
+                "|| echo panel-missing; echo ---; "
+                "DISPLAY=:0 xwininfo -root -tree 2>/dev/null "
+                "| grep -i xfce4-panel | head -3; echo ---; "
+                "DISPLAY=:0 xwininfo -root 2>/dev/null | grep -E 'Width:|Height:'",
+                timeout=120)
+            pchunks = panel.split("---")
+            found = (re.search(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", pchunks[1])
+                     if len(pchunks) > 1 else None)
+            screen = (re.search(r"Height:\s*(\d+)", pchunks[2])
+                      if len(pchunks) > 2 else None)
+            record("PASS: the panel starts automatically in the installed session"
+                   if "panel-running" in pchunks[0]
+                   else "FAIL: the panel does not start in the installed session")
+            record("PASS: the installed panel is along the bottom edge"
+                   if found and screen and
+                   int(found.group(4)) + int(found.group(2)) >= int(screen.group(1)) - 6
+                   else f"FAIL: the installed panel is not at the bottom "
+                        f"({found.group(0) if found else 'no window'})")
+
+            window = re.search(r"(0x[0-9a-f]+)", pchunks[1]) if len(pchunks) > 1 else None
+            if window:
+                shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
+                time.sleep(4)
+                hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+                                   "| grep 'Map State'", timeout=60)
+                shell.run("DISPLAY=:0 xdotool mousemove 640 790", timeout=30)
+                time.sleep(4)
+                shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+                                  "| grep 'Map State'", timeout=60)
+                record(f"INFO: installed panel away: {hidden.strip()[:70]}")
+                record(f"INFO: installed panel at the bottom: {shown.strip()[:70]}")
+                record("PASS: the installed panel auto-hides"
+                       if "IsUnMapped" in hidden or "IsUnviewable" in hidden
+                       else "FAIL: the installed panel never hides")
+                record("PASS: the installed panel appears at the bottom edge"
+                       if "IsViewable" in shown
+                       else "FAIL: the installed panel does not appear on demand")
+
+            audio = shell.run(
+                "pactl info 2>&1 | grep -iE 'server name|server version'; echo ---; "
+                "pgrep -x pipewire >/dev/null && echo pipewire-running "
+                "|| echo pipewire-missing; "
+                "pgrep -x wireplumber >/dev/null && echo wireplumber-running "
+                "|| echo wireplumber-missing", timeout=90)
+            achunks = audio.split("---")
+            record("PASS: the installed sound server is PipeWire"
+                   if "PipeWire" in achunks[0]
+                   else f"FAIL: the installed sound server is not PipeWire ({achunks[0].strip()[:60]})")
+            record("PASS: PipeWire and WirePlumber run after installation"
+                   if "pipewire-running" in achunks[1] and "wireplumber-running" in achunks[1]
+                   else "FAIL: PipeWire or WirePlumber is not running after installation")
+
+            scope = shell.run(
+                "for p in falkon mpv ristretto xarchiver; do "
+                "command -v $p >/dev/null && echo present:$p || echo gone:$p; done; "
+                "echo ---; command -v firefox-esr >/dev/null && echo browser-present; "
+                "dpkg-query -W -f='${Status}' wpasupplicant 2>/dev/null "
+                "| grep -c 'install ok installed'", timeout=90)
+            schunks = scope.split("---")
+            record("PASS: the installed application set matches the trimmed image"
+                   if "present:" not in schunks[0] and "browser-present" in schunks[1]
+                   else f"FAIL: unexpected applications in the installed system ({schunks[0].strip()[:80]})")
+            record("PASS: the Wi-Fi supplicant survived the installation"
+                   if schunks[1].strip().endswith("1")
+                   else "FAIL: wpasupplicant is missing after installation")
+
+            shell.run("DISPLAY=:0 xdotool key --clearmodifiers Super_L", timeout=30)
+            time.sleep(4)
+            monitor.screenshot("14-installed-launcher")
+            launcher = shell.run("DISPLAY=:0 xwininfo -root -tree 2>/dev/null "
+                                 "| grep -ci rofi", timeout=60)
+            record("PASS: the Search key opens the launcher after installation"
+                   if launcher.strip().isdigit() and int(launcher.strip()) > 0
+                   else "FAIL: the Search key does not open the launcher after installation")
+            shell.run("DISPLAY=:0 xdotool key Escape", timeout=30)
+
+            shell.run("systemd-analyze 2>&1 | head -3; systemctl --failed --no-pager "
+                      "| head -6", timeout=120)
 
             outside = subprocess.run(
                 ["curl", "-sk", "-o", os.path.join(WORK, "cockpit-installed.html"),
@@ -679,13 +763,18 @@ def main():
                    if auth.stdout and "200" in auth.stdout.splitlines()[0] else
                    "FAIL: authenticated Cockpit login from outside did not succeed")
         if not installed_shell:
-            # No serial getty on the installed system: log in at the greeter.
+            # No serial login: use the greeter so the desktop can still be
+            # inspected.  The greeter shows a name field and a password field,
+            # so the name has to be typed first and Tab moves to the password.
             try:
                 greeter = Display()
+                greeter.type(LOGIN)
+                greeter.press("tab")
                 greeter.type(PASSWORD)
                 greeter.press("enter")
-                time.sleep(45)
+                time.sleep(60)
                 greeter.shot("11-desktop-after-login")
+                record("WARN: no serial login; the greeter login was used instead")
             except Exception as error:  # noqa: BLE001 - report and continue
                 record(f"WARN: greeter login failed: {error}")
         if installed_shell:
@@ -700,8 +789,20 @@ def main():
                    f"{'yes' if 'calamares' not in mgr else 'no'}")
 
         # Show the installed desktop too.
-        shell.run(f"DISPLAY=:0 xfce4-terminal --version 2>&1 | head -2")
         monitor.screenshot("12-installed-desktop")
+
+        # The last check powers the machine off from the session itself: if the
+        # polkit rule and the agent work, a normal user can shut the machine
+        # down without a password, and QEMU stops.
+        if installed_shell:
+            shell.run("systemctl poweroff --no-ask-password >/tmp/poweroff.log "
+                      "2>&1 &", timeout=30)
+            deadline = time.time() + 90
+            while time.time() < deadline and qemu.poll() is None:
+                time.sleep(3)
+            record("PASS: a normal user can shut the installed system down"
+                   if qemu.poll() is not None
+                   else "FAIL: the power action did not stop the installed system")
     finally:
         try:
             monitor.hmp("quit", wait=1)

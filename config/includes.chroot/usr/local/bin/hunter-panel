@@ -1,0 +1,43 @@
+#!/bin/sh
+# SMD Linux - keep exactly one XFCE panel running under i3.
+#
+# Started from the i3 configuration with exec_always, so the panel comes up
+# with the window manager in the live session and on an installed system,
+# regardless of which session file the display manager picked.  i3 may run this
+# again on every reload, so the flock makes a second copy exit immediately
+# instead of stacking panels.
+#
+# Output goes to ~/.cache/smd/panel.log: when the panel does fail, the reason
+# is on disk instead of being thrown away.
+
+set -u
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/smd"
+mkdir -p "$cache" 2>/dev/null || exit 0
+log="$cache/panel.log"
+
+# One watchdog only.  If the lock cannot be taken another instance owns the
+# panel and this copy must not start a second one.
+exec 9>"$cache/panel.lock" || exit 0
+if command -v flock >/dev/null 2>&1; then
+	flock -n 9 || exit 0
+fi
+
+[ -s "$log" ] && [ "$(wc -c <"$log")" -gt 100000 ] && : >"$log"
+
+echo "--- $(date '+%F %T') starting panel (DISPLAY=$DISPLAY)" >>"$log"
+
+# Do not react to SIGTERM from an i3 reload by leaving a half-dead panel.
+trap 'exit 0' TERM INT
+
+while :; do
+	if ! command -v xfce4-panel >/dev/null 2>&1; then
+		echo "$(date '+%F %T') xfce4-panel is not installed" >>"$log"
+		exit 0
+	fi
+	xfce4-panel --disable-wm-check >>"$log" 2>&1
+	status=$?
+	echo "$(date '+%F %T') xfce4-panel exited with $status, restarting" >>"$log"
+	# A crash loop should not spin the CPU or flood the log.
+	sleep 2
+done

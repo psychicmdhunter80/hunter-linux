@@ -386,8 +386,101 @@ def main():
               "present" in art.split("---")[0])
         check(results, "the desktop shows the SMD wallpaper",
               "PIXMAP" in art.split("---")[-1])
-        time.sleep(4)
+
+        # --- panel: running, bottom edge, auto-hide --------------------------
+        panel = shell.run(
+            "pgrep -x xfce4-panel >/dev/null && echo panel-running || echo panel-missing; "
+            "echo ---; DISPLAY=:0 xwininfo -root -tree 2>/dev/null "
+            "| grep -i xfce4-panel | head -3; echo ---; "
+            "DISPLAY=:0 xwininfo -root 2>/dev/null | grep -E 'Width:|Height:'",
+            timeout=90)
+        parts = panel.split("---")
+        found = re.search(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", parts[1]) if len(parts) > 1 else None
+        screen = re.search(r"Height:\s*(\d+)", parts[2]) if len(parts) > 2 else None
+        check(results, "the panel is running in the live session",
+              "panel-running" in parts[0])
+        check(results, "the panel is along the bottom edge",
+              bool(found and screen and
+                   int(found.group(4)) + int(found.group(2)) >= int(screen.group(1)) - 6))
+        record(f"INFO: panel window {found.group(0) if found else 'not found'} "
+               f"on a {screen.group(1) if screen else '?'}px high screen")
+
+        window = re.search(r"(0x[0-9a-f]+)", parts[1]) if len(parts) > 1 else None
+        if window:
+            shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
+            time.sleep(4)
+            hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+                               "| grep 'Map State'", timeout=60)
+            # The pointer at the very bottom edge is how the panel is revealed.
+            shell.run("DISPLAY=:0 xdotool mousemove 640 790", timeout=30)
+            time.sleep(4)
+            shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+                              "| grep 'Map State'", timeout=60)
+            record(f"INFO: panel map state with the pointer away: {hidden.strip()[:70]}")
+            record(f"INFO: panel map state at the bottom edge: {shown.strip()[:70]}")
+            check(results, "the panel hides itself when the pointer is away",
+                  "IsUnMapped" in hidden or "IsUnviewable" in hidden)
+            check(results, "the panel appears when the pointer reaches the bottom",
+                  "IsViewable" in shown)
+        time.sleep(2)
         monitor.screenshot("06-desktop")
+
+        # --- audio: PipeWire, WirePlumber, a real sink -----------------------
+        audio = shell.run(
+            "pactl info 2>&1 | grep -iE 'server name|server version'; echo ---; "
+            "pgrep -x pipewire >/dev/null && echo pipewire-running || echo pipewire-missing; "
+            "pgrep -x wireplumber >/dev/null && echo wireplumber-running || echo wireplumber-missing; "
+            "echo ---; wpctl status 2>&1 | grep -iE 'sinks|default' | head -4",
+            timeout=90)
+        chunks = audio.split("---")
+        check(results, "the sound server is PipeWire",
+              "PipeWire" in chunks[0])
+        check(results, "PipeWire and WirePlumber are running",
+              "pipewire-running" in chunks[1] and "wireplumber-running" in chunks[1])
+
+        # --- Wi-Fi: the parts that a virtual machine can show ----------------
+        net = shell.run(
+            "dpkg-query -W -f='${Status}' wpasupplicant 2>/dev/null "
+            "| grep -c 'install ok installed'; echo ---; "
+            "ls /lib/firmware/iwlwifi-7260* 2>/dev/null | head -3; echo ---; "
+            "systemctl is-active NetworkManager; nmcli -t -f RUNNING general 2>&1",
+            timeout=90)
+        nchunks = net.split("---")
+        check(results, "the Wi-Fi supplicant is installed",
+              nchunks[0].strip().endswith("1"))
+        check(results, "firmware for the Intel 7260 radio is present",
+              "iwlwifi-7260" in nchunks[1])
+        check(results, "NetworkManager is active", "active" in nchunks[2])
+
+        # --- the promised software set, and nothing else ---------------------
+        scope = shell.run(
+            "for p in falkon mpv ristretto xarchiver; do "
+            "command -v $p >/dev/null && echo present:$p || echo gone:$p; done; echo ---; "
+            "command -v firefox-esr >/dev/null && echo browser-present; "
+            "command -v xfce4-panel >/dev/null && echo panel-present",
+            timeout=60)
+        schunks = scope.split("---")
+        check(results, "the trimmed application set is installed",
+              "browser-present" in schunks[1] and "panel-present" in schunks[1])
+        check(results, "the removed applications are really gone",
+              "present:" not in schunks[0])
+
+        # --- launcher on the Search key --------------------------------------
+        shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
+        shell.run("DISPLAY=:0 xdotool key --clearmodifiers Super_L", timeout=30)
+        time.sleep(4)
+        monitor.screenshot("05-launcher")
+        launcher = shell.run("DISPLAY=:0 xwininfo -root -tree 2>/dev/null "
+                             "| grep -ci rofi", timeout=60)
+        check(results, "the Search key opens the launcher on its own",
+              launcher.strip().isdigit() and int(launcher.strip()) > 0)
+        shell.run("DISPLAY=:0 xdotool key Escape", timeout=30)
+
+        # --- keyboard mapping and start-up time (recorded, not asserted) ----
+        shell.run("DISPLAY=:0 xmodmap -pm 2>/dev/null | grep -E 'mod1|mod4'",
+                  timeout=60)
+        shell.run("systemd-analyze 2>&1; systemd-analyze blame 2>/dev/null "
+                  "| head -8; systemctl --failed --no-pager | head -6", timeout=120)
         record("PASS: live session test finished")
         return 0
     finally:

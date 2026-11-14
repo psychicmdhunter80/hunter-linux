@@ -1,5 +1,11 @@
-# SMD Linux - audio: PipeWire with WirePlumber
+# SMD Linux - audio.
+#
+# PipeWire is the only sound server; WirePlumber is its session manager and
+# pipewire-pulse provides the PulseAudio protocol the browser speaks.  No
+# pulseaudio package is installed, so `pactl` talks to PipeWire.
+pipewire
 pipewire-audio
+pipewire-pulse
 pipewire-alsa
 libspa-0.2-bluetooth
 wireplumber

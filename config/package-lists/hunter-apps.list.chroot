@@ -1,16 +1,11 @@
-# SMD Linux - default applications
+# SMD Linux - applications.
 #
-# Two browsers only: Firefox ESR (primary) and Falkon (secondary).
-# Chromium is deliberately not installed.
+# One browser with working audio/video codecs, and nothing else: the goal is
+# browsing, YouTube and Jellyfin on a 2 GB machine.  The second browser (Falkon,
+# ~230 MB of Qt WebEngine) and the standalone media, image and archive
+# applications (mpv, ristretto, xarchiver) were removed in 1.1 - the browser and
+# the file manager already cover their jobs.
 firefox-esr
-falkon
-
-# HTML5 / H.264 playback for the browsers, mpv and Falkon
 libavcodec-extra
-
-mpv
-ristretto
-xarchiver
 unzip
-zip
 xz-utils
