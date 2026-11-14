@@ -1,6 +1,6 @@
 # SMD Linux - desktop.
 #
-# i3, the XFCE panel and exactly the pieces it needs.  xfce-polkit is the
+# i3, the XFCE panel and exactly the pieces it needs.  mate-polkit is the
 # authentication agent: without it NetworkManager's connection prompts and the
 # logind power actions fail with "interactive authentication required".
 xserver-xorg
@@ -30,7 +30,7 @@ xfce4-whiskermenu-plugin
 xfce4-pulseaudio-plugin
 xfce4-battery-plugin
 xfce4-notifyd
-xfce-polkit
+mate-polkit
 thunar
 gvfs
 gvfs-fuse

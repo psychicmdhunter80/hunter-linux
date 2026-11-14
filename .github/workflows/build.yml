@@ -30,12 +30,16 @@ jobs:
 
       - name: Build the ISO
         run: |
+          # Without pipefail the `| tee build.log` below hides a failed build:
+          # the step would succeed on tee's exit status alone.
+          set -o pipefail
           sudo docker run --rm --privileged --network host \
             -v "$PWD:/build" -w /build \
             hunter-build:1.0 sh -c './build.sh native' 2>&1 | tee build.log
           # The container runs as root; give the workspace back to the runner
           # user so later steps can write checksums and upload artefacts.
           sudo chown -R "$(id -u):$(id -g)" .
+          test -f SMD-Linux-v1.1-amd64.iso
 
       - name: Inspect the result
         if: always()

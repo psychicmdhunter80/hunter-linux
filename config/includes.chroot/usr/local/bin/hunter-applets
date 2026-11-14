@@ -28,9 +28,21 @@ start xfsettingsd xfsettingsd --replace
 
 # Authentication agent: without one, NetworkManager's "connect to this
 # network" prompts and the logind power actions fail with "interactive
-# authentication required".
-start xfce-polkit xfce-polkit
-start polkit-gnome-authentication-agent-1 polkit-gnome-authentication-agent-1
+# authentication required".  Debian ships the agent as a full path, not in
+# $PATH, and the package that provides it differs between releases, so the
+# first one that exists wins.
+for agent in /usr/lib/mate-polkit/polkit-mate-authentication-agent-1 \
+	/usr/libexec/polkit-mate-authentication-agent-1 \
+	/usr/lib/xfce-polkit/xfce-polkit \
+	/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1; do
+	[ -x "$agent" ] || continue
+	name=$(basename "$agent")
+	if ! pgrep -u "$(id -u)" -f "$name" >/dev/null 2>&1; then
+		echo "$(date '+%F %T') starting $agent" >>"$log"
+		"$agent" >>"$log" 2>&1 &
+	fi
+	break
+done
 
 # Network, Bluetooth, notifications, battery and power handling.
 start nm-applet nm-applet

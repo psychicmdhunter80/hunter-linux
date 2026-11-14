@@ -1,20 +1,24 @@
-# SMD Linux 1.0
+# SMD Linux 1.1
 
-A small, general-purpose Debian 13 desktop distribution: **Xorg + i3 + the
-XFCE4 panel**, two browsers, PipeWire audio, NetworkManager, and a Calamares
-installer, all on one BIOS/UEFI hybrid live ISO.
+A small, lightweight Debian 13 desktop distribution for low-power machines:
+**Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
+audio, NetworkManager with Wi-Fi, and a Calamares installer, all on one
+BIOS/UEFI hybrid live ISO.
 
 This directory is the complete, reproducible build project. It builds with
-Debian's own `live-build`; it does not depend on any external service.
+Debian's own `live-build` on GitHub Actions and does not depend on any external
+service.
 
-**Build status:** the ISO has not been built yet. This project was produced on
-a host without a Linux build environment, so the configuration is complete and
-statically verified, but the image itself has never been compiled, booted or
-measured. `Test-Report.md` states exactly what was and was not checked, and
-how to finish the job.
+**Version 1.1** repairs the faults reported on the Acer Chromebook 11 CB3-111:
+Wi-Fi (missing `wpasupplicant`), the panel that never started after installation,
+the `load_video` error on both boot entries, PipeWire being pinned explicitly,
+and a much smaller application set. The panel is now at the bottom edge and
+auto-hides, the Search key opens the launcher on its own, and **Left Alt** is the
+modifier for everything else. Details, root causes and what is still unverified
+are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.0-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.1-amd64.iso in this directory
 ```
 
 ---
@@ -26,15 +30,15 @@ how to finish the job.
 | Base | Debian 13 "trixie", amd64, official repositories only |
 | Kernel | Debian stable `linux-image-amd64` |
 | Display | Xorg (X11), no Wayland, no compositor |
-| Window manager | i3 (`i3-wm`), Super-key modifier, no i3bar |
-| Panel / taskbar | `xfce4-panel` with whisker menu, task list, pager, systray, clock, volume, battery, power menu |
-| File manager | Thunar (+ `thunar-volman`, `udisks2`, `gvfs`) |
+| Window manager | i3 (`i3-wm`), **Left Alt** modifier, no i3bar; the **Search** key alone opens the launcher |
+| Panel / taskbar | `xfce4-panel` on the **bottom edge, auto-hiding**, with whisker menu, task list, pager, systray, clock, volume, battery, power menu |
+| File manager | Thunar (+ `udisks2`, `gvfs`) |
 | Terminal | `xfce4-terminal` |
-| Editor | Mousepad |
-| Browsers | Firefox ESR (primary), Falkon (secondary) |
-| Network | NetworkManager + `nm-applet`, `iw`, `wireless-regdb`, BlueZ + Blueman |
-| Audio | PipeWire + WirePlumber + `pavucontrol` |
-| Media | mpv, Ristretto image viewer, Xarchiver |
+| Editor | `nano` (console); no graphical editor |
+| Browser | Firefox ESR, with the full audio/video codec set |
+| Network | NetworkManager + `nm-applet` + `wpasupplicant`, `iw`, `wireless-regdb`, BlueZ (audio only, no Bluetooth GUI) |
+| Audio | PipeWire + `pipewire-pulse` + WirePlumber + `pavucontrol` (no PulseAudio daemon) |
+| Authentication agent | `xfce-polkit`, started with the session |
 | Installer | Calamares 3.3 |
 | Remote administration | Cockpit (`cockpit`, `cockpit-system`) on port 9090, enabled in the live session and in the installed system |
 | Live system | `live-boot` + `live-config`, autologin, no persistence |
@@ -92,8 +96,8 @@ The build downloads roughly 1.5 GB of Debian packages and takes 20-60 minutes
 depending on the machine and mirror. The result is:
 
 ```
-SMD-Linux-v1.0-amd64.iso          the bootable hybrid image
-SMD-Linux-v1.0-amd64.iso.sha256   its checksum
+SMD-Linux-v1.1-amd64.iso          the bootable hybrid image
+SMD-Linux-v1.1-amd64.iso.sha256   its checksum
 ```
 
 Use a different mirror without editing anything:
@@ -132,7 +136,7 @@ method (it preserves both boot paths).
 Linux:
 
 ```
-sudo dd if=SMD-Linux-v1.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=SMD-Linux-v1.1-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 Use the whole device (`/dev/sdX`), never a partition (`/dev/sdX1`). This
@@ -142,7 +146,7 @@ macOS:
 
 ```
 diskutil list                                  # find the disk number
-sudo dd if=SMD-Linux-v1.0-amd64.iso of=/dev/rdiskN bs=4m
+sudo dd if=SMD-Linux-v1.1-amd64.iso of=/dev/rdiskN bs=4m
 ```
 
 Windows: use [Rufus](https://rufus.ie) in **DD mode**, or balenaEtcher, and
@@ -218,31 +222,39 @@ configured.
 
 ## 7. Using the desktop
 
-Super (the Windows key) is the modifier. A one-page reference is on the
-desktop ("Keyboard Shortcuts") and on `Super+F1`.
+The **Search** key (where Caps Lock sits on this Chromebook; the Windows key on
+other keyboards) opens the application menu **on its own**. Every other shortcut
+uses **Left Alt**, so the browser keeps `Ctrl` and `Alt`+`Left/Right` for
+itself. A one-page reference is on the desktop ("Keyboard Shortcuts") and on
+`Alt+F1`.
 
 | Shortcut | Action |
 |---|---|
-| `Super+D` | Application launcher |
-| `Super+Tab` | Switch windows |
-| `Super+Enter` | Terminal |
-| `Super+E` | File manager |
-| `Super+P` | Display settings (second monitor, resolution) |
-| `Super+Q` (`Super+Shift+Q`) | Close the focused window |
-| `Super+arrows` | Move the focus |
-| `Super+Shift+arrows` | Move the window |
-| `Super+1` … `Super+0` | Workspaces 1-10 |
-| `Super+Shift+1` … `Super+Shift+0` | Move window to workspace |
-| `Super+R` | Resize mode |
-| `Super+Shift+E` | Power menu (lock, log out, restart, shut down) |
-| `Super+Shift+L` | Lock the screen |
-| Volume / brightness keys | Work as labelled |
+| `Search` alone | Application launcher |
+| `Alt+D` | Application launcher (same thing, as a combination) |
+| `Alt+Tab` | Switch windows |
+| `Alt+Enter` | Terminal |
+| `Alt+E` | File manager |
+| `Alt+P` | Display settings (second monitor, resolution) |
+| `Alt+F4`, `Alt+Shift+Q` | Close the focused window |
+| `Alt+H` `J` `K` `L` | Move the focus left, down, up, right |
+| `Alt+Shift+H` `J` `K` `L` | Move the window |
+| `Alt+1` … `Alt+0` | Workspaces 1-10 |
+| `Alt+Shift+1` … `Alt+Shift+0` | Move window to workspace |
+| `Alt+R` | Resize mode |
+| `Alt+Shift+E` | Power menu (lock, log out, restart, shut down) |
+| `Alt+Shift+X` | Lock the screen |
+| Volume / brightness keys | Work as labelled (PipeWire via `wpctl`) |
+
+Arrow keys are deliberately **not** bound to window focus: `Alt+Left/Right` is
+back and forward in Firefox. Use `Alt+H/J/K/L` instead.
 
 The panel holds the application menu, the window list, workspaces, network and
 Bluetooth status, the clock (hover for the date), volume, battery percentage on
-laptops, and the power menu. It sits along the top edge: i3 places dock clients
-there, so the XFCE panel asks for that position rather than fighting the window
-manager.
+laptops, and the power menu. It sits along the **bottom edge and hides itself**;
+move the pointer to the bottom of the screen to bring it back. It is started by
+the i3 configuration (`hunter-panel`), not by the session wrapper, so it comes up
+in the live session and on an installed system alike.
 
 ---
 
@@ -316,9 +328,9 @@ Design decisions that keep the system small, all of them deliberate:
 * **Filesystem:** `defaults,noatime` on installed systems.
 
 Rough installed sizes (from the Debian package index, not measured on a built
-image): Firefox ESR ~260 MB, Falkon with Qt6 WebEngine ~230 MB, Calamares with
-Qt6 ~150 MB (removed at install time), the rest of the desktop ~200 MB. The
-ISO is expected in the 1.4-1.8 GB range.
+image): Firefox ESR ~260 MB, Calamares with Qt6 ~150 MB (removed at install
+time), the rest of the desktop ~200 MB. The ISO is expected in the 1.0-1.3 GB
+range.
 
 **Idle RAM has not been measured** — see `Test-Report.md`. The 400 MB target is
 plausible for this stack but unproven; the report explains exactly how to
@@ -350,10 +362,18 @@ system works normally without it.
 * **NVIDIA:** the open `nouveau` driver plus firmware is installed. The
   proprietary driver is not bundled; install `nvidia-driver` afterwards if you
   need full performance. Optimus laptops use the Intel/AMD GPU by default.
-* **Falkon is not actually lighter than Firefox.** It pulls Qt6 WebEngine
-  (~230 MB) and typically uses *more* memory than Firefox ESR for the same
-  page. It is included because the brief asks for a second engine, not as a
-  performance win.
+* **One browser only.** Falkon was removed in 1.1: Qt6 WebEngine cost ~230 MB
+  and used more memory than Firefox ESR for the same page. `sudo apt install
+  falkon` brings it back if a second engine is ever needed.
+* **Video tearing is possible on Intel graphics.** i3 runs without a
+  compositor. A ready-made TearFree configuration ships **disabled** as
+  `/etc/X11/xorg.conf.d/20-intel-tearfree.conf.disabled`; rename it to
+  `...conf` and restart the display manager on an affected machine. It is not
+  enabled by default because it pins the Intel driver and would be wrong on
+  other GPUs.
+* **Battery percentage is whatever UPower reports.** The 10-15 % sudden
+  power-off seen on the older installation is a hardware/gauge behaviour; the
+  image neither fakes the percentage nor forces a cutoff.
 * **No printing stack** (CUPS is ~40 MB of dependencies and several resident
   services). `sudo apt install cups system-config-printer` adds it.
 * **No office suite, no PDF viewer, no screenshot tool, no archive password
