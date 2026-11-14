@@ -247,7 +247,15 @@ class Display:
         time.sleep(1.2)
 
     def type(self, value):
-        self.client.typewrite(value)
+        # vncdotool's proxy has no typewrite; send keysyms one at a time.
+        for character in value:
+            if character.isupper():
+                self.client.keyPress("shift-" + character.lower())
+            elif character == " ":
+                self.client.keyPress("space")
+            else:
+                self.client.keyPress(character)
+            time.sleep(0.12)
         time.sleep(0.8)
 
     def find(self, path, needle, region=None):
@@ -283,18 +291,25 @@ class Display:
             if self.contains(path, expect):
                 record(f"PASS: reached the '{expect}' page")
                 return path
-            self.press("enter")
-            time.sleep(7)
-            path = self.shot(f"{label}-{attempt}-enter")
-            if self.contains(path, expect):
-                record(f"PASS: reached the '{expect}' page")
-                return path
+            # Only ever click the button row.  Enter is not used: on the
+            # welcome page it opens the language combo box instead of moving on.
+            point = None
             for word in ("Next", "Continue", "Install"):
                 point = self.find(path, word, region=lambda x, y: y > 620)
                 if point:
-                    self.click(*point)
-                    time.sleep(7)
                     break
+            if point:
+                self.click(*point)
+            else:
+                self.press("escape")
+                time.sleep(2)
+                path = self.shot(f"{label}-{attempt}-esc")
+                for word in ("Next", "Continue", "Install"):
+                    point = self.find(path, word, region=lambda x, y: y > 620)
+                    if point:
+                        self.click(*point)
+                        break
+            time.sleep(7)
         record(f"FAIL: never reached the '{expect}' page after {label}")
         with open(os.path.join(WORK, f"ocr-stuck-{label}.txt"), "w",
                   encoding="utf-8") as handle:
