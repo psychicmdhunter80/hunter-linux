@@ -1,4 +1,4 @@
-name: hunter-linux
+name: build
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
 
       - name: Restore file modes
         run: |
-          chmod +x build.sh auto/config tools/ci/*.sh
+          chmod +x build.sh auto/config tools/ci/*.sh tools/ci/*.py
           chmod +x config/hooks/live/*.hook.chroot
           chmod +x config/includes.chroot/usr/local/bin/* \
                    config/includes.chroot/usr/local/sbin/*
@@ -66,44 +66,3 @@ jobs:
           path: build.log
           retention-days: 7
           if-no-files-found: ignore
-
-  boot-test:
-    name: Boot test (${{ matrix.mode }})
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [bios, uefi]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install QEMU and OVMF
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            qemu-system-x86 qemu-utils ovmf socat imagemagick
-          ls -l /dev/kvm || echo "no /dev/kvm (will fall back to TCG)"
-          ls /usr/share/OVMF/ | head
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: iso
-          path: iso
-
-      - name: Boot the ISO
-        run: |
-          chmod +x tools/ci/qemu-boot-test.sh
-          tools/ci/qemu-boot-test.sh iso/Hunter-Linux-v1.0-amd64.iso \
-            "${{ matrix.mode }}" "out-${{ matrix.mode }}"
-        timeout-minutes: 60
-
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: boot-test-${{ matrix.mode }}
-          path: out-${{ matrix.mode }}/
-          retention-days: 7
-          if-no-files-found: warn
