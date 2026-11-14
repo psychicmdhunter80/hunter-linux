@@ -1,0 +1,850 @@
+Install and boot (uefi)	UNKNOWN STEP	﻿2026-11-14T05:53:53.8565097Z Current runner version: '2.338.2'
+##[group]Runner Image Provisioner
+Hosted Compute Agent
+Version: 20261103.629
+Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+Build Date: 2026-11-03T17:26:59Z
+Worker ID: {e1dcfa92-81ab-40aa-b702-56dd6fee435f}
+Region: us-east-1
+Cloud: AWS
+##[endgroup]
+##[group]Operating System
+Ubuntu
+24.04.5
+LTS
+##[endgroup]
+##[group]Runner Image
+Image: ubuntu-24.04
+Version: 20261111.127.1
+Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.127/images/ubuntu/Ubuntu2404-Readme.md
+Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.127
+##[endgroup]
+##[group]GITHUB_TOKEN Permissions
+Contents: read
+Metadata: read
+Packages: read
+##[endgroup]
+Secret source: Actions
+Cache mode: write
+Prepare workflow directory
+Prepare all required actions
+Getting action download info
+Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Complete job name: Install and boot (uefi)
+##[group]Run actions/checkout@v4
+with:
+  repository: psychicmdhunter80/hunter-linux
+  token: ***
+  ssh-strict: true
+  ssh-user: git
+  persist-credentials: true
+  clean: true
+  sparse-checkout-cone-mode: true
+  fetch-depth: 1
+  fetch-tags: false
+  show-progress: true
+  lfs: false
+  submodules: false
+  set-safe-directory: true
+  allow-unsafe-pr-checkout: false
+##[endgroup]
+Syncing repository: psychicmdhunter80/hunter-linux
+##[group]Getting Git version info
+Working directory is '/home/runner/work/hunter-linux/hunter-linux'
+[command]/usr/bin/git version
+git version 2.56.1
+##[endgroup]
+Temporarily overriding HOME='/home/runner/work/_temp/3665f25e-fd45-421f-8501-4c177f98add8' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]/usr/bin/git config --global --add safe.directory /home/runner/work/hunter-linux/hunter-linux
+Deleting the contents of '/home/runner/work/hunter-linux/hunter-linux'
+##[group]Initializing the repository
+[command]/usr/bin/git init /home/runner/work/hunter-linux/hunter-linux
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+Initialized empty Git repository in /home/runner/work/hunter-linux/hunter-linux/.git/
+[command]/usr/bin/git remote add origin https://github.com/psychicmdhunter80/hunter-linux
+##[endgroup]
+##[group]Disabling automatic garbage collection
+[command]/usr/bin/git config --local gc.auto 0
+##[endgroup]
+##[group]Setting up auth
+[command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+[command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+##[endgroup]
+##[group]Fetching the repository
+[command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a852c0eda4efc9ce0e73803cc9bbadeb5db3321f:refs/remotes/origin/main
+From https://github.com/psychicmdhunter80/hunter-linux
+ * [new ref]         a852c0eda4efc9ce0e73803cc9bbadeb5db3321f -> origin/main
+##[endgroup]
+##[group]Determining the checkout info
+##[endgroup]
+[command]/usr/bin/git sparse-checkout disable
+[command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+##[group]Checking out the ref
+[command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+Switched to a new branch 'main'
+branch 'main' set up to track 'origin/main'.
+##[endgroup]
+[command]/usr/bin/git log -1 --format=%H
+a852c0eda4efc9ce0e73803cc9bbadeb5db3321f
+##[group]Run sudo apt-get update
+^[[36;1msudo apt-get update^[[0m
+^[[36;1msudo apt-get install -y --no-install-recommends \^[[0m
+^[[36;1m  qemu-system-x86 qemu-utils ovmf socat tesseract-ocr \^[[0m
+^[[36;1m  imagemagick python3-venv python3-pip^[[0m
+^[[36;1mpython3 -m venv "$HOME/venv"^[[0m
+^[[36;1m"$HOME/venv/bin/pip" -q install --upgrade pip^[[0m
+^[[36;1m"$HOME/venv/bin/pip" -q install vncdotool pytesseract pillow^[[0m
+^[[36;1mls -l /dev/kvm || echo "no /dev/kvm, using TCG"^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:2 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:4 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [772 kB]
+Hit:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble InRelease
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [702 kB]
+Get:6 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:9 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1195 kB]
+Get:17 http://security.ubuntu.com/ubuntu noble-security/main Translation-en [238 kB]
+Get:10 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1450 kB]
+Get:18 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Get:19 http://security.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Get:20 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1788 kB]
+Get:11 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [315 kB]
+Get:12 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1713 kB]
+Get:21 http://security.ubuntu.com/ubuntu noble-security/restricted Translation-en [411 kB]
+Get:13 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [345 kB]
+Get:14 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1883 kB]
+Get:15 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [430 kB]
+Get:16 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.6 kB]
+Fetched 13.1 MB in 1s (10.6 MB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+python3-venv is already the newest version (3.12.3-0ubuntu2.1).
+python3-pip is already the newest version (24.0+dfsg-1ubuntu1.3).
+The following additional packages will be installed:
+  imagemagick-6.q16 ipxe-qemu libbrlapi0.8 libcacard0 libfdt1 libgif7 liblept5
+  libpcsclite1 libtesseract5 liburing2 libusbredirparser1t64
+  qemu-system-common qemu-system-data seabios tesseract-ocr-eng
+  tesseract-ocr-osd
+Suggested packages:
+  imagemagick-6-doc autotrace cups-bsd | lpr | lprng enscript ffmpeg gimp
+  gnuplot grads graphviz hp2xx html2ps libwmf-bin mplayer povray radiance
+  sane-utils texlive-base-bin transfig libraw-bin pcscd samba vde2
+Recommended packages:
+  libmagickcore-6.q16-7-extra ghostscript netpbm
+  ipxe-qemu-256k-compat-efi-roms qemu-system-gui qemu-system-modules-spice
+  qemu-system-modules-opengl qemu-block-extra cpu-checker
+The following NEW packages will be installed:
+  imagemagick imagemagick-6.q16 ipxe-qemu libbrlapi0.8 libcacard0 libfdt1
+  libgif7 liblept5 libpcsclite1 libtesseract5 liburing2 libusbredirparser1t64
+  ovmf qemu-system-common qemu-system-data qemu-system-x86 qemu-utils seabios
+  socat tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd
+0 upgraded, 22 newly installed, 0 to remove and 23 not upgraded.
+Need to get 32.6 MB of archives.
+After this operation, 136 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 imagemagick-6.q16 amd64 8:6.9.12.98+dfsg1-5.2build2 [254 kB]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 imagemagick amd64 8:6.9.12.98+dfsg1-5.2build2 [14.2 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 ipxe-qemu all 1.21.1+git-20220113.fbbdc3926-0ubuntu2 [1565 kB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libbrlapi0.8 amd64 6.6-4ubuntu5 [31.4 kB]
+Get:6 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libpcsclite1 amd64 2.0.3-1build1 [21.4 kB]
+Get:7 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libcacard0 amd64 1:2.8.0-3build4 [36.5 kB]
+Get:8 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgif7 amd64 5.2.2-1ubuntu1.2 [35.6 kB]
+Get:9 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 liblept5 amd64 1.82.0-3build4 [1099 kB]
+Get:10 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libtesseract5 amd64 5.3.4-1build5 [1291 kB]
+Get:11 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 liburing2 amd64 2.5-1build1 [21.1 kB]
+Get:12 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libusbredirparser1t64 amd64 0.13.0-2.1build1 [16.5 kB]
+Get:13 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-common amd64 1:8.2.2+ds-0ubuntu1.18 [1255 kB]
+Get:14 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-data all 1:8.2.2+ds-0ubuntu1.18 [1796 kB]
+Get:15 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libfdt1 amd64 1.7.0-2build1 [20.1 kB]
+Get:16 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 seabios all 1.16.3-2 [175 kB]
+Get:17 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-x86 amd64 1:8.2.2+ds-0ubuntu1.18 [11.2 MB]
+Get:18 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-utils amd64 1:8.2.2+ds-0ubuntu1.18 [2221 kB]
+Get:19 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-eng all 1:4.1.0-2 [1818 kB]
+Get:20 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-osd all 1:4.1.0-2 [3841 kB]
+Get:21 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr amd64 5.3.4-1build5 [328 kB]
+Get:22 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 ovmf all 2024.02-2ubuntu0.10 [5188 kB]
+Get:23 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 socat amd64 1.8.0.0-4ubuntu0.1 [374 kB]
+Fetched 32.6 MB in 1s (22.5 MB/s)
+Selecting previously unselected package imagemagick-6.q16.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 216380 files and directories currently installed.)
+Preparing to unpack .../00-imagemagick-6.q16_8%3a6.9.12.98+dfsg1-5.2build2_amd64.deb ...
+Unpacking imagemagick-6.q16 (8:6.9.12.98+dfsg1-5.2build2) ...
+Selecting previously unselected package imagemagick.
+Preparing to unpack .../01-imagemagick_8%3a6.9.12.98+dfsg1-5.2build2_amd64.deb ...
+Unpacking imagemagick (8:6.9.12.98+dfsg1-5.2build2) ...
+Selecting previously unselected package ipxe-qemu.
+Preparing to unpack .../02-ipxe-qemu_1.21.1+git-20220113.fbbdc3926-0ubuntu2_all.deb ...
+Unpacking ipxe-qemu (1.21.1+git-20220113.fbbdc3926-0ubuntu2) ...
+Selecting previously unselected package libbrlapi0.8:amd64.
+Preparing to unpack .../03-libbrlapi0.8_6.6-4ubuntu5_amd64.deb ...
+Unpacking libbrlapi0.8:amd64 (6.6-4ubuntu5) ...
+Selecting previously unselected package libpcsclite1:amd64.
+Preparing to unpack .../04-libpcsclite1_2.0.3-1build1_amd64.deb ...
+Unpacking libpcsclite1:amd64 (2.0.3-1build1) ...
+Selecting previously unselected package libcacard0:amd64.
+Preparing to unpack .../05-libcacard0_1%3a2.8.0-3build4_amd64.deb ...
+Unpacking libcacard0:amd64 (1:2.8.0-3build4) ...
+Selecting previously unselected package libgif7:amd64.
+Preparing to unpack .../06-libgif7_5.2.2-1ubuntu1.2_amd64.deb ...
+Unpacking libgif7:amd64 (5.2.2-1ubuntu1.2) ...
+Selecting previously unselected package liblept5:amd64.
+Preparing to unpack .../07-liblept5_1.82.0-3build4_amd64.deb ...
+Unpacking liblept5:amd64 (1.82.0-3build4) ...
+Selecting previously unselected package libtesseract5:amd64.
+Preparing to unpack .../08-libtesseract5_5.3.4-1build5_amd64.deb ...
+Unpacking libtesseract5:amd64 (5.3.4-1build5) ...
+Selecting previously unselected package liburing2:amd64.
+Preparing to unpack .../09-liburing2_2.5-1build1_amd64.deb ...
+Unpacking liburing2:amd64 (2.5-1build1) ...
+Selecting previously unselected package libusbredirparser1t64:amd64.
+Preparing to unpack .../10-libusbredirparser1t64_0.13.0-2.1build1_amd64.deb ...
+Unpacking libusbredirparser1t64:amd64 (0.13.0-2.1build1) ...
+Selecting previously unselected package qemu-system-common.
+Preparing to unpack .../11-qemu-system-common_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+Unpacking qemu-system-common (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package qemu-system-data.
+Preparing to unpack .../12-qemu-system-data_1%3a8.2.2+ds-0ubuntu1.18_all.deb ...
+Unpacking qemu-system-data (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package libfdt1:amd64.
+Preparing to unpack .../13-libfdt1_1.7.0-2build1_amd64.deb ...
+Unpacking libfdt1:amd64 (1.7.0-2build1) ...
+Selecting previously unselected package seabios.
+Preparing to unpack .../14-seabios_1.16.3-2_all.deb ...
+Unpacking seabios (1.16.3-2) ...
+Selecting previously unselected package qemu-system-x86.
+Preparing to unpack .../15-qemu-system-x86_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+Unpacking qemu-system-x86 (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package qemu-utils.
+Preparing to unpack .../16-qemu-utils_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+Unpacking qemu-utils (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package tesseract-ocr-eng.
+Preparing to unpack .../17-tesseract-ocr-eng_1%3a4.1.0-2_all.deb ...
+Unpacking tesseract-ocr-eng (1:4.1.0-2) ...
+Selecting previously unselected package tesseract-ocr-osd.
+Preparing to unpack .../18-tesseract-ocr-osd_1%3a4.1.0-2_all.deb ...
+Unpacking tesseract-ocr-osd (1:4.1.0-2) ...
+Selecting previously unselected package tesseract-ocr.
+Preparing to unpack .../19-tesseract-ocr_5.3.4-1build5_amd64.deb ...
+Unpacking tesseract-ocr (5.3.4-1build5) ...
+Selecting previously unselected package ovmf.
+Preparing to unpack .../20-ovmf_2024.02-2ubuntu0.10_all.deb ...
+Unpacking ovmf (2024.02-2ubuntu0.10) ...
+Selecting previously unselected package socat.
+Preparing to unpack .../21-socat_1.8.0.0-4ubuntu0.1_amd64.deb ...
+Unpacking socat (1.8.0.0-4ubuntu0.1) ...
+Setting up tesseract-ocr-eng (1:4.1.0-2) ...
+Setting up libfdt1:amd64 (1.7.0-2build1) ...
+Setting up ovmf (2024.02-2ubuntu0.10) ...
+Setting up socat (1.8.0.0-4ubuntu0.1) ...
+Setting up libpcsclite1:amd64 (2.0.3-1build1) ...
+Setting up qemu-system-data (1:8.2.2+ds-0ubuntu1.18) ...
+Setting up seabios (1.16.3-2) ...
+Setting up imagemagick-6.q16 (8:6.9.12.98+dfsg1-5.2build2) ...
+update-alternatives: using /usr/bin/compare-im6.q16 to provide /usr/bin/compare (compare) in auto mode
+update-alternatives: using /usr/bin/compare-im6.q16 to provide /usr/bin/compare-im6 (compare-im6) in auto mode
+update-alternatives: using /usr/bin/animate-im6.q16 to provide /usr/bin/animate (animate) in auto mode
+update-alternatives: using /usr/bin/animate-im6.q16 to provide /usr/bin/animate-im6 (animate-im6) in auto mode
+update-alternatives: using /usr/bin/convert-im6.q16 to provide /usr/bin/convert (convert) in auto mode
+update-alternatives: using /usr/bin/convert-im6.q16 to provide /usr/bin/convert-im6 (convert-im6) in auto mode
+update-alternatives: using /usr/bin/composite-im6.q16 to provide /usr/bin/composite (composite) in auto mode
+update-alternatives: using /usr/bin/composite-im6.q16 to provide /usr/bin/composite-im6 (composite-im6) in auto mode
+update-alternatives: using /usr/bin/conjure-im6.q16 to provide /usr/bin/conjure (conjure) in auto mode
+update-alternatives: using /usr/bin/conjure-im6.q16 to provide /usr/bin/conjure-im6 (conjure-im6) in auto mode
+update-alternatives: using /usr/bin/import-im6.q16 to provide /usr/bin/import (import) in auto mode
+update-alternatives: using /usr/bin/import-im6.q16 to provide /usr/bin/import-im6 (import-im6) in auto mode
+update-alternatives: using /usr/bin/identify-im6.q16 to provide /usr/bin/identify (identify) in auto mode
+update-alternatives: using /usr/bin/identify-im6.q16 to provide /usr/bin/identify-im6 (identify-im6) in auto mode
+update-alternatives: using /usr/bin/stream-im6.q16 to provide /usr/bin/stream (stream) in auto mode
+update-alternatives: using /usr/bin/stream-im6.q16 to provide /usr/bin/stream-im6 (stream-im6) in auto mode
+update-alternatives: using /usr/bin/display-im6.q16 to provide /usr/bin/display (display) in auto mode
+update-alternatives: using /usr/bin/display-im6.q16 to provide /usr/bin/display-im6 (display-im6) in auto mode
+update-alternatives: using /usr/bin/montage-im6.q16 to provide /usr/bin/montage (montage) in auto mode
+update-alternatives: using /usr/bin/montage-im6.q16 to provide /usr/bin/montage-im6 (montage-im6) in auto mode
+update-alternatives: using /usr/bin/mogrify-im6.q16 to provide /usr/bin/mogrify (mogrify) in auto mode
+update-alternatives: using /usr/bin/mogrify-im6.q16 to provide /usr/bin/mogrify-im6 (mogrify-im6) in auto mode
+Setting up libgif7:amd64 (5.2.2-1ubuntu1.2) ...
+Setting up libusbredirparser1t64:amd64 (0.13.0-2.1build1) ...
+Setting up ipxe-qemu (1.21.1+git-20220113.fbbdc3926-0ubuntu2) ...
+Setting up libbrlapi0.8:amd64 (6.6-4ubuntu5) ...
+Setting up tesseract-ocr-osd (1:4.1.0-2) ...
+Setting up liburing2:amd64 (2.5-1build1) ...
+Setting up libcacard0:amd64 (1:2.8.0-3build4) ...
+Setting up liblept5:amd64 (1.82.0-3build4) ...
+Setting up imagemagick (8:6.9.12.98+dfsg1-5.2build2) ...
+Setting up libtesseract5:amd64 (5.3.4-1build5) ...
+Setting up qemu-utils (1:8.2.2+ds-0ubuntu1.18) ...
+Setting up qemu-system-common (1:8.2.2+ds-0ubuntu1.18) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/qemu-kvm.service → /usr/lib/systemd/system/qemu-kvm.service.
+
+Setting up qemu-system-x86 (1:8.2.2+ds-0ubuntu1.18) ...
+Setting up tesseract-ocr (5.3.4-1build5) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+crw-rw---- 1 root kvm 10, 232 Nov 14 05:53 /dev/kvm
+##[group]Run gh run download "43561438699" --name iso --repo "psychicmdhunter80/hunter-linux" --dir iso
+^[[36;1mgh run download "43561438699" --name iso --repo "psychicmdhunter80/hunter-linux" --dir iso^[[0m
+^[[36;1mls -lh iso/^[[0m
+^[[36;1mcd iso && sha256sum -c Hunter-Linux-v1.0-amd64.iso.sha256^[[0m
+shell: /usr/bin/bash -e {0}
+env:
+  GH_TOKEN: ***
+##[endgroup]
+total 1.1G
+-rw-r--r-- 1 runner runner 1.1G Nov 14 05:54 Hunter-Linux-v1.0-amd64.iso
+-rw-r--r-- 1 runner runner   94 Nov 14 05:54 Hunter-Linux-v1.0-amd64.iso.sha256
+Hunter-Linux-v1.0-amd64.iso: OK
+##[group]Run chmod +x tools/ci/install-test.py
+^[[36;1mchmod +x tools/ci/install-test.py^[[0m
+^[[36;1m"$HOME/venv/bin/python" tools/ci/install-test.py \^[[0m
+^[[36;1m  iso/Hunter-Linux-v1.0-amd64.iso out "uefi"^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+started qemu as pid 2976 (iso=True, accel=tcg)
+PASS: logged in as user on the serial console
+$ DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT
+WAIT
+$ DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT
+READY
+PASS: the X display is up
+$ DISPLAY=:0 setsid /usr/local/bin/hunter-install >/tmp/calamares.log 2>&1 &
+
+PASS: the installer was started from the live session
+$ pgrep -a calamares | head -3
+1407 calamares
+screenshot screen-install-launched.png
+screenshot 01-welcome.png
+PASS: the installer shows 'Welcome'
+screenshot 02-welcome-0.png
+screenshot 03-welcome-1.png
+PASS: reached the 'language' page
+screenshot 04-locale-0.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 05-locale-1.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 06-locale-2.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 07-locale-3.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 08-locale-4.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 09-locale-5.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 10-locale-6.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 11-locale-7.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 12-locale-8.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 13-locale-9.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 14-locale-10.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 15-locale-11.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 16-locale-12.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 17-locale-13.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 18-locale-14.png
+WARN: no button found on locale; pressing Tab then Enter
+FAIL: never reached the 'keyboard' page after locale
+screenshot 19-keyboard-0.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 20-keyboard-1.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 21-keyboard-2.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 22-keyboard-3.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 23-keyboard-4.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 24-keyboard-5.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 25-keyboard-6.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 26-keyboard-7.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 27-keyboard-8.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 28-keyboard-9.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 29-keyboard-10.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 30-keyboard-11.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 31-keyboard-12.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 32-keyboard-13.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 33-keyboard-14.png
+WARN: no button found on keyboard; pressing Tab then Enter
+FAIL: never reached the 'erase' page after keyboard
+screenshot 34-partition.png
+WARN: 'Erase disk' not found by OCR; using the keyboard
+screenshot 35-partition-selected.png
+screenshot 36-partition-0.png
+screenshot 37-partition-1.png
+screenshot 38-partition-2.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 39-partition-3.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 40-partition-4.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 41-partition-5.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 42-partition-6.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 43-partition-7.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 44-partition-8.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 45-partition-9.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 46-partition-10.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 47-partition-11.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 48-partition-12.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 49-partition-13.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 50-partition-14.png
+WARN: no button found on partition; pressing Tab then Enter
+FAIL: never reached the 'name' page after partition
+screenshot 51-users.png
+screenshot 52-users-filled.png
+screenshot 53-users-0.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 54-users-1.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 55-users-2.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 56-users-3.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 57-users-4.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 58-users-5.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 59-users-6.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 60-users-7.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 61-users-8.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 62-users-9.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 63-users-10.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 64-users-11.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 65-users-12.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 66-users-13.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 67-users-14.png
+WARN: no button found on users; pressing Tab then Enter
+FAIL: never reached the 'summary' page after users
+screenshot 68-summary.png
+PASS: the installation was started
+screenshot screen-install-progress.png
+screenshot 69-finished.png
+screenshot 70-finished.png
+screenshot 71-finished.png
+screenshot 72-finished.png
+screenshot 73-finished.png
+screenshot 74-finished.png
+screenshot 75-finished.png
+screenshot 76-finished.png
+screenshot 77-finished.png
+screenshot 78-finished.png
+screenshot 79-finished.png
+screenshot 80-finished.png
+screenshot 81-finished.png
+screenshot 82-finished.png
+screenshot 83-finished.png
+screenshot 84-finished.png
+screenshot 85-finished.png
+screenshot 86-finished.png
+screenshot 87-finished.png
+screenshot 88-finished.png
+screenshot 89-finished.png
+screenshot 90-finished.png
+screenshot 91-finished.png
+screenshot 92-finished.png
+screenshot 93-finished.png
+screenshot 94-finished.png
+screenshot 95-finished.png
+screenshot 96-finished.png
+screenshot 97-finished.png
+screenshot 98-finished.png
+screenshot 99-finished.png
+screenshot 100-finished.png
+screenshot 101-finished.png
+screenshot 102-finished.png
+screenshot 103-finished.png
+screenshot 104-finished.png
+screenshot 105-finished.png
+screenshot 106-finished.png
+screenshot 107-finished.png
+screenshot 108-finished.png
+screenshot 109-finished.png
+screenshot 110-finished.png
+screenshot 111-finished.png
+screenshot 112-finished.png
+screenshot 113-finished.png
+screenshot 114-finished.png
+screenshot 115-finished.png
+screenshot 116-finished.png
+screenshot 117-finished.png
+screenshot 118-finished.png
+screenshot 119-finished.png
+screenshot 120-finished.png
+screenshot 121-finished.png
+screenshot 122-finished.png
+screenshot 123-finished.png
+screenshot 124-finished.png
+screenshot 125-finished.png
+screenshot 126-finished.png
+screenshot 127-finished.png
+screenshot 128-finished.png
+screenshot 129-finished.png
+screenshot 130-finished.png
+screenshot 131-finished.png
+screenshot 132-finished.png
+screenshot 133-finished.png
+screenshot 134-finished.png
+screenshot 135-finished.png
+screenshot 136-finished.png
+screenshot 137-finished.png
+screenshot 138-finished.png
+screenshot 139-finished.png
+screenshot 140-finished.png
+screenshot 141-finished.png
+screenshot 142-finished.png
+screenshot 143-finished.png
+screenshot 144-finished.png
+screenshot 145-finished.png
+screenshot 146-finished.png
+screenshot 147-finished.png
+screenshot 148-finished.png
+screenshot 149-finished.png
+screenshot 150-finished.png
+screenshot 151-finished.png
+screenshot 152-finished.png
+screenshot 153-finished.png
+screenshot 154-finished.png
+screenshot 155-finished.png
+screenshot 156-finished.png
+screenshot 157-finished.png
+screenshot 158-finished.png
+screenshot 159-finished.png
+screenshot 160-finished.png
+screenshot 161-finished.png
+screenshot 162-finished.png
+screenshot 163-finished.png
+screenshot 164-finished.png
+screenshot 165-finished.png
+screenshot 166-finished.png
+screenshot 167-finished.png
+screenshot 168-finished.png
+screenshot 169-finished.png
+screenshot 170-finished.png
+screenshot 171-finished.png
+screenshot 172-finished.png
+screenshot 173-finished.png
+screenshot 174-finished.png
+screenshot 175-finished.png
+screenshot 176-finished.png
+screenshot 177-finished.png
+screenshot 178-finished.png
+screenshot 179-finished.png
+screenshot 180-finished.png
+screenshot 181-finished.png
+screenshot 182-finished.png
+screenshot 183-finished.png
+screenshot 184-finished.png
+screenshot 185-finished.png
+screenshot 186-finished.png
+screenshot 187-finished.png
+screenshot 188-finished.png
+screenshot 189-finished.png
+screenshot 190-finished.png
+screenshot 191-finished.png
+screenshot 192-finished.png
+screenshot 193-finished.png
+screenshot 194-finished.png
+screenshot 195-finished.png
+screenshot 196-finished.png
+screenshot 197-finished.png
+screenshot 198-finished.png
+screenshot 199-finished.png
+screenshot 200-finished.png
+screenshot 201-finished.png
+screenshot 202-finished.png
+screenshot 203-finished.png
+screenshot 204-finished.png
+screenshot 205-finished.png
+screenshot 206-finished.png
+screenshot 207-finished.png
+screenshot 208-finished.png
+screenshot 209-finished.png
+screenshot 210-finished.png
+screenshot 211-finished.png
+screenshot 212-finished.png
+screenshot 213-finished.png
+screenshot 214-finished.png
+screenshot 215-finished.png
+screenshot 216-finished.png
+screenshot 217-finished.png
+screenshot 218-finished.png
+screenshot 219-finished.png
+screenshot 220-finished.png
+screenshot 221-finished.png
+screenshot 222-finished.png
+screenshot 223-finished.png
+screenshot 224-finished.png
+screenshot 225-finished.png
+screenshot 226-finished.png
+screenshot 227-finished.png
+screenshot 228-finished.png
+screenshot 229-finished.png
+screenshot 230-finished.png
+screenshot 231-finished.png
+screenshot 232-finished.png
+screenshot 233-finished.png
+screenshot 234-finished.png
+screenshot 235-finished.png
+screenshot 236-finished.png
+screenshot 237-finished.png
+screenshot 238-finished.png
+screenshot 239-finished.png
+screenshot 240-finished.png
+screenshot 241-finished.png
+screenshot 242-finished.png
+screenshot 243-finished.png
+screenshot 244-finished.png
+screenshot 245-finished.png
+screenshot 246-finished.png
+screenshot 247-finished.png
+screenshot 248-finished.png
+screenshot 249-finished.png
+screenshot 250-finished.png
+screenshot 251-finished.png
+screenshot 252-finished.png
+screenshot 253-finished.png
+screenshot 254-finished.png
+screenshot 255-finished.png
+screenshot 256-finished.png
+screenshot 257-finished.png
+screenshot 258-finished.png
+screenshot 259-finished.png
+screenshot 260-finished.png
+screenshot 261-finished.png
+screenshot 262-finished.png
+screenshot 263-finished.png
+screenshot 264-finished.png
+screenshot 265-finished.png
+screenshot 266-finished.png
+screenshot 267-finished.png
+screenshot 268-finished.png
+screenshot 269-finished.png
+screenshot 270-finished.png
+screenshot 271-finished.png
+screenshot 272-finished.png
+screenshot 273-finished.png
+screenshot 274-finished.png
+screenshot 275-finished.png
+screenshot 276-finished.png
+screenshot 277-finished.png
+screenshot 278-finished.png
+screenshot 279-finished.png
+screenshot 280-finished.png
+screenshot 281-finished.png
+screenshot 282-finished.png
+screenshot 283-finished.png
+screenshot 284-finished.png
+screenshot 285-finished.png
+screenshot 286-finished.png
+screenshot 287-finished.png
+screenshot 288-finished.png
+screenshot 289-finished.png
+screenshot 290-finished.png
+screenshot 291-finished.png
+screenshot 292-finished.png
+screenshot 293-finished.png
+screenshot 294-finished.png
+screenshot 295-finished.png
+screenshot 296-finished.png
+screenshot 297-finished.png
+screenshot 298-finished.png
+screenshot 299-finished.png
+screenshot 300-finished.png
+screenshot 301-finished.png
+screenshot 302-finished.png
+screenshot 303-finished.png
+screenshot 304-finished.png
+screenshot 305-finished.png
+screenshot 306-finished.png
+screenshot 307-finished.png
+screenshot 308-finished.png
+screenshot 309-finished.png
+screenshot 310-finished.png
+screenshot 311-finished.png
+screenshot 312-finished.png
+screenshot 313-finished.png
+screenshot 314-finished.png
+screenshot 315-finished.png
+screenshot 316-finished.png
+screenshot 317-finished.png
+screenshot 318-finished.png
+screenshot 319-finished.png
+screenshot 320-finished.png
+screenshot 321-finished.png
+screenshot 322-finished.png
+screenshot 323-finished.png
+screenshot 324-finished.png
+screenshot 325-finished.png
+screenshot 326-finished.png
+screenshot 327-finished.png
+screenshot 328-finished.png
+screenshot 329-finished.png
+screenshot 330-finished.png
+screenshot 331-finished.png
+screenshot 332-finished.png
+screenshot 333-finished.png
+screenshot 334-finished.png
+screenshot 335-finished.png
+screenshot 336-finished.png
+screenshot 337-finished.png
+screenshot 338-finished.png
+screenshot 339-finished.png
+screenshot 340-finished.png
+screenshot 341-finished.png
+screenshot 342-finished.png
+screenshot 343-finished.png
+screenshot 344-finished.png
+screenshot 345-finished.png
+screenshot 346-finished.png
+screenshot 347-finished.png
+screenshot 348-finished.png
+screenshot 349-finished.png
+screenshot 350-finished.png
+screenshot 351-finished.png
+screenshot 352-finished.png
+screenshot 353-finished.png
+screenshot 354-finished.png
+screenshot 355-finished.png
+screenshot 356-finished.png
+screenshot 357-finished.png
+screenshot 358-finished.png
+screenshot 359-finished.png
+screenshot 360-finished.png
+screenshot 361-finished.png
+screenshot 362-finished.png
+screenshot 363-finished.png
+screenshot 364-finished.png
+screenshot 365-finished.png
+screenshot 366-finished.png
+FAIL: never saw 'Finish' on screen
+$ tail -30 /tmp/calamares.log
+
+FAIL: the installation did not finish
+##[error]Process completed with exit code 1.
+##[group]Run actions/upload-artifact@v4
+with:
+  name: install-test-uefi
+  path: out/
+  retention-days: 7
+  if-no-files-found: warn
+  compression-level: 6
+  overwrite: false
+  include-hidden-files: false
+##[endgroup]
+(node:5423) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+With the provided path, there will be 375 files uploaded
+Artifact name is valid!
+Root directory input is valid!
+Beginning upload of artifact content to blob storage
+(node:5423) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Uploaded bytes 8388608
+Uploaded bytes 15239239
+Finished uploading artifact content to blob storage!
+SHA256 digest of uploaded artifact zip is 080c139335dfe39301e305379847bcf0e1680475724850c072e505771d0b51b7
+Finalizing artifact upload
+Artifact install-test-uefi.zip successfully finalized. Artifact ID 14103204344
+Artifact install-test-uefi has been successfully uploaded! Final size is 15239239 bytes. Artifact ID is 14103204344
+Artifact download URL: https://github.com/psychicmdhunter80/hunter-linux/actions/runs/43563703449/artifacts/14103204344
+Post job cleanup.
+[command]/usr/bin/git version
+git version 2.56.1
+Temporarily overriding HOME='/home/runner/work/_temp/a4546f87-dfdd-424a-b516-c709bde1d7b8' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]/usr/bin/git config --global --add safe.directory /home/runner/work/hunter-linux/hunter-linux
+[command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+http.https://github.com/.extraheader
+[command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Cleaning up orphan processes
+##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

@@ -225,15 +225,26 @@ class Display:
         return needle.lower() in self.text(path).lower()
 
     def wait_text(self, needle, name, timeout=300):
+        return self.wait_text_any((needle,), name, timeout)
+
+    def wait_text_any(self, needles, name, timeout=300):
+        """Poll the screen until one of the phrases appears."""
         deadline = time.time() + timeout
         path = None
+        attempt = 0
         while time.time() < deadline:
-            path = self.shot(name)
-            if self.contains(path, needle):
-                record(f"PASS: the installer shows '{needle}'")
-                return path
-            time.sleep(8)
-        record(f"FAIL: never saw '{needle}' on screen")
+            attempt += 1
+            # Keep only every fourth screenshot: a long wait would otherwise
+            # fill the artefact with hundreds of identical images.
+            if attempt % 4 == 1 or path is None:
+                path = self.shot(name)
+                text = self.text(path).lower()
+                for needle in needles:
+                    if needle.lower() in text:
+                        record(f"PASS: the installer shows '{needle}'")
+                        return path
+            time.sleep(10)
+        record(f"FAIL: never saw {needles} on screen")
         return path
 
     def click(self, x, y):
@@ -260,22 +271,32 @@ class Display:
             time.sleep(0.12)
         time.sleep(0.8)
 
-    def find(self, path, needle, region=None):
-        """Return the centre of a word on screen, optionally within a region."""
+    def find(self, path, needle, region=None, scale=3):
+        """Return the centre of a word on screen, optionally within a region.
+
+        The wizard's captions are ~10 px tall, which tesseract reads badly, so
+        the region is cropped and enlarged before OCR and the coordinates are
+        mapped back to screen space.
+        """
         from pytesseract import Output
-        data = pytesseract.image_to_data(Image.open(path), output_type=Output.DICT)
+        image = Image.open(path).convert("RGB")
+        left, top = 0, 0
+        if region:
+            left, top, right, bottom = region
+            image = image.crop((left, top, right, bottom))
+        image = image.resize((image.width * scale, image.height * scale),
+                             Image.LANCZOS)
+        data = pytesseract.image_to_data(image, output_type=Output.DICT)
         for i, word in enumerate(data["text"]):
             if not word or needle.lower() not in word.lower():
                 continue
             try:
-                if int(float(data["conf"][i])) < 20:
+                if int(float(data["conf"][i])) < 30:
                     continue
             except ValueError:
                 continue
-            x = data["left"][i] + data["width"][i] // 2
-            y = data["top"][i] + data["height"][i] // 2
-            if region and not region(x, y):
-                continue
+            x = left + (data["left"][i] + data["width"][i] // 2) // scale
+            y = top + (data["top"][i] + data["height"][i] // 2) // scale
             return (x, y)
         return None
 
@@ -285,16 +306,16 @@ class Display:
         Small grey captions are unreliable for OCR, so the fallback measures
         from the Cancel button, which is always rendered in plain black text.
         """
-        in_row = lambda x, y: y > 620  # noqa: E731
+        row = (0, 690, 1280, 800)
         for word in ("Next", "Continue", "Install"):
-            point = self.find(path, word, region=in_row)
+            point = self.find(path, word, region=row)
             if point:
                 return point
-        cancel = self.find(path, "Cancel", region=in_row)
+        cancel = self.find(path, "Cancel", region=row)
         if cancel:
             # Back, Next, Cancel sit in that order along the bottom right.
             return (cancel[0] - 100, cancel[1])
-        back = self.find(path, "Back", region=in_row)
+        back = self.find(path, "Back", region=row)
         if back:
             return (back[0] + 95, back[1])
         return None
@@ -331,9 +352,9 @@ class Display:
 
     def select_erase(self, path):
         """Pick the 'Erase disk' radio button on the partitioning page."""
-        in_body = lambda x, y: 150 < y < 650 and 150 < x < 1150  # noqa: E731
-        point = self.find(path, "Erase", region=in_body) \
-            or self.find(path, "disk", region=in_body)
+        body = (150, 120, 1160, 690)
+        point = self.find(path, "Erase", region=body) \
+            or self.find(path, "disk", region=body)
         if point:
             self.click(point[0] - 22, point[1])
             record("PASS: selected 'Erase disk'")
@@ -347,8 +368,8 @@ class Display:
 
     def fill_users(self, path):
         """Fill name, login name and password on the users page."""
-        in_body = lambda x, y: 150 < y < 650 and 150 < x < 1150  # noqa: E731
-        point = self.find(path, "name", region=in_body)
+        body = (150, 120, 1160, 690)
+        point = self.find(path, "name", region=body)
         if point:
             self.click(point[0] + 170, point[1])
         self.type(FULL_NAME)
@@ -410,9 +431,12 @@ def main():
         time.sleep(20)
         monitor.screenshot("install-progress")
 
-        # The installer takes as long as it takes; poll the screen.
-        done = disp.wait_text("Finish", "finished", timeout=2700)
-        if not disp.contains(done, "Finish"):
+        # The installer takes as long as it takes; poll the screen.  Calamares
+        # says "All done!" on its last page and never uses the word "Finish".
+        done = disp.wait_text_any(("All done", "Done", "complete"), "finished",
+                                  timeout=2700)
+        if not any(disp.contains(done, word.lower())
+                   for word in ("All done", "Done", "complete")):
             shell.run("tail -30 /tmp/calamares.log", timeout=60)
             record("FAIL: the installation did not finish")
             return 1
