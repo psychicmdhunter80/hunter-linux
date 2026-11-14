@@ -534,11 +534,12 @@ def main():
             "ls -l /mnt/root/boot/efi/EFI/ ; "
             "mount | grep calamares-root ; "
             "cat /mnt/root/etc/default/grub ; echo --- ; "
-            "ls /mnt/root/etc/grub.d/ ; echo --- ; "
-            "ls -l /mnt/root/boot/ ; echo --- ; "
-            "chroot /mnt/root sh -x /usr/sbin/grub-mkconfig -o /tmp/probe.cfg "
-            "> /tmp/probe.out 2>&1; echo GRUB-MKCONFIG-RC=$? ; "
-            "tail -40 /tmp/probe.out ; "
+            "ls -l /mnt/root/usr/share/grub/grub-mkconfig_lib "
+            "/mnt/root/usr/sbin/grub-probe /mnt/root/usr/sbin/grub-mkconfig ; echo --- ; "
+            "chroot /mnt/root dpkg -l 'grub*' 'shim*' 2>/dev/null | grep '^ii' ; echo --- ; "
+            "chroot /mnt/root sh -x /etc/grub.d/00_header "
+            "> /tmp/h00.out 2>&1; echo HEADER-RC=$? ; "
+            "head -30 /tmp/h00.out ; echo ... ; tail -30 /tmp/h00.out ; "
             "umount -R /mnt/root 2>/dev/null; true'", timeout=600)
         if "GRUB-MKCONFIG-RC=0" in probe:
             record("PASS: the installed system builds a GRUB configuration")
