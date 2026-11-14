@@ -531,8 +531,10 @@ def main():
         # boot loader on the EFI system partition.
         # With -d the installer logs which modules it runs, which is the only
         # way to see whether its finish-up step was reached at all.
-        shell.run("sudo -n grep -iE 'shellprocess|hunter-|module|exec' "
-                  "/tmp/calamares.log | tail -40", timeout=120)
+        shell.run("sudo -n grep -i 'shellprocess' /tmp/calamares.log | head -20; "
+                  "echo ---; sudo -n ls -l /etc/calamares/modules/ | head -30; "
+                  "echo ---; sudo -n cat /etc/calamares/modules/shellprocess.conf; "
+                  "echo ---; sudo -n tail -40 /tmp/calamares.log", timeout=180)
         probe = shell.run(
             "sudo -n sh -c 'mkdir -p /mnt/root && mount /dev/vda2 /mnt/root && "
             "mkdir -p /mnt/root/boot/efi && mount /dev/vda1 /mnt/root/boot/efi && "

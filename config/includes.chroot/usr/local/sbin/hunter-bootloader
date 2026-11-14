@@ -45,13 +45,13 @@ search --no-floppy --fs-uuid --set=root ${root_uuid}
 
 menuentry 'Hunter Linux' {
 	load_video
-	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet
+	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }
 
 menuentry 'Hunter Linux (recovery mode)' {
 	load_video
-	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single
+	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }
 EOF
@@ -74,13 +74,20 @@ if [ -d /sys/firmware/efi ] && [ -d /boot/efi ]; then
 	done
 	write_cfg "${id_dir}/grub.cfg"
 
-	# Some firmware only looks at the removable-media path.
+	# Some firmware only looks at the removable-media path.  shim loads the
+	# second stage from the directory it was started from, so grubx64.efi has
+	# to sit next to it - without that copy the firmware reports
+	# "Failed to open \\EFI\\BOOT\\grubx64.efi" and boots nothing at all.
 	mkdir -p "${esp}/EFI/BOOT"
 	if [ -f "${id_dir}/shimx64.efi" ]; then
 		cp -f "${id_dir}/shimx64.efi" "${esp}/EFI/BOOT/BOOTX64.EFI"
 		if [ -f "${id_dir}/mmx64.efi" ]; then
 			cp -f "${id_dir}/mmx64.efi" "${esp}/EFI/BOOT/mmx64.efi"
 		fi
+		if [ -f "${id_dir}/grubx64.efi" ]; then
+			cp -f "${id_dir}/grubx64.efi" "${esp}/EFI/BOOT/grubx64.efi"
+		fi
+		cp -f "${id_dir}/grub.cfg" "${esp}/EFI/BOOT/grub.cfg"
 		log "installed the removable-media fallback loader"
 	fi
 
