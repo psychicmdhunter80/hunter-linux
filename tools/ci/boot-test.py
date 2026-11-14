@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boot a Hunter Linux ISO under QEMU and test the live desktop for real.
+"""Boot a SMD Linux ISO under QEMU and test the live desktop for real.
 
     boot-test.py <iso> <bios|uefi> <output-dir>
 

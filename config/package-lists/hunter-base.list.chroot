@@ -1,4 +1,4 @@
-# Hunter Linux - minimal base system
+# SMD Linux - minimal base system
 #
 # Only what a bootable, updatable Debian system needs.  Package managers,
 # documentation tools and build toolchains are intentionally absent; users

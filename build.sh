@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - build driver.
+# SMD Linux 1.0 - build driver.
 #
 #   ./build.sh            build in Docker when Docker is available, else natively
 #   ./build.sh docker     force a Docker build
@@ -13,7 +13,7 @@ set -eu
 cd "$(dirname "$0")"
 PROJECT_DIR="$(pwd)"
 MODE="${1:-auto}"
-IMAGE_NAME="Hunter-Linux-v1.0-amd64.iso"
+IMAGE_NAME="SMD-Linux-v1.0-amd64.iso"
 
 log() { printf '\n==> %s\n' "$*"; }
 
@@ -48,8 +48,8 @@ build_native() {
 	log "building ISO (this downloads ~1.5 GB of Debian packages)"
 	lb build
 
-	if [ -f "Hunter-Linux-v1.0-amd64.hybrid.iso" ]; then
-		mv -f "Hunter-Linux-v1.0-amd64.hybrid.iso" "${IMAGE_NAME}"
+	if [ -f "SMD-Linux-v1.0-amd64.hybrid.iso" ]; then
+		mv -f "SMD-Linux-v1.0-amd64.hybrid.iso" "${IMAGE_NAME}"
 	fi
 	[ -f "${IMAGE_NAME}" ] || {
 		echo "error: build finished without producing ${IMAGE_NAME}" >&2

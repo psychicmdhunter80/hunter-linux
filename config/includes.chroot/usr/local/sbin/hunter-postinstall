@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - first-boot cleanup, run inside the target system by
+# SMD Linux 1.0 - first-boot cleanup, run inside the target system by
 # Calamares (module "shellprocess", dontChroot: false) after the live
 # filesystem has been unpacked and the boot loader installed.
 #

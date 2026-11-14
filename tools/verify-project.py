@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the Hunter Linux build project.
+"""Static checks for the SMD Linux build project.
 
 This does not build an ISO. It validates everything that can be checked
 without a Debian build host: YAML/XML syntax, desktop entries, shell syntax,
@@ -309,7 +309,7 @@ def main():
     options = check_autoconfig(live_build)
     check_references()
 
-    print("Hunter Linux project verification")
+    print("SMD Linux project verification")
     print("  XML files parsed:        %d" % xml_count)
     print("  desktop entries checked: %d" % desktop_count)
     print("  shell scripts checked:   %d" % shell_count)

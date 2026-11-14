@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Version=1.0
-Name=Install Hunter Linux
-Comment=Install Hunter Linux on this computer
+Name=Install SMD Linux
+Comment=Install SMD Linux on this computer
 Exec=/usr/local/bin/hunter-install
 Icon=hunter-linux
 Terminal=false

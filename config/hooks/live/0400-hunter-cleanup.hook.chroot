@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - final cleanup; keeps the squashfs small.
+# SMD Linux 1.0 - final cleanup; keeps the squashfs small.
 set -e
 
 echo "hunter: cleaning up"

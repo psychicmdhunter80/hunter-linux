@@ -1,4 +1,4 @@
-# Hunter Linux 1.0
+# SMD Linux 1.0
 
 A small, general-purpose Debian 13 desktop distribution: **Xorg + i3 + the
 XFCE4 panel**, two browsers, PipeWire audio, NetworkManager, and a Calamares
@@ -14,7 +14,7 @@ measured. `Test-Report.md` states exactly what was and was not checked, and
 how to finish the job.
 
 ```
- ./build.sh            # builds Hunter-Linux-v1.0-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.0-amd64.iso in this directory
 ```
 
 ---
@@ -92,8 +92,8 @@ The build downloads roughly 1.5 GB of Debian packages and takes 20-60 minutes
 depending on the machine and mirror. The result is:
 
 ```
-Hunter-Linux-v1.0-amd64.iso          the bootable hybrid image
-Hunter-Linux-v1.0-amd64.iso.sha256   its checksum
+SMD-Linux-v1.0-amd64.iso          the bootable hybrid image
+SMD-Linux-v1.0-amd64.iso.sha256   its checksum
 ```
 
 Use a different mirror without editing anything:
@@ -132,7 +132,7 @@ method (it preserves both boot paths).
 Linux:
 
 ```
-sudo dd if=Hunter-Linux-v1.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=SMD-Linux-v1.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 Use the whole device (`/dev/sdX`), never a partition (`/dev/sdX1`). This
@@ -142,7 +142,7 @@ macOS:
 
 ```
 diskutil list                                  # find the disk number
-sudo dd if=Hunter-Linux-v1.0-amd64.iso of=/dev/rdiskN bs=4m
+sudo dd if=SMD-Linux-v1.0-amd64.iso of=/dev/rdiskN bs=4m
 ```
 
 Windows: use [Rufus](https://rufus.ie) in **DD mode**, or balenaEtcher, and
@@ -156,9 +156,9 @@ The boot menu offers:
 
 | Entry | What it does |
 |---|---|
-| Start Hunter Linux Live | Boots the full desktop from the USB device. Nothing on the internal drive is touched. |
-| Start Hunter Linux Live (Safe Graphics) | Same, with `nomodeset` and the VESA/framebuffer driver. Use it when the screen stays black. |
-| Install Hunter Linux | Boots the same live system and opens the installer automatically. |
+| Start SMD Linux Live | Boots the full desktop from the USB device. Nothing on the internal drive is touched. |
+| Start SMD Linux Live (Safe Graphics) | Same, with `nomodeset` and the VESA/framebuffer driver. Use it when the screen stays black. |
+| Install SMD Linux | Boots the same live system and opens the installer automatically. |
 | Advanced Boot Options | Verbose boot, run entirely in RAM, check the medium's checksums, UEFI firmware settings, boot from the first hard disk. |
 
 The menu counts down for 30 seconds and then starts the live system.
@@ -179,8 +179,8 @@ extra software need the network.
 
 ## 6. Installing
 
-Start the installer from the desktop icon **Install Hunter Linux**, the
-application menu, or the "Install Hunter Linux" boot entry.
+Start the installer from the desktop icon **Install SMD Linux**, the
+application menu, or the "Install SMD Linux" boot entry.
 
 The installer asks for language, keyboard, disk, user account, and a summary
 that must be confirmed before anything is written. It supports:
@@ -419,7 +419,7 @@ python3 tools/verify-project.py --live-build /usr/share/live/build
 
 ### License
 
-Hunter Linux consists of configuration files, shell scripts and generated
+SMD Linux consists of configuration files, shell scripts and generated
 artwork from this project, plus unmodified Debian packages. The configuration
 and scripts are released under the MIT license; the included Debian software
 keeps its own licenses.

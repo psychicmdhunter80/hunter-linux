@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- Hunter Linux 1.0 - default XFCE panel.
+<!-- SMD Linux 1.0 - default XFCE panel.
      xfce4-panel 4.16 and later (4.20 in Debian 13) keeps the panel properties
      inside the "panels" array - /panels/panel-1/plugin-ids and friends - and
      the plugin definitions under /plugins/plugin-N.  Panel properties left at

@@ -1,4 +1,4 @@
-# Hunter Linux - display server, window manager, panel and desktop utilities
+# SMD Linux - display server, window manager, panel and desktop utilities
 #
 # Xorg + i3 + xfce4-panel only.  No GNOME, KDE, Cinnamon, MATE and no
 # xfce4-session/xfwm4 (the XFCE meta desktop is deliberately not installed).

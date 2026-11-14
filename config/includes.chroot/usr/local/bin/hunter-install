@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - start the graphical installer with the privileges it needs.
+# SMD Linux 1.0 - start the graphical installer with the privileges it needs.
 #
 # In the live session the live user has passwordless sudo, so this never asks
 # for a password.  On an installed system the installer is not present.

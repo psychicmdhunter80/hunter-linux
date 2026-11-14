@@ -1,4 +1,4 @@
-/* Hunter Linux 1.0 - installer slideshow (Calamares slideshow API 2) */
+/* SMD Linux 1.0 - installer slideshow (Calamares slideshow API 2) */
 import QtQuick 2.0
 import calamares.slideshow 1.0
 

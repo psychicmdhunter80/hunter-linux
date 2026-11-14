@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - power and session menu.
+# SMD Linux 1.0 - power and session menu.
 #
 # Opened from the panel icon or with Super+Shift+E.  Everything here goes
 # through systemd-logind, so a normal user session may shut down and restart
@@ -9,7 +9,7 @@ set -u
 
 choice=$(
 	printf '%s\n' "Lock screen" "Log out" "Restart" "Shut down" "Cancel" |
-		rofi -dmenu -i -p "Hunter Linux"
+		rofi -dmenu -i -p "SMD Linux"
 ) || exit 0
 
 case "${choice}" in

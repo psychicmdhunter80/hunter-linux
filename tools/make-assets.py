@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the Hunter Linux 1.0 image assets.
+"""Generate the SMD Linux 1.0 image assets.
 
-Everything visual in Hunter Linux is produced by this script, so the artwork
+Everything visual in SMD Linux is produced by this script, so the artwork
 is reproducible from source with no drawing tools and no binary blobs:
 
   usr/share/backgrounds/hunter/wallpaper.png        desktop wallpaper
@@ -181,7 +181,7 @@ class Canvas:
 
     # -- logo -------------------------------------------------------------
     def mark(self, centre_x, centre_y, size, colour, opacity=1.0, underline=True):
-        """The Hunter Linux mark: a compact 'H' with an accent rule."""
+        """The SMD Linux mark: a compact 'H' with an accent rule."""
         bar = max(2, int(round(size * 0.17)))
         left = centre_x - size / 2
         top = centre_y - size / 2
@@ -229,7 +229,7 @@ def wallpaper():
     canvas = Canvas(1920, 1080)
     canvas.gradient(BG_TOP, BG_BOTTOM)
     canvas.mark(1460, 520, 300, INK, 0.09)
-    canvas.text(140, 830, "HUNTER LINUX", 8, INK, 0.92)
+    canvas.text(140, 830, "SMD LINUX", 8, INK, 0.92)
     canvas.text(142, 910, "1.0", 4, ACCENT, 0.95)
     canvas.rect(140, 960, 420, 4, ACCENT, 0.9)
     canvas.save(os.path.join(CHROOT, "usr", "share", "backgrounds", "hunter",
@@ -251,7 +251,7 @@ def boot_splash(width, height, path):
 def installer_logo(path):
     canvas = Canvas(480, 120, alpha=True)
     canvas.mark(52, 58, 64, INK, 1.0)
-    canvas.text(112, 44, "HUNTER LINUX", 4, INK, 1.0)
+    canvas.text(112, 44, "SMD LINUX", 4, INK, 1.0)
     canvas.text(114, 82, "VERSION 1.0", 2, MUTED, 1.0)
     canvas.save(path)
 
@@ -267,7 +267,7 @@ def installer_welcome(path):
     canvas = Canvas(800, 300)
     canvas.fill(PANEL)
     canvas.mark(400, 108, 96, INK, 1.0)
-    canvas.centered_text(196, "HUNTER LINUX", 5, INK, 1.0)
+    canvas.centered_text(196, "SMD LINUX", 5, INK, 1.0)
     canvas.centered_text(240, "1.0", 3, MUTED, 1.0)
     canvas.save(path)
 
@@ -283,7 +283,7 @@ def slide(path, headline, subline):
 
 
 def main():
-    print("Hunter Linux 1.0 - generating image assets")
+    print("SMD Linux 1.0 - generating image assets")
     wallpaper()
     boot_splash(640, 480, os.path.join(ROOT, "config", "bootloaders", "isolinux",
                                        "splash.png"))

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - desktop wiring inside the chroot.
+# SMD Linux 1.0 - desktop wiring inside the chroot.
 set -e
 
 echo "hunter: configuring desktop files"

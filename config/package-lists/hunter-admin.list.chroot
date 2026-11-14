@@ -1,4 +1,4 @@
-# Hunter Linux - browser-based administration.
+# SMD Linux - browser-based administration.
 #
 # cockpit      the web service, the login page and the bridge that runs
 #              privileged operations on behalf of an authenticated user

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Print the parts of a built Hunter Linux image that decide how it boots.
+# Print the parts of a built SMD Linux image that decide how it boots.
 #
 #   inspect-iso.sh <iso> <work-directory>
 #

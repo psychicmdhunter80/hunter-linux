@@ -1,8 +1,8 @@
-# Hunter Linux 1.0 - Test Report
+# SMD Linux 1.0 - Test Report
 
 **Date:** 14 November 2026
 **Version under test:** 1.0
-**Image:** `Hunter-Linux-v1.0-amd64.iso`, 1,109,803,008 bytes (1.03 GiB)
+**Image:** `SMD-Linux-v1.0-amd64.iso`, 1,109,803,008 bytes (1.03 GiB)
 **SHA-256:** `379a72be3b211d3fbf441a330de0eb77d7eac0d099b00821227b01dacaa426c3`
 
 ---
@@ -59,10 +59,10 @@ approached (the ISO is 1.03 GiB, under the 2 GiB per-file artifact limit).
 
 | File | Size | SHA-256 |
 |---|---|---|
-| `Hunter-Linux-v1.0-amd64.iso` | 1,109,803,008 B | `379a72be3b211d3fbf441a330de0eb77d7eac0d099b00821227b01dacaa426c3` |
-| `Hunter-Linux-Build-v1.0.zip` | build sources | see `SHA256SUMS` |
-| `Hunter-Linux-v1.0-README.md` | documentation | see `SHA256SUMS` |
-| `Hunter-Linux-v1.0-Test-Report.md` | this report | see `SHA256SUMS` |
+| `SMD-Linux-v1.0-amd64.iso` | 1,109,803,008 B | `379a72be3b211d3fbf441a330de0eb77d7eac0d099b00821227b01dacaa426c3` |
+| `SMD-Linux-Build-v1.0.zip` | build sources | see `SHA256SUMS` |
+| `SMD-Linux-v1.0-README.md` | documentation | see `SHA256SUMS` |
+| `SMD-Linux-v1.0-Test-Report.md` | this report | see `SHA256SUMS` |
 
 `SHA256SUMS` lists all four files. Verify with:
 
@@ -82,10 +82,10 @@ and matched the value the build produced.
   systray, clock, PulseAudio and battery plugins, `xfce4-settings`, Thunar,
   `xfce4-terminal`, `xfce4-power-manager`.
 * Firefox ESR and Falkon, PipeWire + WirePlumber, NetworkManager, zram swap.
-* Calamares 3.3 with Hunter branding, configured for offline installation from
+* Calamares 3.3 with SMD branding, configured for offline installation from
   the live image.
 * Hybrid boot: isolinux for BIOS, GRUB for UEFI, with the project's own menu:
-  **Start Live**, **Live (Safe Graphics)**, **Install Hunter Linux**,
+  **Start Live**, **Live (Safe Graphics)**, **Install SMD Linux**,
   **Advanced Boot Options**.
 * Live session: `live-boot` + `live-config`, user `user` created at boot with
   password `live`, `sudo` without a password, autologin into the i3 session.
@@ -122,7 +122,7 @@ Kernel command line as booted:
 
 ```
 BOOT_IMAGE=/live/vmlinuz boot=live components quiet splash console=ttyS0,115200
-hostname=hunter username=user autologin initrd=/live/initrd.img
+hostname=smd username=user autologin initrd=/live/initrd.img
 ```
 
 Resolution in the test VM: 1280x800 (`xrandr`).
@@ -225,10 +225,10 @@ Everything used here is in the project:
 ./build.sh native          # force the native Debian 13 path
 
 # boot the ISO and check the live desktop
-python3 tools/ci/boot-test.py Hunter-Linux-v1.0-amd64.iso bios out-bios
+python3 tools/ci/boot-test.py SMD-Linux-v1.0-amd64.iso bios out-bios
 
 # install to a virtual disk and boot the installed system
-python3 tools/ci/install-test.py Hunter-Linux-v1.0-amd64.iso out-install uefi
+python3 tools/ci/install-test.py SMD-Linux-v1.0-amd64.iso out-install uefi
 ```
 
 The CI workflows in `.github/workflows/` do exactly this: `build.yml` builds

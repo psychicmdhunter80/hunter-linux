@@ -1,11 +1,11 @@
-# Hunter Linux 1.0 GRUB theme.
+# SMD Linux 1.0 GRUB theme.
 #
-# Same layout as the live-build default, with Hunter Linux colours and title.
+# Same layout as the live-build default, with SMD Linux colours and title.
 # The background is config/bootloaders/grub-pc/splash.png (800x600).
 desktop-image: "../splash.png"
 title-color: "#e6e6e6"
 title-font: "Unifont Regular 16"
-title-text: "Hunter Linux 1.0"
+title-text: "SMD Linux 1.0"
 message-font: "Unifont Regular 16"
 terminal-font: "Unifont Regular 16"
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - install GRUB into the freshly unpacked target system.
+# SMD Linux 1.0 - install GRUB into the freshly unpacked target system.
 #
 # Calamares' stock bootloader module builds its menu with grub-mkconfig, and
 # that generator aborts inside this image's chroot: it dies in its own
@@ -43,13 +43,13 @@ insmod all_video
 set gfxpayload=keep
 search --no-floppy --fs-uuid --set=root ${root_uuid}
 
-menuentry 'Hunter Linux' {
+menuentry 'SMD Linux' {
 	load_video
 	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }
 
-menuentry 'Hunter Linux (recovery mode)' {
+menuentry 'SMD Linux (recovery mode)' {
 	load_video
 	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
@@ -93,7 +93,7 @@ if [ -d /sys/firmware/efi ] && [ -d /boot/efi ]; then
 
 	# A firmware boot entry is a convenience: the fallback above boots
 	# without it, and some firmware refuses writes during an installation.
-	if efibootmgr -c -d "${disk}" -p 1 -L "Hunter Linux" \
+	if efibootmgr -c -d "${disk}" -p 1 -L "SMD Linux" \
 		-l '\EFI\Hunter_Linux\shimx64.efi' >/dev/null 2>&1; then
 		log "added a firmware boot entry"
 	else

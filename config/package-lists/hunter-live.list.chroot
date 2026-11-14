@@ -1,4 +1,4 @@
-# Hunter Linux - live session infrastructure (Debian live-boot / live-config)
+# SMD Linux - live session infrastructure (Debian live-boot / live-config)
 live-boot
 live-config
 live-config-systemd

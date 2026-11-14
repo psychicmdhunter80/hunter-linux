@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - enable the services the desktop needs and nothing else.
+# SMD Linux 1.0 - enable the services the desktop needs and nothing else.
 #
 # The image deliberately installs no printing stack, no indexing service, no
 # software store, no avahi and no ModemManager, so there is nothing to disable

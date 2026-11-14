@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install Hunter Linux to a virtual disk and boot the result.
+"""Install SMD Linux to a virtual disk and boot the result.
 
     install-test.py <iso> <output-dir> [bios|uefi]
 

@@ -3,14 +3,14 @@
 # live-build expands @FLAVOUR@, @LINUX@ and @INITRD@ in this file only, and
 # appends the result to the generated live.cfg.
 label live-@FLAVOUR@
-	menu label ^Start Hunter Linux Live
+	menu label ^Start SMD Linux Live
 	menu default
 	linux @LINUX@
 	initrd @INITRD@
 	append @APPEND_LIVE@
 
 label live-@FLAVOUR@-safe
-	menu label Start Hunter Linux Live (^Safe Graphics)
+	menu label Start SMD Linux Live (^Safe Graphics)
 	linux @LINUX@
 	initrd @INITRD@
 	append @APPEND_LIVE_FAILSAFE@
@@ -18,7 +18,7 @@ label live-@FLAVOUR@-safe
 # Same live system, but the installer is started automatically once the
 # desktop is up (the kernel parameter is read by hunter-session).
 label hunter-install
-	menu label ^Install Hunter Linux
+	menu label ^Install SMD Linux
 	linux @LINUX@
 	initrd @INITRD@
 	append @APPEND_LIVE@ hunter.installer=1

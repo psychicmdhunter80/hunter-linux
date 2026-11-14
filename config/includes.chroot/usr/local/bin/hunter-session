@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - graphical session.
+# SMD Linux 1.0 - graphical session.
 #
 # Starts the pieces i3 does not provide (XFCE panel, tray applets, settings
 # daemon) and then hands the session over to i3.  LightDM runs this through
@@ -49,7 +49,7 @@ if command -v xfce4-power-manager >/dev/null 2>&1; then
 	xfce4-power-manager >/dev/null 2>&1 &
 fi
 
-# Booted from the "Install Hunter Linux" menu entry?  Open the installer.
+# Booted from the "Install SMD Linux" menu entry?  Open the installer.
 if grep -qw 'hunter.installer=1' /proc/cmdline 2>/dev/null; then
 	(
 		sleep 5

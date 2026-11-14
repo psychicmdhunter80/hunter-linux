@@ -1,4 +1,4 @@
-# Hunter Linux 1.0 - i3 configuration
+# SMD Linux 1.0 - i3 configuration
 #
 # Goals: usable without i3 experience, no compositing, no i3bar (the XFCE
 # panel is the taskbar).  Super (Windows key) is the modifier throughout.
@@ -20,7 +20,7 @@ hide_edge_borders smart
 # ---------------------------------------------------------------------------
 # Desktop: wallpaper and automatic display detection
 # ---------------------------------------------------------------------------
-exec_always --no-startup-id feh --no-fehbg --bg-fill /usr/share/backgrounds/hunter/wallpaper.png
+exec_always --no-startup-id feh --no-fehbg --bg-fill /usr/share/backgrounds/smd/smd-linux-wallpaper.png
 exec_always --no-startup-id xrandr --auto
 
 # ---------------------------------------------------------------------------

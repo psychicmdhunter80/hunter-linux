@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Package the Hunter Linux build project as a release archive.
+"""Package the SMD Linux build project as a release archive.
 
 Creates, in the directory above this project:
 
     Hunter-Linux-Build-v1.0.zip          the build sources, with file modes
-    Hunter-Linux-v1.0-README.md          user documentation
-    Hunter-Linux-v1.0-Test-Report.md     test status and measurements
+    SMD-Linux-v1.0-README.md          user documentation
+    SMD-Linux-v1.0-Test-Report.md     test status and measurements
     SHA256SUMS                           checksums of the files above
 
 File permissions are stored in the archive (0755 for scripts), so the project
@@ -25,10 +25,10 @@ OUTPUT_DIR = os.path.dirname(PROJECT)
 PROJECT_NAME = os.path.basename(PROJECT)
 
 ZIP_NAME = "Hunter-Linux-Build-v1.0.zip"
-ISO_NAME = "Hunter-Linux-v1.0-amd64.iso"
+ISO_NAME = "SMD-Linux-v1.0-amd64.iso"
 DOCS = {
-    "README.md": "Hunter-Linux-v1.0-README.md",
-    "Test-Report.md": "Hunter-Linux-v1.0-Test-Report.md",
+    "README.md": "SMD-Linux-v1.0-README.md",
+    "Test-Report.md": "SMD-Linux-v1.0-Test-Report.md",
 }
 
 SKIP_DIRS = {".git", ".tmp", "__pycache__", "binary", "chroot", "cache",
@@ -107,7 +107,7 @@ def main():
     if os.path.exists(iso_path):
         files.insert(0, iso_path)
     with open(sums_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write("# Hunter Linux 1.0 checksums\n")
+        handle.write("# SMD Linux 1.0 checksums\n")
         if os.path.exists(iso_path):
             handle.write("# The first entry is the bootable ISO image.\n")
         else:

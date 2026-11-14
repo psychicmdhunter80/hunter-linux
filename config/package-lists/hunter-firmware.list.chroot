@@ -1,4 +1,4 @@
-# Hunter Linux - firmware from Debian's non-free-firmware archive area
+# SMD Linux - firmware from Debian's non-free-firmware archive area
 #
 # These are the packages that make common Intel/AMD/NVIDIA graphics, Wi-Fi,
 # Bluetooth and audio hardware work.  They are installed into the image;

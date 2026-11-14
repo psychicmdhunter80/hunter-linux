@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hunter Linux 1.0 - show how to reach Cockpit from another computer.
+# SMD Linux 1.0 - show how to reach Cockpit from another computer.
 #
 # Cockpit listens on this computer only; the page is opened from a browser on
 # another machine that is on the same trusted network.

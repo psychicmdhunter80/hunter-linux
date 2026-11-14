@@ -1,4 +1,4 @@
-# Build environment for Hunter Linux 1.0.
+# Build environment for SMD Linux 1.0.
 #
 # Debian 13 (trixie) is the same release the image is built from, so the
 # live-build version in the container is the one the configuration was
