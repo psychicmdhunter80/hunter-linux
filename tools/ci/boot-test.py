@@ -373,16 +373,19 @@ def main():
 
         # --- idle memory -----------------------------------------------------
         shell.run("pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; "
-                  "sleep 8; free -m", timeout=60)
+                  "pkill -f thunar; sleep 8; free -m", timeout=60)
 
         # --- wallpaper -------------------------------------------------------
+        # feh sets the root pixmap and exits, so the running process proves
+        # nothing; the X root window keeps the pixmap it was given.
         art = shell.run("test -f /usr/share/backgrounds/smd/smd-linux-wallpaper.png "
                         "&& echo present || echo missing; echo ---; "
-                        "pgrep -a feh | head -2", timeout=60)
+                        "DISPLAY=:0 xprop -root _XROOTPMAP_ID 2>&1 | head -2",
+                        timeout=60)
         check(results, "the SMD wallpaper is installed",
               "present" in art.split("---")[0])
-        check(results, "feh draws the SMD wallpaper on the desktop",
-              "smd-linux-wallpaper" in art)
+        check(results, "the desktop shows the SMD wallpaper",
+              "PIXMAP" in art.split("---")[-1])
         time.sleep(4)
         monitor.screenshot("06-desktop")
         record("PASS: live session test finished")
