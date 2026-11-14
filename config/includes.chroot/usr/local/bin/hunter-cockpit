@@ -1,0 +1,35 @@
+#!/bin/sh
+# Hunter Linux 1.0 - show how to reach Cockpit from another computer.
+#
+# Cockpit listens on this computer only; the page is opened from a browser on
+# another machine that is on the same trusted network.
+
+set -u
+
+port=9090
+
+address=$(ip -4 route get 1.1.1.1 2>/dev/null |
+	awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }')
+if [ -z "${address}" ]; then
+	address=$(hostname -I 2>/dev/null | awk '{ print $1 }')
+fi
+if [ -z "${address}" ]; then
+	address="$(hostname).local"
+fi
+
+state=$(systemctl is-active cockpit.socket 2>/dev/null || true)
+
+echo "Cockpit - browser-based administration for this computer"
+echo
+echo "  Address:  https://${address}:${port}"
+echo "  Service:  cockpit.socket is ${state:-unknown}"
+echo
+echo "Open that address in a browser on another computer on the same trusted"
+echo "network, then log in with the account you use on this computer:"
+echo
+echo "  live session      user $(getent passwd user >/dev/null 2>&1 && echo '(password: live)' || echo '(no live account)')"
+echo "  installed system  the account created during installation"
+echo
+echo "The browser warns about the self-signed certificate on first use; that is"
+echo "expected for a machine-local service.  Use \`sudo systemctl status"
+echo "cockpit.socket\` if the service is not running."

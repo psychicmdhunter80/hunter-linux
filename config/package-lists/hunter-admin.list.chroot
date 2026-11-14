@@ -1,0 +1,15 @@
+# Hunter Linux - browser-based administration.
+#
+# cockpit      the web service, the login page and the bridge that runs
+#              privileged operations on behalf of an authenticated user
+# cockpit-system
+#              the Terminal, Services, Logs, Storage and Accounts pages
+#
+# Cockpit authenticates with the accounts of this computer through PAM, so the
+# live session account and the account created by the installer both work with
+# the password they already have.  Nothing else is configured here.
+cockpit
+cockpit-system
+# curl is what the smoke tests use to talk to Cockpit, and it is the command
+# most people reach for when checking a network service.
+curl

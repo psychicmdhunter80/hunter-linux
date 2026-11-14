@@ -48,6 +48,7 @@ systemctl enable lightdm >/dev/null 2>&1 || true
 systemctl enable NetworkManager >/dev/null 2>&1 || true
 systemctl enable bluetooth >/dev/null 2>&1 || true
 systemctl enable zramswap >/dev/null 2>&1 || true
+systemctl enable cockpit.socket >/dev/null 2>&1 || true
 
 log "completed"
 exit 0

@@ -17,7 +17,7 @@ mkdir -p /etc/skel/Desktop /etc/skel/Downloads /etc/skel/Documents \
 
 # Permissions
 chmod 0755 /usr/local/bin/hunter-session /usr/local/bin/hunter-power \
-	/usr/local/bin/hunter-install
+	/usr/local/bin/hunter-install /usr/local/bin/hunter-cockpit
 chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader
 chmod 0644 /usr/share/xsessions/hunter.desktop
 chmod 0644 /usr/share/applications/hunter-install.desktop \
@@ -27,6 +27,11 @@ chmod 0644 /usr/share/applications/hunter-install.desktop \
 chmod 0755 /etc/skel/Desktop/hunter-install.desktop \
 	/etc/skel/Desktop/hunter-shortcuts.desktop
 chmod 0440 /etc/sudoers.d/90-hunter-live
+
+# Cockpit is reachable from another computer as soon as the network is up.
+echo "hunter: enabling cockpit.socket"
+systemctl enable cockpit.socket >/dev/null 2>&1 || \
+	echo "hunter: could not enable cockpit.socket in the chroot"
 
 # Icon and menu caches
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then

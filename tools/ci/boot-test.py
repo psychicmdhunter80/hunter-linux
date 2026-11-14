@@ -30,6 +30,7 @@ WORK = sys.argv[3] if len(sys.argv) > 3 else "out"
 
 MON_PORT = 4600
 SER_PORT = 4601
+WEB_PORT = 4602
 LIVE_USER = os.environ.get("LIVE_USER", "user")
 LIVE_PASS = os.environ.get("LIVE_PASS", "live")
 
@@ -197,6 +198,10 @@ def start_qemu():
         "-no-reboot",
         "-monitor", f"tcp:127.0.0.1:{MON_PORT},server,nowait",
         "-serial", f"tcp:127.0.0.1:{SER_PORT},server,nowait",
+        # A forwarded port makes this runner an outside client for Cockpit,
+        # which is how a real user reaches it from another computer.
+        "-netdev", f"user,id=n0,hostfwd=tcp:127.0.0.1:{WEB_PORT}-:9090",
+        "-device", "virtio-net-pci,netdev=n0",
     ]
     if MODE == "uefi":
         code = next((p for p in (
@@ -300,6 +305,38 @@ def main():
             number = re.search(r"^(\d+)$", count.strip(), re.M)
             check(results, f"{name} launched",
                   bool(number) and int(number.group(1)) > 0)
+
+        # --- cockpit ---------------------------------------------------------
+        status = shell.run("systemctl is-active cockpit.socket; echo ---; "
+                           "curl -sk -o /dev/null -w '%{http_code}' "
+                           "https://localhost:9090 2>&1", timeout=120)
+        socket_state, _, local_code = status.partition("---")
+        check(results, "cockpit.socket is active in the live session",
+              socket_state.strip().splitlines()[-1:] == ["active"])
+        check(results, "Cockpit answers on port 9090 inside the live session",
+              local_code.strip().endswith("200"))
+        shell.run("/usr/local/bin/hunter-cockpit", timeout=60)
+
+        # From the runner, i.e. from a different computer on the network.
+        outside = subprocess.run(
+            ["curl", "-sk", "-o", os.path.join(WORK, "cockpit-login.html"),
+             "-w", "%{http_code}", f"https://127.0.0.1:{WEB_PORT}/"],
+            capture_output=True, text=True, timeout=120)
+        login_page = ""
+        page_path = os.path.join(WORK, "cockpit-login.html")
+        if os.path.exists(page_path):
+            with open(page_path, encoding="utf-8", errors="replace") as handle:
+                login_page = handle.read()
+        check(results, "an outside client reaches the Cockpit login page",
+              outside.stdout.strip().endswith("200") and "Cockpit" in login_page)
+
+        # Authenticated access with the live account over HTTP basic auth.
+        auth = subprocess.run(
+            ["curl", "-sk", "-o", "/dev/null", "-D", "-", "-u", "user:live",
+             f"https://127.0.0.1:{WEB_PORT}/cockpit/login"],
+            capture_output=True, text=True, timeout=120)
+        check(results, "an outside client authenticates to Cockpit as the live user",
+              "200" in auth.stdout.splitlines()[0] if auth.stdout else False)
 
         # --- installer -------------------------------------------------------
         # Launch the real desktop entry point, exactly as a user would.

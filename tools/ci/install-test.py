@@ -147,6 +147,7 @@ class Shell:
 ISO = sys.argv[1]
 WORK = sys.argv[2] if len(sys.argv) > 2 else "install-out"
 MODE = sys.argv[3] if len(sys.argv) > 3 else "uefi"
+WEB_PORT = 4603
 
 FULL_NAME = "Hunter"
 LOGIN = "hunter"
@@ -179,6 +180,10 @@ def start_qemu(disk, with_iso):
         # so the controller is added explicitly.
         "-device", "qemu-xhci", "-device", "usb-tablet",
         "-no-reboot",
+        # Forwarded port: the runner acts as the outside computer that opens
+        # Cockpit on the installed system.
+        "-netdev", f"user,id=n0,hostfwd=tcp:127.0.0.1:{WEB_PORT}-:9090",
+        "-device", "virtio-net-pci,netdev=n0",
     ]
     if MODE == "uefi":
         code = "/usr/share/OVMF/OVMF_CODE_4M.fd"
@@ -524,7 +529,10 @@ def main():
 
         # Look at what the installer left on the target disk: a menu, and the
         # boot loader on the EFI system partition.
-        shell.run("sudo -n tail -25 /tmp/calamares.log", timeout=90)
+        # With -d the installer logs which modules it runs, which is the only
+        # way to see whether its finish-up step was reached at all.
+        shell.run("sudo -n grep -iE 'shellprocess|hunter-|module|exec' "
+                  "/tmp/calamares.log | tail -40", timeout=120)
         probe = shell.run(
             "sudo -n sh -c 'mkdir -p /mnt/root && mount /dev/vda2 /mnt/root && "
             "mkdir -p /mnt/root/boot/efi && mount /dev/vda1 /mnt/root/boot/efi && "
@@ -589,6 +597,47 @@ def main():
         installed_shell = shell.login(timeout=300)
         record("PASS: logged into the installed system" if installed_shell
                else "FAIL: could not log into the installed system")
+
+        if installed_shell:
+            # Cockpit in the installed system, from inside and from outside.
+            state = shell.run("systemctl is-active cockpit.socket; echo ---; "
+                              "systemctl is-enabled cockpit.socket; echo ---; "
+                              "command -v cockpit-ws >/dev/null && echo cockpit-ws-present",
+                              timeout=90)
+            parts = state.split("---")
+            record("PASS: cockpit.socket is active in the installed system"
+                   if "active" in parts[0] else
+                   "FAIL: cockpit.socket is not active in the installed system")
+            record("PASS: cockpit.socket is enabled in the installed system"
+                   if "enabled" in parts[1] else
+                   "FAIL: cockpit.socket is not enabled in the installed system")
+            code = shell.run("curl -sk -o /dev/null -w '%{http_code}' "
+                             "https://localhost:9090", timeout=120)
+            record("PASS: Cockpit answers inside the installed system"
+                   if code.strip().endswith("200") else
+                   f"FAIL: Cockpit does not answer inside the installed system ({code.strip()[:60]})")
+            shell.run("/usr/local/bin/hunter-cockpit", timeout=60)
+
+            outside = subprocess.run(
+                ["curl", "-sk", "-o", os.path.join(WORK, "cockpit-installed.html"),
+                 "-w", "%{http_code}", f"https://127.0.0.1:{WEB_PORT}/"],
+                capture_output=True, text=True, timeout=120)
+            page_path = os.path.join(WORK, "cockpit-installed.html")
+            page = ""
+            if os.path.exists(page_path):
+                with open(page_path, encoding="utf-8", errors="replace") as handle:
+                    page = handle.read()
+            record("PASS: an outside client reaches Cockpit on the installed system"
+                   if outside.stdout.strip().endswith("200") and "Cockpit" in page
+                   else "FAIL: an outside client cannot reach Cockpit on the installed system")
+            auth = subprocess.run(
+                ["curl", "-sk", "-o", "/dev/null", "-D", "-", "-u",
+                 f"{LOGIN}:{PASSWORD}",
+                 f"https://127.0.0.1:{WEB_PORT}/cockpit/login"],
+                capture_output=True, text=True, timeout=120)
+            record("PASS: an outside client authenticates to Cockpit as the installed user"
+                   if auth.stdout and "200" in auth.stdout.splitlines()[0] else
+                   "FAIL: authenticated Cockpit login from outside did not succeed")
         if not installed_shell:
             # No serial getty on the installed system: log in at the greeter.
             try:
