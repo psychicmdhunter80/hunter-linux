@@ -171,7 +171,9 @@ def start_qemu(disk, with_iso):
         "-monitor", f"tcp:127.0.0.1:{MON_PORT},server,nowait",
         "-serial", f"tcp:127.0.0.1:{SER_PORT},server,nowait",
         "-vnc", "127.0.0.1:1",
-        "-device", "usb-tablet",
+        # An absolute pointer for the wizard.  q35 has no USB bus of its own,
+        # so the controller is added explicitly.
+        "-device", "qemu-xhci", "-device", "usb-tablet",
         "-no-reboot",
     ]
     if MODE == "uefi":
@@ -186,9 +188,15 @@ def start_qemu(disk, with_iso):
     if with_iso:
         args += ["-boot", "d", "-cdrom", ISO]
     args += ["-drive", f"file={disk},if=virtio,format=qcow2,cache=writeback"]
-    log = open(os.path.join(WORK, "qemu.log"), "a", encoding="utf-8")
+    log_path = os.path.join(WORK, "qemu.log")
+    log = open(log_path, "a", encoding="utf-8")
     process = subprocess.Popen(args, stdout=log, stderr=log)
     record(f"started qemu as pid {process.pid} (iso={with_iso}, accel={accel})")
+    time.sleep(4)
+    if process.poll() is not None:
+        with open(log_path, encoding="utf-8", errors="replace") as handle:
+            record("FAIL: qemu exited immediately: " + handle.read().strip()[:400])
+        return None
     return process
 
 
