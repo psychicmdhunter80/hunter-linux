@@ -490,11 +490,11 @@ def main():
         disp.shot("partition-erase")
         step("partition")    # -> Users
 
-        # Users: full name, login name, computer name, password, repeat.
+        # Users: only the name and the password.  Calamares fills the login
+        # name and the computer name from the name by itself, and typing into
+        # them would append to the auto-filled text.
         disp.shot("users")
         for point, value in (((404, 113), FULL_NAME),
-                             ((404, 169), LOGIN),
-                             ((404, 225), LOGIN),
                              ((403, 281), PASSWORD),
                              ((607, 281), PASSWORD)):
             disp.click(*point)
