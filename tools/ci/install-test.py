@@ -273,6 +273,9 @@ class Display:
                 self.press("enter")
             time.sleep(6)
         record(f"FAIL: never reached the '{expect}' page after {label}")
+        with open(os.path.join(WORK, f"ocr-stuck-{label}.txt"), "w",
+                  encoding="utf-8") as handle:
+            handle.write(self.text(path))
         return path
 
 
@@ -383,6 +386,16 @@ def main():
         installed_shell = shell.login(timeout=300)
         record("PASS: logged into the installed system" if installed_shell
                else "FAIL: could not log into the installed system")
+        if not installed_shell:
+            # No serial getty on the installed system: log in at the greeter.
+            try:
+                greeter = Display()
+                greeter.type(PASSWORD)
+                greeter.press("enter")
+                time.sleep(45)
+                greeter.shot("11-desktop-after-login")
+            except Exception as error:  # noqa: BLE001 - report and continue
+                record(f"WARN: greeter login failed: {error}")
         if installed_shell:
             shell.run("cat /etc/os-release | head -3; hostname; lsblk | head -12")
             shell.run("systemctl is-system-running 2>&1; "
