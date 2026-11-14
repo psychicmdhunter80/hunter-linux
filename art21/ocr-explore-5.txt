@@ -1,0 +1,14 @@
+What is your name?
+
+fourfulname
+
+What name do you want to use to log in?
+
+What is the name of this computer?
+
+Choose a password to keep your account safe.
+
+R No password supplied
+
+Log in automatically without asking for the password.
+

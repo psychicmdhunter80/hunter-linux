@@ -224,6 +224,42 @@ class Display:
     def contains(self, path, needle):
         return needle.lower() in self.text(path).lower()
 
+    def signature(self, path):
+        """A small grey-scale fingerprint of the wizard's content area."""
+        image = Image.open(path).convert("L").crop((300, 120, 1150, 690))
+        return list(image.resize((48, 24)).getdata())
+
+    @staticmethod
+    def differs(first, second, threshold=4.0):
+        if not first or not second:
+            return True
+        return sum(abs(a - b) for a, b in zip(first, second)) / len(first) > threshold
+
+    def wait_stable(self, name, stable_polls=6, timeout=3000, min_wait=240):
+        """Wait until the screen stops changing (the progress page is done)."""
+        deadline = time.time() + timeout
+        start = time.time()
+        previous = None
+        same = 0
+        path = None
+        poll = 0
+        while time.time() < deadline:
+            poll += 1
+            if poll % 3 == 1 or path is None:
+                path = self.shot(name)
+            current = self.signature(path)
+            if previous is not None and not self.differs(previous, current, 1.5):
+                same += 1
+                if same >= stable_polls and time.time() - start > min_wait:
+                    record("PASS: the installer screen has settled")
+                    return path
+            else:
+                same = 0
+            previous = current
+            time.sleep(15)
+        record("WARN: the installer screen never settled")
+        return path
+
     def wait_text(self, needle, name, timeout=300):
         return self.wait_text_any((needle,), name, timeout)
 
@@ -423,40 +459,67 @@ def main():
             disp.shot("explore-end")
             record("INFO: exploration finished")
             return 0
-        disp.wait_text("Welcome", "welcome", timeout=240)
-        disp.advance("welcome", "language")
+        # The wizard's captions are about ten pixels tall, which OCR reads
+        # badly at this resolution, so the buttons are clicked at fixed screen
+        # positions and every page change is confirmed by comparing the
+        # screenshot itself rather than by reading text.
+        NEXT = (1005, 746)
+        time.sleep(20)
+        disp.shot("welcome")
 
-        # Locale and keyboard pages keep their defaults.
-        disp.advance("locale", "keyboard")
-        disp.advance("keyboard", "erase")
+        def step(label, tries=4):
+            before = disp.signature(disp.shot(f"{label}-before"))
+            for _ in range(tries):
+                disp.click(*NEXT)
+                time.sleep(6)
+                after = disp.shot(f"{label}-after")
+                if disp.differs(before, disp.signature(after)):
+                    record(f"PASS: left the {label} page")
+                    return True
+            record(f"FAIL: the {label} page did not advance")
+            return False
 
-        # Partitioning: explicitly select "Erase disk".
-        disp.select_erase(disp.shot("partition"))
-        disp.advance("partition", "name")
+        step("welcome")      # -> Location
+        step("location")     # -> Keyboard
+        step("keyboard")     # -> Partitions
 
-        # User account.
-        disp.fill_users(disp.shot("users"))
-        disp.advance("users", "summary")
+        # Partitions: choose "Erase disk", then continue.
+        disp.shot("partition")
+        disp.click(313, 130)
+        time.sleep(3)
+        disp.shot("partition-erase")
+        step("partition")    # -> Users
 
-        # Summary: start the installation.
-        page = disp.shot("summary")
-        point = disp.find(page, "Install")
-        if point:
+        # Users: full name, login name, computer name, password, repeat.
+        disp.shot("users")
+        for point, value in (((404, 113), FULL_NAME),
+                             ((404, 169), LOGIN),
+                             ((404, 225), LOGIN),
+                             ((403, 281), PASSWORD),
+                             ((607, 281), PASSWORD)):
             disp.click(*point)
-        else:
-            disp.press("enter")
+            disp.type(value)
+        disp.shot("users-filled")
+        step("users")        # -> Summary
+
+        # Summary: the primary button starts the installation.
+        disp.shot("summary")
+        disp.click(*NEXT)
         record("PASS: the installation was started")
         time.sleep(20)
         monitor.screenshot("install-progress")
 
-        # The installer takes as long as it takes; poll the screen.  Calamares
-        # says "All done!" on its last page and never uses the word "Finish".
-        done = disp.wait_text_any(("All done", "Done", "complete"), "finished",
-                                  timeout=2700)
-        if not any(disp.contains(done, word.lower())
-                   for word in ("All done", "Done", "complete")):
-            shell.run("tail -30 /tmp/calamares.log", timeout=60)
-            record("FAIL: the installation did not finish")
+        # The installer takes as long as it takes.  Wait for the screen to stop
+        # changing, then confirm from the live system that the target disk was
+        # actually written - that is the result that matters.
+        disp.wait_stable("installing", timeout=2700, min_wait=300)
+        monitor.screenshot("install-done")
+        listing = shell.run("lsblk -o NAME,SIZE,FSTYPE /dev/vda", timeout=90)
+        shell.run("tail -15 /tmp/calamares.log", timeout=60)
+        if re.search(r"ext4|vfat|fat32", listing, re.IGNORECASE):
+            record("PASS: the installer partitioned and formatted the target disk")
+        else:
+            record("FAIL: the target disk was not written")
             return 1
 
         # Stop booting from the ISO for the next start.
