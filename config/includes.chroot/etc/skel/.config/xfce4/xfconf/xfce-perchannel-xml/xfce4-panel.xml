@@ -1,41 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- Hunter Linux 1.0 - default XFCE panel: one traditional panel.
-     xfce4-panel 4.16 and later store the panel itself under /panel-N and the
-     plugin definitions under /plugins/plugin-N; definitions left at the top
-     level are ignored and the panel comes up empty. -->
+<!-- Hunter Linux 1.0 - default XFCE panel.
+     xfce4-panel 4.16 and later (4.20 in Debian 13) keeps the panel properties
+     inside the "panels" array - /panels/panel-1/plugin-ids and friends - and
+     the plugin definitions under /plugins/plugin-N.  Panel properties left at
+     the top level are ignored and the panel comes up empty, so the nesting
+     below is exactly what the running panel itself writes. -->
 <channel name="xfce4-panel" version="1.0">
   <property name="panels" type="array">
     <value type="int" value="1"/>
-  </property>
-  <property name="panels-version" type="uint" value="2"/>
-
-  <property name="panel-1" type="empty">
-    <property name="autohide-behavior" type="uint" value="0"/>
-    <property name="disable-struts" type="bool" value="false"/>
-    <property name="length" type="uint" value="100"/>
-    <property name="length-adjust" type="bool" value="true"/>
-    <property name="mode" type="uint" value="0"/>
-    <property name="nrows" type="uint" value="1"/>
-    <!-- p=6: top edge.  i3 places dock clients along the top of the screen,
-         so asking for the bottom here would just be overridden.  length 100
-         makes the bar span the screen width. -->
-    <property name="position" type="string" value="p=6;x=0;y=0"/>
-    <property name="position-locked" type="bool" value="true"/>
-    <property name="size" type="uint" value="30"/>
-    <property name="size-adjust" type="bool" value="false"/>
-    <property name="plugin-ids" type="array">
-      <value type="int" value="1"/>
-      <value type="int" value="2"/>
-      <value type="int" value="3"/>
-      <value type="int" value="4"/>
-      <value type="int" value="5"/>
-      <value type="int" value="6"/>
-      <value type="int" value="7"/>
-      <value type="int" value="8"/>
-      <value type="int" value="9"/>
+    <property name="panel-1" type="empty">
+      <property name="autohide-behavior" type="uint" value="0"/>
+      <property name="disable-struts" type="bool" value="false"/>
+      <property name="length" type="uint" value="100"/>
+      <property name="length-adjust" type="bool" value="true"/>
+      <property name="mode" type="uint" value="0"/>
+      <property name="nrows" type="uint" value="1"/>
+      <!-- p=6: top edge.  i3 places dock clients along the top of the screen,
+           so asking for the bottom here would just be overridden. -->
+      <property name="position" type="string" value="p=6;x=0;y=0"/>
+      <property name="position-locked" type="bool" value="true"/>
+      <property name="size" type="uint" value="30"/>
+      <property name="size-adjust" type="bool" value="false"/>
+      <property name="plugin-ids" type="array">
+        <value type="int" value="1"/>
+        <value type="int" value="2"/>
+        <value type="int" value="3"/>
+        <value type="int" value="4"/>
+        <value type="int" value="5"/>
+        <value type="int" value="6"/>
+        <value type="int" value="7"/>
+        <value type="int" value="8"/>
+        <value type="int" value="9"/>
+      </property>
     </property>
   </property>
+  <property name="panels-version" type="uint" value="2"/>
 
   <property name="plugins" type="empty">
     <!-- Application menu -->

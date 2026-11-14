@@ -25,13 +25,14 @@ OUTPUT_DIR = os.path.dirname(PROJECT)
 PROJECT_NAME = os.path.basename(PROJECT)
 
 ZIP_NAME = "Hunter-Linux-Build-v1.0.zip"
+ISO_NAME = "Hunter-Linux-v1.0-amd64.iso"
 DOCS = {
     "README.md": "Hunter-Linux-v1.0-README.md",
     "Test-Report.md": "Hunter-Linux-v1.0-Test-Report.md",
 }
 
 SKIP_DIRS = {".git", ".tmp", "__pycache__", "binary", "chroot", "cache",
-             ".build", ".freebuff"}
+             ".build", ".freebuff", "dist"}
 SKIP_SUFFIXES = (".iso", ".pyc", ".zsync", ".sha256", ".log")
 
 
@@ -99,11 +100,17 @@ def main():
         print("wrote %s" % target)
 
     sums_path = os.path.join(OUTPUT_DIR, "SHA256SUMS")
+    iso_path = os.path.join(OUTPUT_DIR, ISO_NAME)
+    files = [zip_path] + delivered
+    if os.path.exists(iso_path):
+        files.insert(0, iso_path)
     with open(sums_path, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("# Hunter Linux 1.0 checksums\n")
-        handle.write("# No ISO is listed: the image was not built on this host.\n")
-        handle.write("# See Hunter-Linux-v1.0-Test-Report.md, section 2.\n")
-        for path in [zip_path] + delivered:
+        if os.path.exists(iso_path):
+            handle.write("# The first entry is the bootable ISO image.\n")
+        else:
+            handle.write("# The ISO image is not present in this directory.\n")
+        for path in files:
             handle.write("%s  %s\n" % (sha256(path), os.path.basename(path)))
     print("wrote SHA256SUMS")
     return 0
