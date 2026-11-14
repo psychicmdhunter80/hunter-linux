@@ -16,6 +16,7 @@ the test clicks what it can actually see rather than fixed coordinates.
 
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
