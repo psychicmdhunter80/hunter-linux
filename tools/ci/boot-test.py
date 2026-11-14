@@ -313,6 +313,23 @@ def main():
         check(results, "the graphical installer started",
               bool(number) and int(number.group(1)) > 0)
 
+        # --- optional panel diagnostics --------------------------------------
+        if os.environ.get("PANEL_DIAG") == "1":
+            record("INFO: panel diagnostics")
+            shell.run("ls /usr/lib/x86_64-linux-gnu/xfce4/panel/plugins/ | head -40",
+                      timeout=60)
+            shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel -l | head -40", timeout=60)
+            shell.run("DISPLAY=:0 xfce4-panel -q; sleep 2; "
+                      "mv -f ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml "
+                      "~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml.bak; "
+                      "DISPLAY=:0 xfconf-query -c xfce4-panel -r -R >/dev/null 2>&1; "
+                      "echo reset-done", timeout=120)
+            shell.run("DISPLAY=:0 setsid xfce4-panel >/tmp/panel.log 2>&1 &", timeout=30)
+            time.sleep(25)
+            monitor.screenshot("05-panel-default")
+            shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel -l | head -40", timeout=60)
+            shell.run("cat /tmp/panel.log | head -20", timeout=30)
+
         # --- idle memory -----------------------------------------------------
         shell.run("pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; "
                   "sleep 8; free -m", timeout=60)

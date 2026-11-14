@@ -13,6 +13,11 @@ on:
         default: both
         type: choice
         options: [both, bios, uefi]
+      panel_diag:
+        description: Reset the panel config and capture diagnostics
+        required: false
+        default: "0"
+        type: string
 
 jobs:
   boot:
@@ -42,6 +47,8 @@ jobs:
           cd iso && sha256sum -c Hunter-Linux-v1.0-amd64.iso.sha256
 
       - name: Boot and test the live system
+        env:
+          PANEL_DIAG: ${{ inputs.panel_diag }}
         run: |
           chmod +x tools/ci/boot-test.py
           python3 tools/ci/boot-test.py iso/Hunter-Linux-v1.0-amd64.iso \
