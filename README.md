@@ -36,6 +36,7 @@ how to finish the job.
 | Audio | PipeWire + WirePlumber + `pavucontrol` |
 | Media | mpv, Ristretto image viewer, Xarchiver |
 | Installer | Calamares 3.3 |
+| Remote administration | Cockpit (`cockpit`, `cockpit-system`) on port 9090, enabled in the live session and in the installed system |
 | Live system | `live-boot` + `live-config`, autologin, no persistence |
 | Boot | isolinux (BIOS/CSM) and GRUB EFI (UEFI), signed Debian shim when available |
 | Build | Debian `live-build` 1:20250505, `debootstrap`, `xorriso`, squashfs + xz |
@@ -245,7 +246,55 @@ manager.
 
 ---
 
-## 8. Resources and performance
+## 8. Administering this computer from another one (Cockpit)
+
+Every image ships Cockpit, the browser-based administration tool: a terminal,
+services, logs, storage and account management from a web page. It is the same
+Cockpit used on other machines to open a shell on a remote computer.
+
+Cockpit starts by itself in the live session and in the installed system
+(`cockpit.socket` is enabled in both). It listens on port 9090 on this computer
+and is meant for a browser on another computer on the same trusted network.
+
+**Find this computer's address.** In the live session or on the installed
+system run:
+
+```
+hunter-cockpit
+```
+
+It prints the address to open, for example `https://192.168.1.42:9090`, and
+whether the socket is running. `ip -4 addr show` and `hostname -I` show the
+address as well.
+
+**Log in.** Open the printed address in a browser on the other computer. The
+browser warns once about the self-signed certificate that Cockpit generates for
+this machine; accept it. Then log in with the normal account of this computer:
+
+| Where | Account | Password |
+|---|---|---|
+| Live session | `user` | `live` |
+| Installed system | the account created by the installer | the password chosen there |
+
+Cockpit authenticates through PAM against the accounts of this computer, so
+the credentials are the ones that already exist on the machine. No password,
+key or certificate is stored in the image, no administrative session is opened
+automatically, and nothing is exposed outside the local network unless you
+forward port 9090 yourself.
+
+The **Terminal** page gives a shell as the account you logged in with; commands
+that need root ask for the same account's password through `sudo`, exactly as
+the desktop does.
+
+No firewall is installed in this image, so nothing has to be opened. If you add
+one, allow 9090 on the trusted network only, for example with
+`sudo ufw allow from 192.168.1.0/24 to any port 9090 proto tcp`. Do not forward
+9090 from the internet: Cockpit is an administrative interface for a local
+network.
+
+---
+
+## 9. Resources and performance
 
 Design decisions that keep the system small, all of them deliberate:
 
@@ -277,7 +326,7 @@ measure it.
 
 ---
 
-## 9. Secure Boot
+## 10. Secure Boot
 
 * **Live ISO:** supported when Debian's signed shim and signed GRUB are
   available (`--uefi-secure-boot auto`). live-build then boots via
@@ -294,7 +343,7 @@ system works normally without it.
 
 ---
 
-## 10. Known limitations
+## 11. Known limitations
 
 * **amd64 only.** A single x86-64 ISO cannot support ARM machines or every
   proprietary hardware configuration.
@@ -321,7 +370,7 @@ system works normally without it.
 
 ---
 
-## 11. Project layout
+## 12. Project layout
 
 ```
 auto/config                     every live-build option, in one place

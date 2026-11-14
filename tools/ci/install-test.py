@@ -628,7 +628,8 @@ def main():
                 with open(page_path, encoding="utf-8", errors="replace") as handle:
                     page = handle.read()
             record("PASS: an outside client reaches Cockpit on the installed system"
-                   if outside.stdout.strip().endswith("200") and "Cockpit" in page
+                   if outside.stdout.strip().endswith("200")
+                   and "is_cockpit_client" in page
                    else "FAIL: an outside client cannot reach Cockpit on the installed system")
             auth = subprocess.run(
                 ["curl", "-sk", "-o", "/dev/null", "-D", "-", "-u",

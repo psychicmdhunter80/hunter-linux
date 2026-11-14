@@ -327,8 +327,11 @@ def main():
         if os.path.exists(page_path):
             with open(page_path, encoding="utf-8", errors="replace") as handle:
                 login_page = handle.read()
+        # The index is Cockpit's application shell; its title is set by
+        # JavaScript, so the marker to look for is its boot configuration.
         check(results, "an outside client reaches the Cockpit login page",
-              outside.stdout.strip().endswith("200") and "Cockpit" in login_page)
+              outside.stdout.strip().endswith("200")
+              and "is_cockpit_client" in login_page)
 
         # Authenticated access with the live account over HTTP basic auth.
         auth = subprocess.run(
