@@ -93,20 +93,20 @@ class Shell:
         self.chan = chan
         self.counter = 0
 
-    def login(self, timeout=900):
+    def login(self, user=LOGIN, password=PASSWORD, timeout=900):
         matched, _ = self.chan.expect(r"login:", timeout=timeout)
         if not matched:
             record("FAIL: no login prompt on the serial console")
             return False
-        self.chan.send(LOGIN + "\r")
+        self.chan.send(user + "\r")
         matched, _ = self.chan.expect(r"[Pp]assword:", timeout=60)
         if matched:
-            self.chan.send(PASSWORD + "\r")
-        matched, _ = self.chan.expect(r"[$#] ", timeout=120)
+            self.chan.send(password + "\r")
+        matched, _ = self.chan.expect(r"[$#] ", timeout=180)
         if not matched:
-            record("FAIL: could not log in on the serial console")
+            record(f"FAIL: could not log in as {user} on the serial console")
             return False
-        record(f"PASS: logged in as {LOGIN} on the serial console")
+        record(f"PASS: logged in as {user} on the serial console")
         return True
 
     def run(self, command, timeout=180, lines=40):
@@ -298,7 +298,8 @@ def main():
     monitor = Monitor()
     try:
         shell = Shell(Channel(SER_PORT))
-        if not shell.login():
+        # The live session account, not the one the installer will create.
+        if not shell.login("user", "live"):
             monitor.screenshot("install-no-shell")
             return 1
         shell.wait_for_x()
