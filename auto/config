@@ -34,8 +34,8 @@ lb config noauto \
 	--checksums sha256 \
 	--chroot-filesystem squashfs \
 	--initsystem systemd \
-	--bootappend-live "boot=live components quiet splash hostname=hunter username=user" \
-	--bootappend-live-failsafe "boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 hostname=hunter username=user" \
+	--bootappend-live "boot=live components quiet splash console=ttyS0,115200 hostname=hunter username=user autologin" \
+	--bootappend-live-failsafe "boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 console=ttyS0,115200 hostname=hunter username=user autologin" \
 	--iso-application "Hunter Linux 1.0" \
 	--iso-preparer "Hunter Linux build (live-build)" \
 	--iso-publisher "Hunter Linux Project" \

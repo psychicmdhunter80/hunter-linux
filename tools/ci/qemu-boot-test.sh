@@ -104,11 +104,13 @@ done
 if ! $booted; then
 	echo "WARN: graphical target not seen in serial log; capturing anyway" >> "$RESULT"
 fi
+echo "autologin mentions on serial: $(grep -ci autologin "$SERIAL" 2>/dev/null)" >> "$RESULT"
+echo "lightdm mentions on serial: $(grep -ci lightdm "$SERIAL" 2>/dev/null)" >> "$RESULT"
 sleep 20
 shot "01-boot"
 
-# Give the session (panel, tray applets, i3) time to settle.
-sleep 25
+# Give the session (i3, panel, tray applets) time to settle.
+sleep 60
 shot "02-desktop"
 
 # Terminal: Super+Enter
@@ -119,7 +121,7 @@ shot "03-terminal"
 # Firefox ESR from the terminal prompt
 type_text "firefox-esr"
 key ret 1
-sleep 30
+sleep 55
 shot "04-firefox"
 
 # Thunar: Super+E
@@ -133,22 +135,29 @@ sleep 3
 shot "06-launcher"
 type_text "falkon"
 key ret 1
-sleep 25
+sleep 50
 shot "07-falkon"
 
-# Graphical installer through the launcher
-key meta_l-d 2
-sleep 3
-type_text "install hunter"
+# Graphical installer from a terminal, so sudo and pkexec are exercised too.
+key meta_l-Return 2
+sleep 10
+type_text "sudo calamares -d >/tmp/calamares.log 2>&1"
 key ret 1
-sleep 25
+sleep 40
 shot "08-installer"
 
-# Record what the guest thinks it is running.
-hmp "info status"
-key ctrl-alt-f2 2
-sleep 3
-shot "09-console"
+# Second terminal for a memory reading of the settled desktop.
+key meta_l-Return 2
+sleep 8
+type_text "free -m | head -3"
+key ret 1
+sleep 4
+shot "09-memory"
+
+type_text "ps -eo comm= | sort | uniq -c | sort -rn | head -25"
+key ret 1
+sleep 4
+shot "10-processes"
 
 kill $QPID 2>/dev/null || true
 sleep 2

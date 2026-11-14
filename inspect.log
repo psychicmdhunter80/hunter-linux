@@ -1,0 +1,896 @@
+Inspect the built image	Set up job	﻿2026-11-14T02:38:21.8947285Z Current runner version: '2.338.2'
+##[group]Runner Image Provisioner
+Hosted Compute Agent
+Version: 20261103.629
+Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+Build Date: 2026-11-03T17:26:59Z
+Worker ID: {82168134-e709-4113-8a48-c85b7a847817}
+Region: us-east-1
+Cloud: AWS
+##[endgroup]
+##[group]Operating System
+Ubuntu
+24.04.5
+LTS
+##[endgroup]
+##[group]Runner Image
+Image: ubuntu-24.04
+Version: 20261111.127.1
+Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.127/images/ubuntu/Ubuntu2404-Readme.md
+Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.127
+##[endgroup]
+##[group]GITHUB_TOKEN Permissions
+Contents: read
+Metadata: read
+Packages: read
+##[endgroup]
+Secret source: Actions
+Cache mode: write
+Prepare workflow directory
+Prepare all required actions
+Getting action download info
+Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+Complete job name: Inspect the built image
+Inspect the built image	Run actions/checkout@v4	﻿2026-11-14T02:38:24.5527801Z ##[group]Run actions/checkout@v4
+with:
+  repository: psychicmdhunter80/hunter-linux
+  token: ***
+  ssh-strict: true
+  ssh-user: git
+  persist-credentials: true
+  clean: true
+  sparse-checkout-cone-mode: true
+  fetch-depth: 1
+  fetch-tags: false
+  show-progress: true
+  lfs: false
+  submodules: false
+  set-safe-directory: true
+  allow-unsafe-pr-checkout: false
+##[endgroup]
+Syncing repository: psychicmdhunter80/hunter-linux
+##[group]Getting Git version info
+Working directory is '/home/runner/work/hunter-linux/hunter-linux'
+[command]/usr/bin/git version
+git version 2.56.1
+##[endgroup]
+Temporarily overriding HOME='/home/runner/work/_temp/2d15acfa-dfa9-4aa8-af65-3fc291455166' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]/usr/bin/git config --global --add safe.directory /home/runner/work/hunter-linux/hunter-linux
+Deleting the contents of '/home/runner/work/hunter-linux/hunter-linux'
+##[group]Initializing the repository
+[command]/usr/bin/git init /home/runner/work/hunter-linux/hunter-linux
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+Initialized empty Git repository in /home/runner/work/hunter-linux/hunter-linux/.git/
+[command]/usr/bin/git remote add origin https://github.com/psychicmdhunter80/hunter-linux
+##[endgroup]
+##[group]Disabling automatic garbage collection
+[command]/usr/bin/git config --local gc.auto 0
+##[endgroup]
+##[group]Setting up auth
+[command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+[command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+##[endgroup]
+##[group]Fetching the repository
+[command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d645a04312ee6afd77353e6c177de8171eb009f8:refs/remotes/origin/main
+From https://github.com/psychicmdhunter80/hunter-linux
+ * [new ref]         d645a04312ee6afd77353e6c177de8171eb009f8 -> origin/main
+##[endgroup]
+##[group]Determining the checkout info
+##[endgroup]
+[command]/usr/bin/git sparse-checkout disable
+[command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+##[group]Checking out the ref
+[command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+Switched to a new branch 'main'
+branch 'main' set up to track 'origin/main'.
+##[endgroup]
+[command]/usr/bin/git log -1 --format=%H
+d645a04312ee6afd77353e6c177de8171eb009f8
+Inspect the built image	Install tooling	﻿2026-11-14T02:38:29.3857980Z ##[group]Run sudo apt-get update
+^[[36;1msudo apt-get update^[[0m
+^[[36;1msudo apt-get install -y --no-install-recommends \^[[0m
+^[[36;1m  xorriso squashfs-tools p7zip-full^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+Get:1 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:2 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [772 kB]
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [702 kB]
+Hit:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble InRelease
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:8 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:9 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1450 kB]
+Get:10 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [315 kB]
+Get:11 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1713 kB]
+Get:12 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [345 kB]
+Get:13 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1883 kB]
+Get:14 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [430 kB]
+Get:15 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.6 kB]
+Get:16 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1195 kB]
+Get:17 http://security.ubuntu.com/ubuntu noble-security/main Translation-en [238 kB]
+Get:18 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Get:19 http://security.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Get:20 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1788 kB]
+Get:21 http://security.ubuntu.com/ubuntu noble-security/restricted Translation-en [411 kB]
+Fetched 13.1 MB in 2s (6345 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+squashfs-tools is already the newest version (1:4.6.1-1build1).
+squashfs-tools set to manually installed.
+p7zip-full is already the newest version (16.02+transitional.1).
+The following additional packages will be installed:
+  libburn4t64 libisoburn1t64 libisofs6t64
+Suggested packages:
+  xorriso-tcltk jigit cdck
+The following NEW packages will be installed:
+  libburn4t64 libisoburn1t64 libisofs6t64 xorriso
+0 upgraded, 4 newly installed, 0 to remove and 23 not upgraded.
+Need to get 1081 kB of archives.
+After this operation, 2298 kB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+Get:2 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libburn4t64 amd64 1.5.6-1.1build1 [158 kB]
+Get:3 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libisofs6t64 amd64 1.5.6.pl01-1.1ubuntu2 [220 kB]
+Get:4 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libisoburn1t64 amd64 1:1.5.6-1.1ubuntu3 [405 kB]
+Get:5 http://us-east-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 xorriso amd64 1:1.5.6-1.1ubuntu3 [297 kB]
+Fetched 1081 kB in 0s (3903 kB/s)
+Selecting previously unselected package libburn4t64:amd64.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 216380 files and directories currently installed.)
+Preparing to unpack .../libburn4t64_1.5.6-1.1build1_amd64.deb ...
+Unpacking libburn4t64:amd64 (1.5.6-1.1build1) ...
+Selecting previously unselected package libisofs6t64:amd64.
+Preparing to unpack .../libisofs6t64_1.5.6.pl01-1.1ubuntu2_amd64.deb ...
+Unpacking libisofs6t64:amd64 (1.5.6.pl01-1.1ubuntu2) ...
+Selecting previously unselected package libisoburn1t64:amd64.
+Preparing to unpack .../libisoburn1t64_1%3a1.5.6-1.1ubuntu3_amd64.deb ...
+Unpacking libisoburn1t64:amd64 (1:1.5.6-1.1ubuntu3) ...
+Selecting previously unselected package xorriso.
+Preparing to unpack .../xorriso_1%3a1.5.6-1.1ubuntu3_amd64.deb ...
+Unpacking xorriso (1:1.5.6-1.1ubuntu3) ...
+Setting up libisofs6t64:amd64 (1.5.6.pl01-1.1ubuntu2) ...
+Setting up libburn4t64:amd64 (1.5.6-1.1build1) ...
+Setting up libisoburn1t64:amd64 (1:1.5.6-1.1ubuntu3) ...
+Setting up xorriso (1:1.5.6-1.1ubuntu3) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for install-info (7.1-3build2) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Inspect the built image	Fetch the ISO	﻿2026-11-14T02:39:02.9304866Z ##[group]Run gh run download "43545355424" --name iso --repo "psychicmdhunter80/hunter-linux" --dir iso
+^[[36;1mgh run download "43545355424" --name iso --repo "psychicmdhunter80/hunter-linux" --dir iso^[[0m
+^[[36;1mls -lh iso/^[[0m
+shell: /usr/bin/bash -e {0}
+env:
+  GH_TOKEN: ***
+##[endgroup]
+total 1.1G
+-rw-r--r-- 1 runner runner 1.1G Nov 14 02:39 Hunter-Linux-v1.0-amd64.iso
+-rw-r--r-- 1 runner runner   94 Nov 14 02:39 Hunter-Linux-v1.0-amd64.iso.sha256
+Inspect the built image	Unpack and inspect	﻿2026-11-14T02:39:17.5629400Z ##[group]Run chmod +x tools/ci/inspect-iso.sh
+^[[36;1mchmod +x tools/ci/inspect-iso.sh^[[0m
+^[[36;1mtools/ci/inspect-iso.sh iso/Hunter-Linux-v1.0-amd64.iso work 2>&1 | tee inspect.log^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+
+===== image =====
+2.9G	work/rootfs
+46601211 work/rootfs/boot/initrd.img-6.12.117+deb13-amd64
+12171200 work/rootfs/boot/vmlinuz-6.12.117+deb13-amd64
+
+===== bootloader kernel command line =====
+
+===== lightdm config =====
+--- work/rootfs/etc/lightdm/lightdm.conf
+#
+# General configuration
+#
+# start-default-seat = True to always start one seat if none are defined in the configuration
+# greeter-user = User to run greeter as
+# minimum-display-number = Minimum display number to use for X servers
+# minimum-vt = First VT to run displays on
+# lock-memory = True to prevent memory from being paged to disk
+# user-authority-in-system-dir = True if session authority should be in the system location
+# guest-account-script = Script to be run to setup guest account
+# logind-check-graphical = True to on start seats that are marked as graphical by logind
+# log-directory = Directory to log information to
+# run-directory = Directory to put running state in
+# cache-directory = Directory to cache to
+# sessions-directory = Directory to find sessions
+# remote-sessions-directory = Directory to find remote sessions
+# greeters-directory = Directory to find greeters
+# backup-logs = True to move add a .old suffix to old log files when opening new ones
+# dbus-service = True if LightDM provides a D-Bus service to control it
+#
+[LightDM]
+#start-default-seat=true
+#greeter-user=lightdm
+#minimum-display-number=0
+#minimum-vt=7
+#lock-memory=true
+#user-authority-in-system-dir=false
+#guest-account-script=guest-account
+#logind-check-graphical=true
+#log-directory=/var/log/lightdm
+#run-directory=/var/run/lightdm
+#cache-directory=/var/cache/lightdm
+#sessions-directory=/usr/share/lightdm/sessions:/usr/share/xsessions:/usr/share/wayland-sessions
+#remote-sessions-directory=/usr/share/lightdm/remote-sessions
+#greeters-directory=$XDG_DATA_DIRS/lightdm/greeters:$XDG_DATA_DIRS/xgreeters
+#backup-logs=true
+#dbus-service=true
+
+#
+# Seat configuration
+#
+# Seat configuration is matched against the seat name glob in the section, for example:
+# [Seat:*] matches all seats and is applied first.
+# [Seat:seat0] matches the seat named "seat0".
+# [Seat:seat-thin-client*] matches all seats that have names that start with "seat-thin-client".
+#
+# type = Seat type (local, xremote)
+# pam-service = PAM service to use for login
+# pam-autologin-service = PAM service to use for autologin
+# pam-greeter-service = PAM service to use for greeters
+# xserver-command = X server command to run (can also contain arguments e.g. X -special-option)
+# xmir-command = Xmir server command to run (can also contain arguments e.g. Xmir -special-option)
+# xserver-config = Config file to pass to X server
+# xserver-layout = Layout to pass to X server
+# xserver-allow-tcp = True if TCP/IP connections are allowed to this X server
+# xserver-share = True if the X server is shared for both greeter and session
+# xserver-hostname = Hostname of X server (only for type=xremote)
+# xserver-display-number = Display number of X server (only for type=xremote)
+# xdmcp-manager = XDMCP manager to connect to (implies xserver-allow-tcp=true)
+# xdmcp-port = XDMCP UDP/IP port to communicate on
+# xdmcp-key = Authentication key to use for XDM-AUTHENTICATION-1 (stored in keys.conf)
+# greeter-session = Session to load for greeter
+# greeter-hide-users = True to hide the user list
+# greeter-allow-guest = True if the greeter should show a guest login option
+# greeter-show-manual-login = True if the greeter should offer a manual login option
+# greeter-show-remote-login = True if the greeter should offer a remote login option
+# user-session = Session to load for users
+# allow-user-switching = True if allowed to switch users
+# allow-guest = True if guest login is allowed
+# guest-session = Session to load for guests (overrides user-session)
+# session-wrapper = Wrapper script to run session with
+# greeter-wrapper = Wrapper script to run greeter with
+# guest-wrapper = Wrapper script to run guest sessions with
+# display-setup-script = Script to run when starting a greeter session (runs as root)
+# display-stopped-script = Script to run after stopping the display server (runs as root)
+# greeter-setup-script = Script to run when starting a greeter (runs as root)
+# session-setup-script = Script to run when starting a user session (runs as root)
+# session-cleanup-script = Script to run when quitting a user session (runs as root)
+# autologin-guest = True to log in as guest by default
+# autologin-user = User to log in with by default (overrides autologin-guest)
+# autologin-user-timeout = Number of seconds to wait before loading default user
+# autologin-session = Session to load for automatic login (overrides user-session)
+# autologin-in-background = True if autologin session should not be immediately activated
+# exit-on-failure = True if the daemon should exit if this seat fails
+#
+[Seat:*]
+#type=local
+#pam-service=lightdm
+#pam-autologin-service=lightdm-autologin
+#pam-greeter-service=lightdm-greeter
+#xserver-command=X
+#xmir-command=Xmir
+#xserver-config=
+#xserver-layout=
+#xserver-allow-tcp=false
+#xserver-share=true
+#xserver-hostname=
+#xserver-display-number=
+#xdmcp-manager=
+#xdmcp-port=177
+#xdmcp-key=
+#greeter-session=example-gtk-gnome
+#greeter-hide-users=false
+#greeter-allow-guest=true
+#greeter-show-manual-login=false
+#greeter-show-remote-login=true
+#user-session=default
+#allow-user-switching=true
+#allow-guest=true
+#guest-session=
+#session-wrapper=lightdm-session
+#greeter-wrapper=
+#guest-wrapper=
+#display-setup-script=
+#display-stopped-script=
+#greeter-setup-script=
+#session-setup-script=
+#session-cleanup-script=
+#autologin-guest=false
+#autologin-user=
+#autologin-user-timeout=0
+#autologin-in-background=false
+#autologin-session=
+#exit-on-failure=false
+
+#
+# XDMCP Server configuration
+#
+# enabled = True if XDMCP connections should be allowed
+# port = UDP/IP port to listen for connections on
+# listen-address = Host/address to listen for XDMCP connections (use all addresses if not present)
+# key = Authentication key to use for XDM-AUTHENTICATION-1 or blank to not use authentication (stored in keys.conf)
+# hostname = Hostname to report to XDMCP clients (defaults to system hostname if unset)
+#
+# The authentication key is a 56 bit DES key specified in hex as 0xnnnnnnnnnnnnnn.  Alternatively
+# it can be a word and the first 7 characters are used as the key.
+#
+[XDMCPServer]
+#enabled=false
+#port=177
+#listen-address=
+#key=
+#hostname=
+
+#
+# VNC Server configuration
+#
+# enabled = True if VNC connections should be allowed
+# command = Command to run Xvnc server with
+# port = TCP/IP port to listen for connections on
+# listen-address = Host/address to listen for VNC connections (use all addresses if not present)
+# width = Width of display to use
+# height = Height of display to use
+# depth = Color depth of display to use
+#
+[VNCServer]
+#enabled=false
+#command=Xvnc
+#port=5900
+#listen-address=
+#width=1024
+#height=768
+#depth=8
+--- work/rootfs/etc/lightdm/keys.conf
+[keyring]
+#a=0x0123456789ABCD
+#b=secret
+--- work/rootfs/etc/lightdm/users.conf
+#
+# User accounts configuration
+#
+# NOTE: If you have AccountsService installed on your system, then LightDM will
+# use this instead and these settings will be ignored
+#
+# minimum-uid = Minimum UID required to be shown in greeter
+# hidden-users = Users that are not shown to the user
+# hidden-shells = Shells that indicate a user cannot login
+#
+[UserList]
+minimum-uid=500
+hidden-users=nobody nobody4 noaccess
+hidden-shells=/bin/false /usr/sbin/nologin /sbin/nologin
+--- work/rootfs/etc/lightdm/lightdm-gtk-greeter.conf
+# LightDM GTK Configuration
+# Available configuration options listed below.
+# Please list the configuration options that you want to use after [greeter] without the # for example:
+# [greeter]
+# example-option=example-value
+#
+# Appearance:
+#  theme-name = GTK theme to use
+#  icon-theme-name = Icon theme to use
+#  cursor-theme-name = Cursor theme to use
+#  cursor-theme-size = Cursor size to use
+#  background = Background file to use, either an image path or a color (e.g. #772953)
+#  user-background = false|true ("true" by default)  Display user background (if available)
+#  transition-duration = Length of time (in milliseconds) to transition between background images ("500" by default)
+#  transition-type = ease-in-out|linear|none  ("ease-in-out" by default)
+#
+# Fonts:
+#  font-name = Font to use
+#  xft-antialias = false|true  Whether to antialias Xft fonts
+#  xft-dpi = Resolution for Xft in dots per inch (e.g. 96)
+#  xft-hintstyle = none|slight|medium|hintfull  What degree of hinting to use
+#  xft-rgba = none|rgb|bgr|vrgb|vbgr  Type of subpixel antialiasing
+#
+# Login window:
+#  active-monitor = Monitor to display greeter window (name or number). Use #cursor value to display greeter at monitor with cursor. Can be a semicolon separated list
+#  position = x y ("50% 50%" by default)  Login window position
+#  default-user-image = Image used as default user icon, path or #icon-name
+#  hide-user-image = false|true ("false" by default)
+#  round-user-image = false|true ("true" by default)
+#  highlight-logged-user  = false|true ("true" by default)
+#
+# Panel:
+#  panel-position = top|bottom ("top" by default)
+#  clock-format = strftime-format string, e.g. %H:%M
+#  indicators = semi-colon ";" separated list of allowed indicator modules. Built-in indicators include "~a11y", "~language", "~session", "~power", "~clock", "~host", "~spacer", "~layout". Unity indicators can be represented by short name (e.g. "sound", "power"), service file name, or absolute path
+#  keyboard-layouts = semi-colon ";" separated list keyboard layouts to be listed by the "~layout" indicator (empty by default which provides all available layouts)
+#
+# Accessibility:
+#  a11y-states = states of accessibility features: "name" - save state on exit, "-name" - disabled at start (default value for unlisted), "+name" - enabled at start. Allowed names: contrast, font, keyboard, reader.
+#  keyboard = command to launch on-screen keyboard (e.g. "onboard")
+#  keyboard-position = x y[;width height] ("50%,center -0;50% 25%" by default)  Works only for "onboard"
+#  reader = command to launch screen reader (e.g. "orca")
+#  at-spi-enabled = false|true ("true" by default) Enables accessibility at-spi-command if the greeter is built with it enabled
+#
+# Security:
+#  allow-debugging = false|true ("false" by default)
+#  screensaver-timeout = Timeout (in seconds) until the screen blanks when the greeter is called as lockscreen
+#
+# Session:
+#  default-session = session manager to be started when none has been selected by the user and no one is set as last used (unset by default)
+#
+# Template for per-monitor configuration:
+#  [monitor: name]
+#  background = overrides default value
+#  user-background = overrides default value
+#  laptop = false|true ("false" by default) Marks monitor as laptop display
+#  transition-duration = overrides default value
+#
+[greeter]
+#background=
+#user-background=
+#theme-name=
+#icon-theme-name=
+#font-name=
+#xft-antialias=
+#xft-dpi=
+#xft-hintstyle=
+#xft-rgba=
+#indicators=
+#clock-format=
+#keyboard=
+#reader=
+#position=
+#screensaver-timeout=
+--- work/rootfs/etc/lightdm/lightdm.conf.d/50-hunter-live.conf
+# Hunter Linux 1.0 - live session only.
+# Removed from the installed system by /usr/local/sbin/hunter-postinstall.
+[Seat:*]
+autologin-user=user
+autologin-user-timeout=0
+autologin-session=hunter
+--- work/rootfs/etc/lightdm/lightdm.conf.d/60-hunter-session.conf
+# Hunter Linux 1.0 - default session and greeter.
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+user-session=hunter
+
+===== lightdm seat / displays =====
+total 16
+-rw-r--r-- 1 runner runner 202 Nov 14 02:18 hunter.desktop
+-rw-r--r-- 1 runner runner 174 Nov  6  2024 i3-with-shmlog.desktop
+-rw-r--r-- 1 runner runner 197 Nov  6  2024 i3.desktop
+-rw-r--r-- 1 runner runner  86 Jun 21  2024 lightdm-xsession.desktop
+
+===== live-config scripts =====
+0005-nss-systemd
+0010-debconf
+0020-hostname
+0030-live-debconfig_passwd
+0030-user-setup
+0040-sudo
+0050-locales
+0070-tzdata
+0080-gdm3
+0085-sddm
+0090-kdm
+0100-lightdm
+0110-lxdm
+0120-nodm
+0130-slim
+0140-xinit
+0150-keyboard-configuration
+1010-apport
+1020-gnome-panel-data
+1030-gnome-power-manager
+1040-gnome-screensaver
+1050-kaboom
+1060-kde-services
+1080-policykit
+1090-ssl-cert
+1110-anacron
+1120-util-linux
+1130-login
+1140-xserver-xorg
+1160-openssh-server
+1170-xfce4-panel
+1180-xscreensaver
+1190-broadcom-sta
+9990-hooks
+9995-nss-systemd
+--- autologin related
+work/rootfs/usr/lib/live/config/0085-sddm
+work/rootfs/usr/lib/live/config/0120-nodm
+work/rootfs/usr/lib/live/config/0080-gdm3
+work/rootfs/usr/lib/live/config/1130-login
+work/rootfs/usr/lib/live/config/0140-xinit
+work/rootfs/usr/lib/live/config/0130-slim
+work/rootfs/usr/lib/live/config/0110-lxdm
+work/rootfs/usr/lib/live/config/0090-kdm
+work/rootfs/usr/lib/live/config/0100-lightdm
+
+===== accounts (no hashes) =====
+user root         uid=0     shell=/bin/bash              pw=LOCKED
+user daemon       uid=1     shell=/usr/sbin/nologin      pw=LOCKED
+user bin          uid=2     shell=/usr/sbin/nologin      pw=LOCKED
+user sys          uid=3     shell=/usr/sbin/nologin      pw=LOCKED
+user sync         uid=4     shell=/bin/sync              pw=LOCKED
+user games        uid=5     shell=/usr/sbin/nologin      pw=LOCKED
+user man          uid=6     shell=/usr/sbin/nologin      pw=LOCKED
+user lp           uid=7     shell=/usr/sbin/nologin      pw=LOCKED
+user mail         uid=8     shell=/usr/sbin/nologin      pw=LOCKED
+user news         uid=9     shell=/usr/sbin/nologin      pw=LOCKED
+user uucp         uid=10    shell=/usr/sbin/nologin      pw=LOCKED
+user proxy        uid=13    shell=/usr/sbin/nologin      pw=LOCKED
+user www-data     uid=33    shell=/usr/sbin/nologin      pw=LOCKED
+user backup       uid=34    shell=/usr/sbin/nologin      pw=LOCKED
+user list         uid=38    shell=/usr/sbin/nologin      pw=LOCKED
+user irc          uid=39    shell=/usr/sbin/nologin      pw=LOCKED
+user _apt         uid=42    shell=/usr/sbin/nologin      pw=LOCKED
+user nobody       uid=65534 shell=/usr/sbin/nologin      pw=LOCKED
+user systemd-network uid=998   shell=/usr/sbin/nologin      pw=SET
+user dhcpcd       uid=100   shell=/bin/false             pw=LOCKED
+user systemd-timesync uid=991   shell=/usr/sbin/nologin      pw=SET
+user messagebus   uid=990   shell=/usr/sbin/nologin      pw=SET
+user lightdm      uid=101   shell=/bin/false             pw=LOCKED
+user polkitd      uid=989   shell=/usr/sbin/nologin      pw=SET
+
+===== enabled units =====
+total 0
+lrwxrwxrwx 1 runner runner 46 Nov 14 02:18 NetworkManager.service -> /usr/lib/systemd/system/NetworkManager.service
+lrwxrwxrwx 1 runner runner 49 Nov 14 02:18 blueman-mechanism.service -> /usr/lib/systemd/system/blueman-mechanism.service
+lrwxrwxrwx 1 runner runner 45 Nov 14 02:18 console-setup.service -> /usr/lib/systemd/system/console-setup.service
+lrwxrwxrwx 1 runner runner 36 Nov 14 02:18 cron.service -> /usr/lib/systemd/system/cron.service
+lrwxrwxrwx 1 runner runner 44 Nov 14 02:18 e2scrub_reap.service -> /usr/lib/systemd/system/e2scrub_reap.service
+lrwxrwxrwx 1 runner runner 43 Nov 14 02:18 grub-common.service -> /usr/lib/systemd/system/grub-common.service
+lrwxrwxrwx 1 runner runner 42 Nov 14 02:18 networking.service -> /usr/lib/systemd/system/networking.service
+lrwxrwxrwx 1 runner runner 40 Nov 14 02:18 remote-fs.target -> /usr/lib/systemd/system/remote-fs.target
+lrwxrwxrwx 1 runner runner 40 Nov 14 02:18 zramswap.service -> /usr/lib/systemd/system/zramswap.service
+total 0
+lrwxrwxrwx 1 runner runner 39 Nov 14 02:18 udisks2.service -> /usr/lib/systemd/system/udisks2.service
+
+===== key packages =====
+present: live-boot
+present: live-config
+present: live-config-systemd
+present: live-tools
+present: lightdm
+present: lightdm-gtk-greeter
+MISSING: i3
+present: i3-wm
+present: xfce4-panel
+present: thunar
+present: firefox-esr
+present: falkon
+present: calamares
+MISSING: calamares-settings-debian
+MISSING: xorg
+present: xserver-xorg-video-intel
+present: pipewire
+present: wireplumber
+present: network-manager
+present: zram-tools
+installed package count: 1001
+
+===== session and helper files =====
+work/rootfs/usr/local/bin/:
+total 12
+-rwxr-xr-x 1 runner runner  515 Nov 14 02:18 hunter-install
+-rwxr-xr-x 1 runner runner  602 Nov 14 02:18 hunter-power
+-rwxr-xr-x 1 runner runner 1785 Nov 14 02:18 hunter-session
+
+work/rootfs/usr/local/sbin/:
+total 4
+-rwxr-xr-x 1 runner runner 1987 Nov 14 02:18 hunter-postinstall
+--- sudoers
+# Hunter Linux 1.0 - live session only.
+# Removed from the installed system by /usr/local/sbin/hunter-postinstall.
+user ALL=(ALL) NOPASSWD: ALL
+
+===== skel =====
+total 48
+drwxr-xr-x  9 runner runner 4096 Nov 14 02:18 .
+drwxr-xr-x 92 runner runner 4096 Nov 14 02:18 ..
+-rw-r--r--  1 runner runner  220 Jul 12 16:58 .bash_logout
+-rw-r--r--  1 runner runner 3526 Jul 12 16:58 .bashrc
+drwxr-xr-x  6 runner runner 4096 Nov 14 02:18 .config
+-rw-r--r--  1 runner runner  807 Jul 12 16:58 .profile
+drwxr-xr-x  2 runner runner 4096 Nov 14 02:18 Desktop
+drwxr-xr-x  2 runner runner 4096 Nov 14 02:18 Documents
+drwxr-xr-x  2 runner runner 4096 Nov 14 02:18 Downloads
+drwxr-xr-x  2 runner runner 4096 Nov 14 02:18 Music
+drwxr-xr-x  2 runner runner 4096 Nov 14 02:18 Pictures
+drwxr-xr-x  2 runner runner 4096 Nov 14 02:18 Videos
+
+===== autostart =====
+blueman.desktop
+nm-applet.desktop
+polkit-ukui-authentication-agent-1.desktop
+user-dirs-update-gtk.desktop
+xdg-user-dirs.desktop
+xfce4-notifyd.desktop
+xfce4-power-manager.desktop
+xfsettingsd.desktop
+
+===== sizes of the big payloads =====
+295M	work/rootfs/usr/lib/firefox-esr
+11M	work/rootfs/usr/lib/x86_64-linux-gnu/qt6
+0	work/rootfs/usr/lib/x86_64-linux-gnu/libQt6WebEngineCore.so.6
+
+===== os-release =====
+PRETTY_NAME="Hunter Linux 1.0"
+NAME="Hunter Linux"
+VERSION_ID="1.0"
+VERSION="1.0 (trixie)"
+VERSION_CODENAME=trixie
+ID=hunter
+ID_LIKE=debian
+ANSI_COLOR="0;34"
+DEBIAN_CODENAME=trixie
+Inspect the built image	Boot menu and bootloader files	﻿2026-11-14T02:39:33.5681998Z ##[group]Run echo "===== ISO tree ====="
+^[[36;1mecho "===== ISO tree ====="^[[0m
+^[[36;1mxorriso -indev iso/Hunter-Linux-v1.0-amd64.iso -find / -maxdepth 2 2>/dev/null \^[[0m
+^[[36;1m  | head -60 || true^[[0m
+^[[36;1mecho^[[0m
+^[[36;1mecho "===== isolinux config on the ISO ====="^[[0m
+^[[36;1mxorriso -osirrox on -indev iso/Hunter-Linux-v1.0-amd64.iso \^[[0m
+^[[36;1m  -extract /isolinux/isolinux.cfg work/isolinux.cfg >/dev/null 2>&1^[[0m
+^[[36;1mcat work/isolinux.cfg 2>/dev/null || echo "not found"^[[0m
+^[[36;1mfor f in live.cfg menu.cfg stdmenu.cfg; do^[[0m
+^[[36;1m  xorriso -osirrox on -indev iso/Hunter-Linux-v1.0-amd64.iso \^[[0m
+^[[36;1m    -extract "/isolinux/$f" "work/$f" >/dev/null 2>&1^[[0m
+^[[36;1m  echo "--- $f"; cat "work/$f" 2>/dev/null^[[0m
+^[[36;1mdone^[[0m
+^[[36;1mecho "===== grub config on the ISO ====="^[[0m
+^[[36;1mxorriso -osirrox on -indev iso/Hunter-Linux-v1.0-amd64.iso \^[[0m
+^[[36;1m  -extract /boot/grub/grub.cfg work/grub.cfg >/dev/null 2>&1^[[0m
+^[[36;1msed -n '1,80p' work/grub.cfg 2>/dev/null^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+===== ISO tree =====
+'/'
+'/.disk'
+'/.disk/info'
+'/.disk/mkisofs'
+'/EFI'
+'/EFI/boot'
+'/README.txt'
+'/boot'
+'/boot/grub'
+'/efi.img'
+'/isolinux'
+'/isolinux/boot.cat'
+'/isolinux/hdt.c32'
+'/isolinux/isolinux.bin'
+'/isolinux/isolinux.cfg'
+'/isolinux/ldlinux.c32'
+'/isolinux/libcom32.c32'
+'/isolinux/libgpl.c32'
+'/isolinux/libmenu.c32'
+'/isolinux/libutil.c32'
+'/isolinux/live.cfg'
+'/isolinux/menu.cfg'
+'/isolinux/splash.png'
+'/isolinux/stdmenu.cfg'
+'/isolinux/utilities.cfg'
+'/isolinux/vesamenu.c32'
+'/live'
+'/live/filesystem.packages'
+'/live/filesystem.squashfs'
+'/live/initrd.img'
+'/live/initrd.img-6.12.117+deb13-amd64'
+'/live/vmlinuz'
+'/live/vmlinuz-6.12.117+deb13-amd64'
+'/sha256sum.README'
+'/sha256sum.txt'
+
+===== isolinux config on the ISO =====
+include menu.cfg
+default vesamenu.c32
+prompt 0
+# 30 second countdown, then the default entry (Hunter Linux Live) boots.
+timeout 300
+--- live.cfg
+# Live, safe-graphics and installer entries (legacy BIOS menu).
+#
+# live-build expands amd64, /live/vmlinuz and /live/initrd.img in this file only, and
+# appends the result to the generated live.cfg.
+label live-amd64
+	menu label ^Start Hunter Linux Live
+	menu default
+	linux /live/vmlinuz
+	initrd /live/initrd.img
+	append boot=live components quiet splash hostname=hunter username=user
+
+label live-amd64-safe
+	menu label Start Hunter Linux Live (^Safe Graphics)
+	linux /live/vmlinuz
+	initrd /live/initrd.img
+	append boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 hostname=hunter username=user
+
+# Same live system, but the installer is started automatically once the
+# desktop is up (the kernel parameter is read by hunter-session).
+label hunter-install
+	menu label ^Install Hunter Linux
+	linux /live/vmlinuz
+	initrd /live/initrd.img
+	append boot=live components quiet splash hostname=hunter username=user hunter.installer=1
+--- menu.cfg
+# Hunter Linux - boot menu screen for the legacy BIOS / CSM path.
+#
+# live-build substitutes boot=live components quiet splash hostname=hunter username=user and boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 hostname=hunter username=user in every
+# *.cfg file here from LB_BOOTAPPEND_LIVE / LB_BOOTAPPEND_LIVE_FAILSAFE
+# (see auto/config).  The kernel and initrd paths are literal because
+# live-build only expands @LINUX@/@INITRD@ inside live.cfg.in.
+menu hshift 0
+menu width 82
+
+menu title HUNTER LINUX 1.0
+include stdmenu.cfg
+include live.cfg
+
+menu begin advanced
+	menu label ^Advanced Boot Options
+	menu title Advanced Boot Options
+	include stdmenu.cfg
+	label mainmenu
+		menu label ^Back..
+		menu exit
+	label hunter-verbose
+		menu label Start Hunter Linux Live (^verbose boot)
+		linux /live/vmlinuz
+		initrd /live/initrd.img
+		append boot=live components hostname=hunter username=user
+	label hunter-toram
+		menu label Start Hunter Linux Live entirely in ^RAM (needs ~2 GB RAM)
+		linux /live/vmlinuz
+		initrd /live/initrd.img
+		append boot=live components quiet splash hostname=hunter username=user toram
+	label hunter-hdd
+		menu label ^Boot from the first hard disk
+		localboot 0x80
+	# Hardware detection tool from syslinux; the memtest entry is added by
+	# live-build only when a memtest image is present (it is not here).
+	include utilities.cfg
+menu end
+
+menu clear
+--- stdmenu.cfg
+menu background splash.png
+menu color title	* #e6e6e6ff *
+menu color border	* #00000000 #00000000 none
+menu color sel		* #ffffffff #3d5a80ff *
+menu color hotsel	1;7;37;40 #ffffffff #3d5a80ff *
+menu color tabmsg	* #a8b3c1ff #00000000 *
+menu color help		37;40 #ffdddd00 #00000000 none
+menu vshift 12
+menu rows 10
+menu helpmsgrow 15
+# The command line must be at least one line from the bottom.
+menu cmdlinerow 16
+menu timeoutrow 16
+menu tabmsgrow 18
+menu tabmsg Press ENTER to boot or TAB to edit a menu entry
+===== grub config on the ISO =====
+# Hunter Linux 1.0 - GRUB menu, used by the UEFI image (and by GRUB on BIOS).
+#
+# live-build replaces /live/vmlinuz-6.12.117+deb13-amd64, /live/initrd.img-6.12.117+deb13-amd64, boot=live components quiet splash hostname=hunter username=user and
+# boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 hostname=hunter username=user in every *.cfg under binary/boot/grub, so the
+# kernel paths always match the kernel actually built into the image.
+source /boot/grub/config.cfg
+
+set timeout=30
+
+menuentry "Start Hunter Linux Live" --hotkey=l {
+	linux	/live/vmlinuz-6.12.117+deb13-amd64 boot=live components quiet splash hostname=hunter username=user
+	initrd	/live/initrd.img-6.12.117+deb13-amd64
+}
+
+menuentry "Start Hunter Linux Live (Safe Graphics)" --hotkey=s {
+	linux	/live/vmlinuz-6.12.117+deb13-amd64 boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 hostname=hunter username=user
+	initrd	/live/initrd.img-6.12.117+deb13-amd64
+}
+
+menuentry "Install Hunter Linux" --hotkey=i {
+	linux	/live/vmlinuz-6.12.117+deb13-amd64 boot=live components quiet splash hostname=hunter username=user hunter.installer=1
+	initrd	/live/initrd.img-6.12.117+deb13-amd64
+}
+
+submenu "Advanced Boot Options" --hotkey=a {
+
+	source /boot/grub/theme.cfg
+
+	menuentry "Start Hunter Linux Live (verbose boot)" {
+		linux	/live/vmlinuz-6.12.117+deb13-amd64 boot=live components hostname=hunter username=user
+		initrd	/live/initrd.img-6.12.117+deb13-amd64
+	}
+
+	menuentry "Start Hunter Linux Live entirely in RAM (needs ~2 GB RAM)" {
+		linux	/live/vmlinuz-6.12.117+deb13-amd64 boot=live components quiet splash hostname=hunter username=user toram
+		initrd	/live/initrd.img-6.12.117+deb13-amd64
+	}
+
+	if true; then
+		menuentry "Verify integrity of the boot medium" --hotkey=v {
+			linux	/live/vmlinuz-6.12.117+deb13-amd64 boot=live components   hostname=hunter username=user findiso=${iso_path} verify-checksums
+			initrd	/live/initrd.img-6.12.117+deb13-amd64
+		}
+	fi
+
+	if [ "${grub_platform}" = "efi" ]; then
+		menuentry "UEFI Firmware Settings" --hotkey=f {
+			fwsetup
+		}
+	fi
+
+	menuentry "Boot from the first hard disk" {
+		if [ "${grub_platform}" = "pc" ]; then
+			set root=(hd0)
+			chainloader +1
+		else
+			exit
+		fi
+	}
+}
+Inspect the built image	Post Run actions/checkout@v4	﻿2026-11-14T02:39:33.6393019Z Post job cleanup.
+[command]/usr/bin/git version
+git version 2.56.1
+Temporarily overriding HOME='/home/runner/work/_temp/7ec6f935-5334-48cc-964d-b3630254102c' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]/usr/bin/git config --global --add safe.directory /home/runner/work/hunter-linux/hunter-linux
+[command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+http.https://github.com/.extraheader
+[command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Inspect the built image	Complete job	﻿2026-11-14T02:39:33.7914018Z Cleaning up orphan processes
+##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
