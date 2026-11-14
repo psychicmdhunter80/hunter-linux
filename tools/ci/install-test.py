@@ -517,6 +517,10 @@ def main():
         # The installer takes as long as it takes.  The progress page can sit
         # still for minutes while packages download, so "the screen stopped
         # changing" is not the end - the installer process leaving is.
+        # Calamares keeps its finished window open until somebody clicks
+        # "Done", so its process is not the signal.  The finish-up script
+        # removes the installer launcher from the target as its first act, so
+        # that file disappearing means the installation itself is complete.
         deadline = time.time() + 3600
         finished = False
         poll = 0
@@ -524,17 +528,27 @@ def main():
             poll += 1
             if poll % 5 == 1:
                 monitor.screenshot("install-progress")
-            running = shell.run("pgrep -c calamares", timeout=90).strip()
-            if running in ("0", ""):
+            # The installer unmounts the target as its very last step, so an
+            # empty calamares-root mount table means the installation is over.
+            state = shell.run("mount | grep -c calamares-root", timeout=90)
+            try:
+                mounted = int(state.strip().splitlines()[-1])
+            except (ValueError, IndexError):
+                mounted = 1
+            if mounted == 0:
                 finished = True
                 break
             time.sleep(20)
-        record("PASS: the installer finished and closed" if finished
-               else "FAIL: the installer never finished")
+        record("PASS: the installer completed the installation" if finished
+               else "FAIL: the installation never completed")
         if not finished:
             return 1
         time.sleep(5)
         monitor.screenshot("install-done")
+        # Acknowledge the finished page so the wizard closes cleanly.
+        disp.click(1005, 746)
+        time.sleep(10)
+        monitor.screenshot("install-closed")
         listing = shell.run("lsblk -o NAME,SIZE,FSTYPE /dev/vda", timeout=90)
         shell.run("tail -15 /tmp/calamares.log", timeout=60)
         if re.search(r"ext4|vfat|fat32", listing, re.IGNORECASE):
