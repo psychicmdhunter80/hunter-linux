@@ -1,0 +1,101 @@
+#!/bin/sh
+# Hunter Linux 1.0 - install GRUB into the freshly unpacked target system.
+#
+# Calamares' stock bootloader module builds its menu with grub-mkconfig, and
+# that generator aborts inside this image's chroot: it dies in its own
+# 00_header step before writing a single line, which fails the whole
+# installation at the very last stage.  Installing the boot loader and writing
+# a complete grub.cfg here keeps an installation from depending on it.
+#
+# Runs inside the target system, with /dev, /proc, /sys and the EFI system
+# partition already mounted by the installer.
+
+set -eu
+
+log() { echo "hunter-bootloader: $*"; }
+
+root_source=$(findmnt -no SOURCE /)
+root_uuid=$(findmnt -no UUID /)
+[ -n "$root_uuid" ] || root_uuid=$(blkid -s UUID -o value "$root_source")
+disk=/dev/$(lsblk -no PKNAME "$root_source" | head -n 1)
+log "root filesystem $root_source (uuid $root_uuid) on $disk"
+
+kernel=$(ls -1 /boot/vmlinuz-* 2>/dev/null | sort -V | tail -n 1) || true
+if [ -z "${kernel}" ]; then
+	echo "hunter-bootloader: no kernel in /boot" >&2
+	exit 1
+fi
+kernel_name=${kernel#/boot/}
+initrd=/boot/initrd.img-${kernel_name#vmlinuz-}
+log "kernel ${kernel_name}, initramfs ${initrd}"
+
+write_cfg() {
+	cfg=$1
+	mkdir -p "$(dirname "${cfg}")"
+	cat > "${cfg}" <<EOF
+set default=0
+set timeout=5
+insmod part_gpt
+insmod part_msdos
+insmod ext2
+insmod gzio
+insmod all_video
+set gfxpayload=keep
+search --no-floppy --fs-uuid --set=root ${root_uuid}
+
+menuentry 'Hunter Linux' {
+	load_video
+	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet
+	initrd ${initrd}
+}
+
+menuentry 'Hunter Linux (recovery mode)' {
+	load_video
+	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single
+	initrd ${initrd}
+}
+EOF
+	log "wrote ${cfg}"
+}
+
+if [ -d /sys/firmware/efi ] && [ -d /boot/efi ]; then
+	esp=/boot/efi
+	log "installing GRUB for UEFI on ${esp}"
+	grub-install --target=x86_64-efi --efi-directory="${esp}" \
+		--bootloader-id=Hunter_Linux --recheck --no-nvram --force
+
+	id_dir="${esp}/EFI/Hunter_Linux"
+	mkdir -p "${id_dir}"
+	for name in shimx64.efi mmx64.efi; do
+		if [ -f "/usr/lib/shim/${name}.signed" ]; then
+			cp -f "/usr/lib/shim/${name}.signed" "${id_dir}/${name}"
+			log "installed ${id_dir}/${name}"
+		fi
+	done
+	write_cfg "${id_dir}/grub.cfg"
+
+	# Some firmware only looks at the removable-media path.
+	mkdir -p "${esp}/EFI/BOOT"
+	if [ -f "${id_dir}/shimx64.efi" ]; then
+		cp -f "${id_dir}/shimx64.efi" "${esp}/EFI/BOOT/BOOTX64.EFI"
+		if [ -f "${id_dir}/mmx64.efi" ]; then
+			cp -f "${id_dir}/mmx64.efi" "${esp}/EFI/BOOT/mmx64.efi"
+		fi
+		log "installed the removable-media fallback loader"
+	fi
+
+	# A firmware boot entry is a convenience: the fallback above boots
+	# without it, and some firmware refuses writes during an installation.
+	if efibootmgr -c -d "${disk}" -p 1 -L "Hunter Linux" \
+		-l '\EFI\Hunter_Linux\shimx64.efi' >/dev/null 2>&1; then
+		log "added a firmware boot entry"
+	else
+		log "could not add a firmware boot entry (fallback loader is in place)"
+	fi
+else
+	log "installing GRUB for BIOS on ${disk}"
+	grub-install --target=i386-pc --recheck --force "${disk}"
+fi
+
+write_cfg /boot/grub/grub.cfg
+log "done"

@@ -18,7 +18,7 @@ mkdir -p /etc/skel/Desktop /etc/skel/Downloads /etc/skel/Documents \
 # Permissions
 chmod 0755 /usr/local/bin/hunter-session /usr/local/bin/hunter-power \
 	/usr/local/bin/hunter-install
-chmod 0755 /usr/local/sbin/hunter-postinstall
+chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader
 chmod 0644 /usr/share/xsessions/hunter.desktop
 chmod 0644 /usr/share/applications/hunter-install.desktop \
 	/usr/share/applications/hunter-power.desktop \
