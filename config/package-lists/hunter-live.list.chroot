@@ -3,3 +3,7 @@ live-boot
 live-config
 live-config-systemd
 live-tools
+# Debian live user creation. live-config's user-setup component is a
+# no-op unless this package is present, and without it no live account is
+# created and the desktop cannot autologin.
+user-setup

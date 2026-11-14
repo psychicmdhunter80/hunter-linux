@@ -52,7 +52,8 @@ ls -l "$ROOT/etc/systemd/system/multi-user.target.wants/" 2>/dev/null
 ls -l "$ROOT/etc/systemd/system/graphical.target.wants/" 2>/dev/null
 
 sec "key packages"
-for pkg in live-boot live-config live-config-systemd live-tools lightdm \
+for pkg in live-boot live-config live-config-systemd live-tools user-setup \
+	   sudo lightdm \
 	   lightdm-gtk-greeter i3 i3-wm xfce4-panel thunar firefox-esr falkon \
 	   calamares calamares-settings-debian xorg xserver-xorg-video-intel \
 	   pipewire wireplumber network-manager zram-tools; do
