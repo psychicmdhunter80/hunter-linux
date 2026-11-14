@@ -405,6 +405,20 @@ def main():
         monitor.screenshot("install-launched")
 
         disp = Display()
+
+        # Exploration: walk the pages with a fixed click on the Next button so
+        # their layouts can be measured, then stop without installing.
+        if os.environ.get("EXPLORE") == "1":
+            for step in range(6):
+                path = disp.shot(f"explore-{step}")
+                with open(os.path.join(WORK, f"ocr-explore-{step}.txt"), "w",
+                          encoding="utf-8") as handle:
+                    handle.write(disp.text(path))
+                disp.click(1005, 746)
+                time.sleep(6)
+            disp.shot("explore-end")
+            record("INFO: exploration finished")
+            return 0
         disp.wait_text("Welcome", "welcome", timeout=240)
         disp.advance("welcome", "language")
 

@@ -1,0 +1,667 @@
+Install and boot (uefi)	Set up job	﻿2026-11-14T11:01:17.4150901Z Current runner version: '2.338.2'
+##[group]Runner Image Provisioner
+Hosted Compute Agent
+Version: 20261103.629
+Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+Build Date: 2026-11-03T17:26:59Z
+Worker ID: {ab7df5ef-de4b-4e6c-ad12-23152bfe9bef}
+Region: centralus
+Cloud: Azure
+##[endgroup]
+##[group]Operating System
+Ubuntu
+24.04.5
+LTS
+##[endgroup]
+##[group]Runner Image
+Image: ubuntu-24.04
+Version: 20261111.370.1
+Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261111.370/images/ubuntu/Ubuntu2404-Readme.md
+Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261111.370
+##[endgroup]
+##[group]GITHUB_TOKEN Permissions
+Contents: read
+Metadata: read
+Packages: read
+##[endgroup]
+Secret source: Actions
+Cache mode: write
+Prepare workflow directory
+Prepare all required actions
+Getting action download info
+Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Complete job name: Install and boot (uefi)
+Install and boot (uefi)	Run actions/checkout@v4	﻿2026-11-14T11:01:18.0444884Z ##[group]Run actions/checkout@v4
+with:
+  repository: psychicmdhunter80/hunter-linux
+  token: ***
+  ssh-strict: true
+  ssh-user: git
+  persist-credentials: true
+  clean: true
+  sparse-checkout-cone-mode: true
+  fetch-depth: 1
+  fetch-tags: false
+  show-progress: true
+  lfs: false
+  submodules: false
+  set-safe-directory: true
+  allow-unsafe-pr-checkout: false
+##[endgroup]
+Syncing repository: psychicmdhunter80/hunter-linux
+##[group]Getting Git version info
+Working directory is '/home/runner/work/hunter-linux/hunter-linux'
+[command]/usr/bin/git version
+git version 2.56.1
+##[endgroup]
+Temporarily overriding HOME='/home/runner/work/_temp/9fd858f2-80d3-4c71-8a4e-a6fe0260dc8f' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]/usr/bin/git config --global --add safe.directory /home/runner/work/hunter-linux/hunter-linux
+Deleting the contents of '/home/runner/work/hunter-linux/hunter-linux'
+##[group]Initializing the repository
+[command]/usr/bin/git init /home/runner/work/hunter-linux/hunter-linux
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+Initialized empty Git repository in /home/runner/work/hunter-linux/hunter-linux/.git/
+[command]/usr/bin/git remote add origin https://github.com/psychicmdhunter80/hunter-linux
+##[endgroup]
+##[group]Disabling automatic garbage collection
+[command]/usr/bin/git config --local gc.auto 0
+##[endgroup]
+##[group]Setting up auth
+[command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+[command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+##[endgroup]
+##[group]Fetching the repository
+[command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3b6ae51ffe8c5a818f983b03b461408c2d047273:refs/remotes/origin/main
+From https://github.com/psychicmdhunter80/hunter-linux
+ * [new ref]         3b6ae51ffe8c5a818f983b03b461408c2d047273 -> origin/main
+##[endgroup]
+##[group]Determining the checkout info
+##[endgroup]
+[command]/usr/bin/git sparse-checkout disable
+[command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+##[group]Checking out the ref
+[command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+Switched to a new branch 'main'
+branch 'main' set up to track 'origin/main'.
+##[endgroup]
+[command]/usr/bin/git log -1 --format=%H
+3b6ae51ffe8c5a818f983b03b461408c2d047273
+Install and boot (uefi)	Install tooling	﻿2026-11-14T11:01:19.5035104Z ##[group]Run sudo apt-get update
+^[[36;1msudo apt-get update^[[0m
+^[[36;1msudo apt-get install -y --no-install-recommends \^[[0m
+^[[36;1m  qemu-system-x86 qemu-utils ovmf socat tesseract-ocr \^[[0m
+^[[36;1m  imagemagick python3-venv python3-pip^[[0m
+^[[36;1mpython3 -m venv "$HOME/venv"^[[0m
+^[[36;1m"$HOME/venv/bin/pip" -q install --upgrade pip^[[0m
+^[[36;1m"$HOME/venv/bin/pip" -q install vncdotool pytesseract pillow^[[0m
+^[[36;1mls -l /dev/kvm || echo "no /dev/kvm, using TCG"^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [702 kB]
+Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [772 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1450 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [315 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1713 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [345 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1883 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [430 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.6 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1195 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [238 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1788 kB]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [411 kB]
+Fetched 13.1 MB in 1s (13.6 MB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+python3-venv is already the newest version (3.12.3-0ubuntu2.1).
+python3-pip is already the newest version (24.0+dfsg-1ubuntu1.3).
+The following additional packages will be installed:
+  imagemagick-6.q16 ipxe-qemu libbrlapi0.8 libcacard0 libdaxctl1 libfdt1
+  libgif7 liblept5 libndctl6 libpcsclite1 libpmem1 librdmacm1t64 libtesseract5
+  liburing2 libusbredirparser1t64 qemu-system-common qemu-system-data seabios
+  tesseract-ocr-eng tesseract-ocr-osd
+Suggested packages:
+  imagemagick-6-doc autotrace cups-bsd | lpr | lprng enscript ffmpeg gimp
+  gnuplot grads graphviz hp2xx html2ps libwmf-bin mplayer povray radiance
+  sane-utils texlive-base-bin transfig libraw-bin pcscd samba vde2
+Recommended packages:
+  libmagickcore-6.q16-7-extra ghostscript netpbm
+  ipxe-qemu-256k-compat-efi-roms qemu-system-gui qemu-system-modules-spice
+  qemu-system-modules-opengl qemu-block-extra cpu-checker
+The following NEW packages will be installed:
+  imagemagick imagemagick-6.q16 ipxe-qemu libbrlapi0.8 libcacard0 libdaxctl1
+  libfdt1 libgif7 liblept5 libndctl6 libpcsclite1 libpmem1 librdmacm1t64
+  libtesseract5 liburing2 libusbredirparser1t64 ovmf qemu-system-common
+  qemu-system-data qemu-system-x86 qemu-utils seabios socat tesseract-ocr
+  tesseract-ocr-eng tesseract-ocr-osd
+0 upgraded, 26 newly installed, 0 to remove and 20 not upgraded.
+Need to get 32.9 MB of archives.
+After this operation, 137 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 imagemagick-6.q16 amd64 8:6.9.12.98+dfsg1-5.2build2 [254 kB]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 imagemagick amd64 8:6.9.12.98+dfsg1-5.2build2 [14.2 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 ipxe-qemu all 1.21.1+git-20220113.fbbdc3926-0ubuntu2 [1565 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libbrlapi0.8 amd64 6.6-4ubuntu5 [31.4 kB]
+Get:6 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpcsclite1 amd64 2.0.3-1build1 [21.4 kB]
+Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libcacard0 amd64 1:2.8.0-3build4 [36.5 kB]
+Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libdaxctl1 amd64 77-2ubuntu2 [21.4 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgif7 amd64 5.2.2-1ubuntu1.2 [35.6 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 liblept5 amd64 1.82.0-3build4 [1099 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libndctl6 amd64 77-2ubuntu2 [62.8 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libpmem1 amd64 1.13.1-1.1ubuntu2 [84.8 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 librdmacm1t64 amd64 50.0-2ubuntu0.2 [70.7 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 libtesseract5 amd64 5.3.4-1build5 [1291 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 liburing2 amd64 2.5-1build1 [21.1 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libusbredirparser1t64 amd64 0.13.0-2.1build1 [16.5 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-common amd64 1:8.2.2+ds-0ubuntu1.18 [1255 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-data all 1:8.2.2+ds-0ubuntu1.18 [1796 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libfdt1 amd64 1.7.0-2build1 [20.1 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 seabios all 1.16.3-2 [175 kB]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-system-x86 amd64 1:8.2.2+ds-0ubuntu1.18 [11.2 MB]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 qemu-utils amd64 1:8.2.2+ds-0ubuntu1.18 [2221 kB]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-eng all 1:4.1.0-2 [1818 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-osd all 1:4.1.0-2 [3841 kB]
+Get:25 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr amd64 5.3.4-1build5 [328 kB]
+Get:26 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 ovmf all 2024.02-2ubuntu0.10 [5188 kB]
+Get:27 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 socat amd64 1.8.0.0-4ubuntu0.1 [374 kB]
+Fetched 32.9 MB in 2s (20.0 MB/s)
+Selecting previously unselected package imagemagick-6.q16.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 216752 files and directories currently installed.)
+Preparing to unpack .../00-imagemagick-6.q16_8%3a6.9.12.98+dfsg1-5.2build2_amd64.deb ...
+Unpacking imagemagick-6.q16 (8:6.9.12.98+dfsg1-5.2build2) ...
+Selecting previously unselected package imagemagick.
+Preparing to unpack .../01-imagemagick_8%3a6.9.12.98+dfsg1-5.2build2_amd64.deb ...
+Unpacking imagemagick (8:6.9.12.98+dfsg1-5.2build2) ...
+Selecting previously unselected package ipxe-qemu.
+Preparing to unpack .../02-ipxe-qemu_1.21.1+git-20220113.fbbdc3926-0ubuntu2_all.deb ...
+Unpacking ipxe-qemu (1.21.1+git-20220113.fbbdc3926-0ubuntu2) ...
+Selecting previously unselected package libbrlapi0.8:amd64.
+Preparing to unpack .../03-libbrlapi0.8_6.6-4ubuntu5_amd64.deb ...
+Unpacking libbrlapi0.8:amd64 (6.6-4ubuntu5) ...
+Selecting previously unselected package libpcsclite1:amd64.
+Preparing to unpack .../04-libpcsclite1_2.0.3-1build1_amd64.deb ...
+Unpacking libpcsclite1:amd64 (2.0.3-1build1) ...
+Selecting previously unselected package libcacard0:amd64.
+Preparing to unpack .../05-libcacard0_1%3a2.8.0-3build4_amd64.deb ...
+Unpacking libcacard0:amd64 (1:2.8.0-3build4) ...
+Selecting previously unselected package libdaxctl1:amd64.
+Preparing to unpack .../06-libdaxctl1_77-2ubuntu2_amd64.deb ...
+Unpacking libdaxctl1:amd64 (77-2ubuntu2) ...
+Selecting previously unselected package libgif7:amd64.
+Preparing to unpack .../07-libgif7_5.2.2-1ubuntu1.2_amd64.deb ...
+Unpacking libgif7:amd64 (5.2.2-1ubuntu1.2) ...
+Selecting previously unselected package liblept5:amd64.
+Preparing to unpack .../08-liblept5_1.82.0-3build4_amd64.deb ...
+Unpacking liblept5:amd64 (1.82.0-3build4) ...
+Selecting previously unselected package libndctl6:amd64.
+Preparing to unpack .../09-libndctl6_77-2ubuntu2_amd64.deb ...
+Unpacking libndctl6:amd64 (77-2ubuntu2) ...
+Selecting previously unselected package libpmem1:amd64.
+Preparing to unpack .../10-libpmem1_1.13.1-1.1ubuntu2_amd64.deb ...
+Unpacking libpmem1:amd64 (1.13.1-1.1ubuntu2) ...
+Selecting previously unselected package librdmacm1t64:amd64.
+Preparing to unpack .../11-librdmacm1t64_50.0-2ubuntu0.2_amd64.deb ...
+Unpacking librdmacm1t64:amd64 (50.0-2ubuntu0.2) ...
+Selecting previously unselected package libtesseract5:amd64.
+Preparing to unpack .../12-libtesseract5_5.3.4-1build5_amd64.deb ...
+Unpacking libtesseract5:amd64 (5.3.4-1build5) ...
+Selecting previously unselected package liburing2:amd64.
+Preparing to unpack .../13-liburing2_2.5-1build1_amd64.deb ...
+Unpacking liburing2:amd64 (2.5-1build1) ...
+Selecting previously unselected package libusbredirparser1t64:amd64.
+Preparing to unpack .../14-libusbredirparser1t64_0.13.0-2.1build1_amd64.deb ...
+Unpacking libusbredirparser1t64:amd64 (0.13.0-2.1build1) ...
+Selecting previously unselected package qemu-system-common.
+Preparing to unpack .../15-qemu-system-common_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+Unpacking qemu-system-common (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package qemu-system-data.
+Preparing to unpack .../16-qemu-system-data_1%3a8.2.2+ds-0ubuntu1.18_all.deb ...
+Unpacking qemu-system-data (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package libfdt1:amd64.
+Preparing to unpack .../17-libfdt1_1.7.0-2build1_amd64.deb ...
+Unpacking libfdt1:amd64 (1.7.0-2build1) ...
+Selecting previously unselected package seabios.
+Preparing to unpack .../18-seabios_1.16.3-2_all.deb ...
+Unpacking seabios (1.16.3-2) ...
+Selecting previously unselected package qemu-system-x86.
+Preparing to unpack .../19-qemu-system-x86_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+Unpacking qemu-system-x86 (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package qemu-utils.
+Preparing to unpack .../20-qemu-utils_1%3a8.2.2+ds-0ubuntu1.18_amd64.deb ...
+Unpacking qemu-utils (1:8.2.2+ds-0ubuntu1.18) ...
+Selecting previously unselected package tesseract-ocr-eng.
+Preparing to unpack .../21-tesseract-ocr-eng_1%3a4.1.0-2_all.deb ...
+Unpacking tesseract-ocr-eng (1:4.1.0-2) ...
+Selecting previously unselected package tesseract-ocr-osd.
+Preparing to unpack .../22-tesseract-ocr-osd_1%3a4.1.0-2_all.deb ...
+Unpacking tesseract-ocr-osd (1:4.1.0-2) ...
+Selecting previously unselected package tesseract-ocr.
+Preparing to unpack .../23-tesseract-ocr_5.3.4-1build5_amd64.deb ...
+Unpacking tesseract-ocr (5.3.4-1build5) ...
+Selecting previously unselected package ovmf.
+Preparing to unpack .../24-ovmf_2024.02-2ubuntu0.10_all.deb ...
+Unpacking ovmf (2024.02-2ubuntu0.10) ...
+Selecting previously unselected package socat.
+Preparing to unpack .../25-socat_1.8.0.0-4ubuntu0.1_amd64.deb ...
+Unpacking socat (1.8.0.0-4ubuntu0.1) ...
+Setting up tesseract-ocr-eng (1:4.1.0-2) ...
+Setting up libfdt1:amd64 (1.7.0-2build1) ...
+Setting up ovmf (2024.02-2ubuntu0.10) ...
+Setting up socat (1.8.0.0-4ubuntu0.1) ...
+Setting up libpcsclite1:amd64 (2.0.3-1build1) ...
+Setting up libdaxctl1:amd64 (77-2ubuntu2) ...
+Setting up qemu-system-data (1:8.2.2+ds-0ubuntu1.18) ...
+Setting up seabios (1.16.3-2) ...
+Setting up imagemagick-6.q16 (8:6.9.12.98+dfsg1-5.2build2) ...
+update-alternatives: using /usr/bin/compare-im6.q16 to provide /usr/bin/compare (compare) in auto mode
+update-alternatives: using /usr/bin/compare-im6.q16 to provide /usr/bin/compare-im6 (compare-im6) in auto mode
+update-alternatives: using /usr/bin/animate-im6.q16 to provide /usr/bin/animate (animate) in auto mode
+update-alternatives: using /usr/bin/animate-im6.q16 to provide /usr/bin/animate-im6 (animate-im6) in auto mode
+update-alternatives: using /usr/bin/convert-im6.q16 to provide /usr/bin/convert (convert) in auto mode
+update-alternatives: using /usr/bin/convert-im6.q16 to provide /usr/bin/convert-im6 (convert-im6) in auto mode
+update-alternatives: using /usr/bin/composite-im6.q16 to provide /usr/bin/composite (composite) in auto mode
+update-alternatives: using /usr/bin/composite-im6.q16 to provide /usr/bin/composite-im6 (composite-im6) in auto mode
+update-alternatives: using /usr/bin/conjure-im6.q16 to provide /usr/bin/conjure (conjure) in auto mode
+update-alternatives: using /usr/bin/conjure-im6.q16 to provide /usr/bin/conjure-im6 (conjure-im6) in auto mode
+update-alternatives: using /usr/bin/import-im6.q16 to provide /usr/bin/import (import) in auto mode
+update-alternatives: using /usr/bin/import-im6.q16 to provide /usr/bin/import-im6 (import-im6) in auto mode
+update-alternatives: using /usr/bin/identify-im6.q16 to provide /usr/bin/identify (identify) in auto mode
+update-alternatives: using /usr/bin/identify-im6.q16 to provide /usr/bin/identify-im6 (identify-im6) in auto mode
+update-alternatives: using /usr/bin/stream-im6.q16 to provide /usr/bin/stream (stream) in auto mode
+update-alternatives: using /usr/bin/stream-im6.q16 to provide /usr/bin/stream-im6 (stream-im6) in auto mode
+update-alternatives: using /usr/bin/display-im6.q16 to provide /usr/bin/display (display) in auto mode
+update-alternatives: using /usr/bin/display-im6.q16 to provide /usr/bin/display-im6 (display-im6) in auto mode
+update-alternatives: using /usr/bin/montage-im6.q16 to provide /usr/bin/montage (montage) in auto mode
+update-alternatives: using /usr/bin/montage-im6.q16 to provide /usr/bin/montage-im6 (montage-im6) in auto mode
+update-alternatives: using /usr/bin/mogrify-im6.q16 to provide /usr/bin/mogrify (mogrify) in auto mode
+update-alternatives: using /usr/bin/mogrify-im6.q16 to provide /usr/bin/mogrify-im6 (mogrify-im6) in auto mode
+Setting up libgif7:amd64 (5.2.2-1ubuntu1.2) ...
+Setting up libusbredirparser1t64:amd64 (0.13.0-2.1build1) ...
+Setting up ipxe-qemu (1.21.1+git-20220113.fbbdc3926-0ubuntu2) ...
+Setting up libndctl6:amd64 (77-2ubuntu2) ...
+Setting up librdmacm1t64:amd64 (50.0-2ubuntu0.2) ...
+Setting up libbrlapi0.8:amd64 (6.6-4ubuntu5) ...
+Setting up tesseract-ocr-osd (1:4.1.0-2) ...
+Setting up liburing2:amd64 (2.5-1build1) ...
+Setting up libpmem1:amd64 (1.13.1-1.1ubuntu2) ...
+Setting up libcacard0:amd64 (1:2.8.0-3build4) ...
+Setting up liblept5:amd64 (1.82.0-3build4) ...
+Setting up imagemagick (8:6.9.12.98+dfsg1-5.2build2) ...
+Setting up libtesseract5:amd64 (5.3.4-1build5) ...
+Setting up qemu-utils (1:8.2.2+ds-0ubuntu1.18) ...
+Setting up qemu-system-common (1:8.2.2+ds-0ubuntu1.18) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/qemu-kvm.service → /usr/lib/systemd/system/qemu-kvm.service.
+
+Setting up qemu-system-x86 (1:8.2.2+ds-0ubuntu1.18) ...
+Setting up tesseract-ocr (5.3.4-1build5) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+crw-rw---- 1 root kvm 10, 232 Nov 14 11:01 /dev/kvm
+Install and boot (uefi)	Fetch the ISO	﻿2026-11-14T11:01:44.4831001Z ##[group]Run gh run download "43561438699" --name iso --repo "psychicmdhunter80/hunter-linux" --dir iso
+^[[36;1mgh run download "43561438699" --name iso --repo "psychicmdhunter80/hunter-linux" --dir iso^[[0m
+^[[36;1mls -lh iso/^[[0m
+^[[36;1mcd iso && sha256sum -c Hunter-Linux-v1.0-amd64.iso.sha256^[[0m
+shell: /usr/bin/bash -e {0}
+env:
+  GH_TOKEN: ***
+##[endgroup]
+total 1.1G
+-rw-r--r-- 1 runner runner 1.1G Nov 14 11:01 Hunter-Linux-v1.0-amd64.iso
+-rw-r--r-- 1 runner runner   94 Nov 14 11:01 Hunter-Linux-v1.0-amd64.iso.sha256
+Hunter-Linux-v1.0-amd64.iso: OK
+Install and boot (uefi)	Install to a virtual disk and boot the result	﻿2026-11-14T11:02:00.4194557Z ##[group]Run chmod +x tools/ci/install-test.py
+^[[36;1mchmod +x tools/ci/install-test.py^[[0m
+^[[36;1m"$HOME/venv/bin/python" tools/ci/install-test.py \^[[0m
+^[[36;1m  iso/Hunter-Linux-v1.0-amd64.iso out "uefi"^[[0m
+shell: /usr/bin/bash -e {0}
+##[endgroup]
+started qemu as pid 2992 (iso=True, accel=tcg)
+PASS: logged in as user on the serial console
+$ DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT
+WAIT
+$ DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT
+READY
+PASS: the X display is up
+$ DISPLAY=:0 setsid /usr/local/bin/hunter-install >/tmp/calamares.log 2>&1 &
+
+PASS: the installer was started from the live session
+$ pgrep -a calamares | head -3
+1427 calamares
+screenshot screen-install-launched.png
+screenshot 01-welcome.png
+PASS: the installer shows 'Welcome'
+screenshot 02-welcome-0.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 03-welcome-1.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 04-welcome-2.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 05-welcome-3.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 06-welcome-4.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 07-welcome-5.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 08-welcome-6.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 09-welcome-7.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 10-welcome-8.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 11-welcome-9.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 12-welcome-10.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 13-welcome-11.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 14-welcome-12.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 15-welcome-13.png
+WARN: no button found on welcome; pressing Tab then Enter
+screenshot 16-welcome-14.png
+WARN: no button found on welcome; pressing Tab then Enter
+FAIL: never reached the 'language' page after welcome
+screenshot 17-locale-0.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 18-locale-1.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 19-locale-2.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 20-locale-3.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 21-locale-4.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 22-locale-5.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 23-locale-6.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 24-locale-7.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 25-locale-8.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 26-locale-9.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 27-locale-10.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 28-locale-11.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 29-locale-12.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 30-locale-13.png
+WARN: no button found on locale; pressing Tab then Enter
+screenshot 31-locale-14.png
+WARN: no button found on locale; pressing Tab then Enter
+FAIL: never reached the 'keyboard' page after locale
+screenshot 32-keyboard-0.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 33-keyboard-1.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 34-keyboard-2.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 35-keyboard-3.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 36-keyboard-4.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 37-keyboard-5.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 38-keyboard-6.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 39-keyboard-7.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 40-keyboard-8.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 41-keyboard-9.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 42-keyboard-10.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 43-keyboard-11.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 44-keyboard-12.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 45-keyboard-13.png
+WARN: no button found on keyboard; pressing Tab then Enter
+screenshot 46-keyboard-14.png
+WARN: no button found on keyboard; pressing Tab then Enter
+FAIL: never reached the 'erase' page after keyboard
+screenshot 47-partition.png
+WARN: 'Erase disk' not found by OCR; using the keyboard
+screenshot 48-partition-selected.png
+screenshot 49-partition-0.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 50-partition-1.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 51-partition-2.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 52-partition-3.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 53-partition-4.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 54-partition-5.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 55-partition-6.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 56-partition-7.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 57-partition-8.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 58-partition-9.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 59-partition-10.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 60-partition-11.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 61-partition-12.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 62-partition-13.png
+WARN: no button found on partition; pressing Tab then Enter
+screenshot 63-partition-14.png
+WARN: no button found on partition; pressing Tab then Enter
+FAIL: never reached the 'name' page after partition
+screenshot 64-users.png
+screenshot 65-users-filled.png
+screenshot 66-users-0.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 67-users-1.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 68-users-2.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 69-users-3.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 70-users-4.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 71-users-5.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 72-users-6.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 73-users-7.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 74-users-8.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 75-users-9.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 76-users-10.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 77-users-11.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 78-users-12.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 79-users-13.png
+WARN: no button found on users; pressing Tab then Enter
+screenshot 80-users-14.png
+WARN: no button found on users; pressing Tab then Enter
+FAIL: never reached the 'summary' page after users
+screenshot 81-summary.png
+PASS: the installation was started
+screenshot screen-install-progress.png
+screenshot 82-finished.png
+screenshot 83-finished.png
+screenshot 84-finished.png
+screenshot 85-finished.png
+screenshot 86-finished.png
+screenshot 87-finished.png
+screenshot 88-finished.png
+screenshot 89-finished.png
+screenshot 90-finished.png
+screenshot 91-finished.png
+screenshot 92-finished.png
+screenshot 93-finished.png
+screenshot 94-finished.png
+screenshot 95-finished.png
+screenshot 96-finished.png
+screenshot 97-finished.png
+screenshot 98-finished.png
+screenshot 99-finished.png
+screenshot 100-finished.png
+screenshot 101-finished.png
+screenshot 102-finished.png
+screenshot 103-finished.png
+screenshot 104-finished.png
+screenshot 105-finished.png
+screenshot 106-finished.png
+screenshot 107-finished.png
+screenshot 108-finished.png
+screenshot 109-finished.png
+screenshot 110-finished.png
+screenshot 111-finished.png
+screenshot 112-finished.png
+screenshot 113-finished.png
+screenshot 114-finished.png
+screenshot 115-finished.png
+screenshot 116-finished.png
+screenshot 117-finished.png
+screenshot 118-finished.png
+screenshot 119-finished.png
+screenshot 120-finished.png
+screenshot 121-finished.png
+screenshot 122-finished.png
+screenshot 123-finished.png
+screenshot 124-finished.png
+screenshot 125-finished.png
+screenshot 126-finished.png
+screenshot 127-finished.png
+screenshot 128-finished.png
+screenshot 129-finished.png
+screenshot 130-finished.png
+screenshot 131-finished.png
+screenshot 132-finished.png
+screenshot 133-finished.png
+screenshot 134-finished.png
+screenshot 135-finished.png
+screenshot 136-finished.png
+screenshot 137-finished.png
+screenshot 138-finished.png
+screenshot 139-finished.png
+screenshot 140-finished.png
+screenshot 141-finished.png
+screenshot 142-finished.png
+screenshot 143-finished.png
+screenshot 144-finished.png
+screenshot 145-finished.png
+screenshot 146-finished.png
+FAIL: never saw ('All done', 'Done', 'complete') on screen
+$ tail -30 /tmp/calamares.log
+
+FAIL: the installation did not finish
+##[error]Process completed with exit code 1.
+Install and boot (uefi)	Upload evidence	﻿2026-11-14T12:04:17.2697172Z ##[group]Run actions/upload-artifact@v4
+with:
+  name: install-test-uefi
+  path: out/
+  retention-days: 7
+  if-no-files-found: warn
+  compression-level: 6
+  overwrite: false
+  include-hidden-files: false
+##[endgroup]
+(node:4391) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+With the provided path, there will be 156 files uploaded
+Artifact name is valid!
+Root directory input is valid!
+Beginning upload of artifact content to blob storage
+(node:4391) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Uploaded bytes 3602563
+Finished uploading artifact content to blob storage!
+SHA256 digest of uploaded artifact zip is 98676a8f621e8de2c647571a7c2d82f818d41fba339a63f55c7ef050ed6597b7
+Finalizing artifact upload
+Artifact install-test-uefi.zip successfully finalized. Artifact ID 14113575382
+Artifact install-test-uefi has been successfully uploaded! Final size is 3602563 bytes. Artifact ID is 14113575382
+Artifact download URL: https://github.com/psychicmdhunter80/hunter-linux/actions/runs/43587994016/artifacts/14113575382
+Install and boot (uefi)	Post Run actions/checkout@v4	﻿2026-11-14T12:04:18.7552964Z Post job cleanup.
+[command]/usr/bin/git version
+git version 2.56.1
+Temporarily overriding HOME='/home/runner/work/_temp/ca544a43-68b8-419a-98e2-e660f48dd6ec' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+[command]/usr/bin/git config --global --add safe.directory /home/runner/work/hunter-linux/hunter-linux
+[command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+http.https://github.com/.extraheader
+[command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+[command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+[command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+[command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Install and boot (uefi)	Complete job	﻿2026-11-14T12:04:18.9168818Z Cleaning up orphan processes
+##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

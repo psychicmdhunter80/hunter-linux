@@ -13,6 +13,11 @@ on:
         default: uefi
         type: choice
         options: [uefi, bios]
+      explore:
+        description: Only click through the pages and capture them
+        required: false
+        default: "0"
+        type: string
 
 jobs:
   install:
@@ -42,6 +47,8 @@ jobs:
           cd iso && sha256sum -c Hunter-Linux-v1.0-amd64.iso.sha256
 
       - name: Install to a virtual disk and boot the result
+        env:
+          EXPLORE: ${{ inputs.explore }}
         run: |
           chmod +x tools/ci/install-test.py
           "$HOME/venv/bin/python" tools/ci/install-test.py \
