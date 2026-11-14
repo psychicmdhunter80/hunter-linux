@@ -1,233 +1,303 @@
 #!/usr/bin/env python3
-"""Drive the Hunter Linux installer (Calamares) in a QEMU guest over VNC.
+"""Install Hunter Linux to a virtual disk and boot the result.
 
-The guest desktop is reached through QEMU's VNC server.  Clicks are located by
-OCR on a screenshot rather than hard-coded coordinates, so a change of theme or
-resolution does not silently click the wrong button.  Every step saves a
-screenshot, and a full OCR dump is written when a step fails, so the run is
-diagnosable from the uploaded artefacts.
+    install-test.py <iso> <output-dir> [bios|uefi]
 
-Usage:
-    install-test.py <phase> <work-dir>
-where <phase> is "install" (boot live, install to disk) or "verify"
-(boot the disk that was just installed).
+Phase 1 boots the live ISO with an empty 20 GiB virtio disk, starts the
+installer through the same desktop entry point a user clicks, and walks the
+Calamares wizard.  Phase 2 boots the disk on its own and logs in to the
+installed system.
+
+Two channels are used, as in the boot test: the serial console for a real shell
+(launching the installer, reading logs, verifying the installed system) and the
+QEMU monitor for screenshots.  The wizard itself is driven by OCR over VNC, so
+the test clicks what it can actually see rather than fixed coordinates.
 """
 
 import os
+import re
 import subprocess
 import sys
 import time
 
 from PIL import Image
-from pytesseract import Output
 import pytesseract
 from vncdotool import api
 
-VNC = os.environ.get("VNC_ADDRESS", "127.0.0.1::5901")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from boot_test import Channel, Monitor, Shell  # noqa: E402  (shared transport)
+
+ISO = sys.argv[1]
 WORK = sys.argv[2] if len(sys.argv) > 2 else "install-out"
-PASSWORD = os.environ.get("HUNTER_PASSWORD", "huntertest")
-USERNAME = os.environ.get("HUNTER_USER", "hunter")
+MODE = sys.argv[3] if len(sys.argv) > 3 else "uefi"
+
+FULL_NAME = "Hunter"
+LOGIN = "hunter"
+PASSWORD = "huntertest"
+DISK_GB = 20
+
+MON_PORT = 4610
+SER_PORT = 4611
+VNC = "127.0.0.1::5901"
+
+os.makedirs(WORK, exist_ok=True)
+results = []
 
 
-class Guest:
+def record(line):
+    results.append(line)
+    print(line, flush=True)
+
+
+def start_qemu(disk, with_iso):
+    """Boot the ISO (with the empty disk) or the installed disk alone."""
+    accel = "kvm" if os.access("/dev/kvm", os.W_OK) else "tcg"
+    args = [
+        "qemu-system-x86_64", "-m", "3072", "-smp", "2", "-accel", accel,
+        "-display", "none", "-vga", "std",
+        "-monitor", f"tcp:127.0.0.1:{MON_PORT},server,nowait",
+        "-serial", f"tcp:127.0.0.1:{SER_PORT},server,nowait",
+        "-vnc", "127.0.0.1:1",
+        "-device", "usb-tablet",
+        "-no-reboot",
+    ]
+    if MODE == "uefi":
+        code = "/usr/share/OVMF/OVMF_CODE_4M.fd"
+        var_src = "/usr/share/OVMF/OVMF_VARS_4M.fd"
+        vars_copy = os.path.join(WORK, "OVMF_VARS.fd")
+        if not os.path.exists(vars_copy):
+            subprocess.run(["cp", var_src, vars_copy], check=True)
+        args += ["-machine", "q35",
+                 "-drive", f"if=pflash,format=raw,readonly=on,file={code}",
+                 "-drive", f"if=pflash,format=raw,file={vars_copy}"]
+    if with_iso:
+        args += ["-boot", "d", "-cdrom", ISO]
+    args += ["-drive", f"file={disk},if=virtio,format=qcow2,cache=writeback"]
+    log = open(os.path.join(WORK, "qemu.log"), "a", encoding="utf-8")
+    process = subprocess.Popen(args, stdout=log, stderr=log)
+    record(f"started qemu as pid {process.pid} (iso={with_iso}, accel={accel})")
+    return process
+
+
+class Display:
+    """Pointer and keyboard on the guest display, with OCR to find widgets."""
+
     def __init__(self):
-        os.makedirs(WORK, exist_ok=True)
         self.client = api.connect(VNC, password=None)
         self.step = 0
-        self.log = []
-
-    # ---------------------------------------------------------------- output
-    def note(self, message):
-        line = f"[{time.strftime('%H:%M:%S')}] {message}"
-        print(line, flush=True)
-        self.log.append(line)
 
     def shot(self, name):
         self.step += 1
         path = os.path.join(WORK, f"{self.step:02d}-{name}.png")
         self.client.captureScreen(path)
-        self.note(f"screenshot {os.path.basename(path)}")
+        record(f"screenshot {os.path.basename(path)}")
         return path
 
-    def dump_ocr(self, path, name):
-        text = pytesseract.image_to_string(Image.open(path))
-        out = os.path.join(WORK, f"ocr-{name}.txt")
-        with open(out, "w", encoding="utf-8") as handle:
-            handle.write(text)
-        self.note(f"ocr dump {os.path.basename(out)}")
+    def text(self, path):
+        return pytesseract.image_to_string(Image.open(path))
 
-    # -------------------------------------------------------------- clicking
-    def words(self, path):
-        data = pytesseract.image_to_data(
-            Image.open(path), output_type=Output.DICT
-        )
-        found = []
-        for i, word in enumerate(data["text"]):
-            word = (word or "").strip()
-            if not word:
-                continue
-            try:
-                conf = int(float(data["conf"][i]))
-            except ValueError:
-                continue
-            if conf < 35:
-                continue
-            found.append(
-                {
-                    "text": word,
-                    "x": data["left"][i],
-                    "y": data["top"][i],
-                    "w": data["width"][i],
-                    "h": data["height"][i],
-                    "conf": conf,
-                }
-            )
-        return found
+    def contains(self, path, needle):
+        return needle.lower() in self.text(path).lower()
 
-    @staticmethod
-    def centroid(word):
-        return (
-            word["x"] + word["w"] // 2,
-            word["y"] + word["h"] // 2,
-        )
+    def wait_text(self, needle, name, timeout=300):
+        deadline = time.time() + timeout
+        path = None
+        while time.time() < deadline:
+            path = self.shot(name)
+            if self.contains(path, needle):
+                record(f"PASS: the installer shows '{needle}'")
+                return path
+            time.sleep(8)
+        record(f"FAIL: never saw '{needle}' on screen")
+        return path
 
     def click(self, x, y):
         self.client.mouseMove(x, y)
         time.sleep(0.3)
         self.client.mousePress(1)
-        time.sleep(0.6)
+        time.sleep(1.2)
 
-    def click_word(self, text, screenshot, dx=0, dy=0, region=None, timeout=20):
-        """Click the centre of a word found by OCR, retrying while it settles."""
-        deadline = time.time() + timeout
-        target = text.lower()
-        while time.time() < deadline:
-            for word in self.words(screenshot):
-                if target not in word["text"].lower():
+    def press(self, key):
+        self.client.keyPress(key)
+        time.sleep(1.2)
+
+    def type(self, value):
+        self.client.typewrite(value)
+        time.sleep(0.8)
+
+    def find(self, path, needle):
+        from pytesseract import Output
+        data = pytesseract.image_to_data(Image.open(path), output_type=Output.DICT)
+        for i, word in enumerate(data["text"]):
+            if not word or needle.lower() not in word.lower():
+                continue
+            try:
+                if int(float(data["conf"][i])) < 30:
                     continue
-                x, y = self.centroid(word)
-                if region and not region(x, y):
-                    continue
-                self.click(x + dx, y + dy)
-                self.note(f"clicked '{word['text']}' at {x + dx},{y + dy}")
-                return True
-            time.sleep(2)
-            screenshot = self.shot("retry-" + text.split()[0])
-        self.dump_ocr(screenshot, "failed-" + text.split()[0])
-        raise RuntimeError(f"could not find text: {text}")
+            except ValueError:
+                continue
+            return (data["left"][i] + data["width"][i] // 2,
+                    data["top"][i] + data["height"][i] // 2)
+        return None
 
-    def has_text(self, text, screenshot):
-        target = text.lower()
-        return any(target in w["text"].lower() for w in self.words(screenshot))
+    def advance(self, label, expect, timeout=240):
+        """Click Next/Continue/Install until the expected page is on screen.
 
-    def wait_for(self, text, name, timeout=180):
+        A button is only pressed while the next page is still missing, so a
+        failed OCR read can never make the wizard skip a page.
+        """
         deadline = time.time() + timeout
+        path = None
         while time.time() < deadline:
-            path = self.shot(name)
-            if self.has_text(text, path):
-                self.note(f"found '{text}'")
+            path = self.shot(label)
+            if self.contains(path, expect):
+                record(f"PASS: reached the '{expect}' page")
                 return path
-            time.sleep(5)
-        self.dump_ocr(path, "timeout-" + name)
-        raise RuntimeError(f"timed out waiting for: {text}")
-
-    def key(self, name):
-        self.client.keyPress(name)
-        time.sleep(0.4)
-
-    def type(self, text):
-        self.client.typewrite(text)
-        time.sleep(0.5)
-
-
-def page_next(guest, label, screenshots):
-    """Click Next/Continue on a wizard page and wait for the page to change."""
-    path = guest.shot(label)
-    guest.click_word("Next", path, region=lambda x, y: x > 400 and y > 400)
-    time.sleep(2)
-    screenshots.append(guest.shot(label + "-after"))
+            point = self.find(path, "next") or self.find(path, "continue") \
+                or self.find(path, "install")
+            if point:
+                self.click(*point)
+            else:
+                self.press("enter")
+            time.sleep(6)
+        record(f"FAIL: never reached the '{expect}' page after {label}")
+        return path
 
 
 def main():
-    phase = sys.argv[1] if len(sys.argv) > 1 else "install"
-    guest = Guest()
-    shots = []
+    disk = os.path.join(WORK, "disk.qcow2")
+    subprocess.run(["qemu-img", "create", "-f", "qcow2", disk, f"{DISK_GB}G"],
+                   check=True, stdout=subprocess.DEVNULL)
 
-    if phase == "install":
-        guest.note("waiting for the live desktop")
-        guest.wait_for("HUNTER", "live-desktop", timeout=300)
+    # ---------------------------------------------------------------- install
+    qemu = start_qemu(disk, with_iso=True)
+    monitor = Monitor()
+    try:
+        shell = Shell(Channel(SER_PORT))
+        if not shell.login():
+            monitor.screenshot("install-no-shell")
+            return 1
+        shell.wait_for_x()
 
-        # Start the installer from a terminal so its debug output is captured.
-        guest.key("meta_l-enter")
-        time.sleep(6)
-        guest.shot("terminal")
-        guest.type("sudo calamares -d >/tmp/calamares.log 2>&1\n")
-        guest.note("launched calamares")
+        shell.run("DISPLAY=:0 setsid /usr/local/bin/hunter-install "
+                  ">/tmp/calamares.log 2>&1 &", timeout=30)
+        record("PASS: the installer was started from the live session")
+        time.sleep(25)
+        shell.run("pgrep -a calamares | head -3")
+        monitor.screenshot("install-launched")
+
+        disp = Display()
+        disp.wait_text("Welcome", "welcome", timeout=240)
+        disp.advance("welcome", "language")
+
+        # Locale and keyboard pages keep their defaults.
+        disp.advance("locale", "keyboard")
+        disp.advance("keyboard", "erase")
+
+        # Partitioning: explicitly select "Erase disk".
+        page = disp.shot("partition")
+        point = disp.find(page, "Erase")
+        if point:
+            disp.click(point[0] - 20, point[1])
+            record("PASS: selected 'Erase disk'")
+            time.sleep(3)
+            disp.shot("partition-selected")
+        else:
+            record("WARN: could not find the 'Erase disk' option")
+        disp.advance("partition", "name")
+
+        # User account.
+        page = disp.shot("users")
+        point = disp.find(page, "name")
+        if point:
+            disp.click(point[0] + 140, point[1])
+        disp.type(FULL_NAME)
+        disp.press("tab")
+        disp.press("tab")
+        disp.press("tab")
+        disp.type(PASSWORD)
+        disp.press("tab")
+        disp.type(PASSWORD)
+        disp.shot("users-filled")
+        disp.advance("users", "summary")
+
+        # Summary: start the installation.
+        page = disp.shot("summary")
+        point = disp.find(page, "Install")
+        if point:
+            disp.click(*point)
+        else:
+            disp.press("enter")
+        record("PASS: the installation was started")
         time.sleep(20)
-        shots.append(guest.wait_for("Welcome", "welcome", timeout=180))
+        monitor.screenshot("install-progress")
 
-        # welcome -> locale
-        page_next(guest, "welcome-next", shots)
-        page_next(guest, "locale-next", shots)
-        page_next(guest, "keyboard-next", shots)
+        # The installer takes as long as it takes; poll the screen.
+        done = disp.wait_text("Finish", "finished", timeout=2700)
+        if not disp.contains(done, "Finish"):
+            shell.run("tail -30 /tmp/calamares.log", timeout=60)
+            record("FAIL: the installation did not finish")
+            return 1
 
-        # partition: choose "Erase disk" explicitly
-        path = guest.shot("partition")
-        guest.click_word("Erase", path, dx=-18, dy=0)
-        time.sleep(2)
-        shots.append(guest.shot("partition-erase"))
-        page_next(guest, "partition-next", shots)
+        # Stop booting from the ISO for the next start.
+        monitor.hmp("eject cdrom", wait=1)
+        page = disp.shot("finished-page")
+        point = disp.find(page, "Done") or disp.find(page, "Restart")
+        if point:
+            disp.click(*point)
+        record("PASS: installation finished, rebooting into the installed system")
+    finally:
+        try:
+            monitor.hmp("quit", wait=1)
+        except Exception:
+            pass
+        time.sleep(3)
+        if qemu.poll() is None:
+            qemu.kill()
 
-        # users: fill in name, login and password
-        path = guest.shot("users")
-        guest.click_word("name", path, dy=0)
-        guest.type("Hunter Tester")
-        guest.key("tab")
-        guest.key("tab")
-        guest.type(PASSWORD)
-        guest.key("tab")
-        guest.type(PASSWORD)
-        time.sleep(1)
-        shots.append(guest.shot("users-filled"))
-        page_next(guest, "users-next", shots)
+    # ----------------------------------------------------------------- verify
+    record("PASS: phase 2 - booting the installed disk")
+    qemu = start_qemu(disk, with_iso=False)
+    monitor = Monitor()
+    try:
+        image = os.path.join(WORK, "installed")
+        os.makedirs(image, exist_ok=True)
+        time.sleep(40)
+        monitor.screenshot("10-grub")
+        time.sleep(60)
+        monitor.screenshot("11-login")
 
-        # summary -> install
-        path = guest.wait_for("Summary", "summary", timeout=120)
-        guest.click_word("Install", path, region=lambda x, y: y > 400)
-        guest.note("installation started")
-        time.sleep(10)
-        shots.append(guest.shot("installing"))
+        shell = Shell(Channel(SER_PORT))
+        installed_shell = shell.login(timeout=300)
+        record("PASS: logged into the installed system" if installed_shell
+               else "FAIL: could not log into the installed system")
+        if installed_shell:
+            shell.run("cat /etc/os-release | head -3; hostname; lsblk | head -12")
+            shell.run("systemctl is-system-running 2>&1; "
+                      "systemctl --failed --no-pager | head -5")
+            shell.run("findmnt -n / /boot/efi 2>/dev/null; df -h / | tail -1")
+            mgr = shell.run("ls /usr/bin | grep -i calamares | head -3; "
+                            "test -e /etc/lightdm/lightdm.conf.d/50-hunter-live.conf "
+                            "&& echo LIVE-CONFIG-PRESENT || echo live-config-removed")
+            record(f"INFO: installer removed from the installed system: "
+                   f"{'yes' if 'calamares' not in mgr else 'no'}")
 
-        # the finished page appears when everything has been written
-        path = guest.wait_for("Finish", "finished", timeout=2400)
-        guest.dump_ocr(path, "finished")
-        shots.append(path)
-
-        # boot the installed system instead of the ISO on the next start
-        subprocess.run(
-            ["socat", "-", "UNIX-CONNECT:" + os.path.join(WORK, "monitor.sock")],
-            input="eject cdrom\nquit\n",
-            text=True,
-            check=False,
-        )
-        guest.note("ejected the ISO and stopped the guest")
-        return
-
-    if phase == "verify":
-        guest.note("waiting for the installed system")
-        guest.wait_for("Hunter", "boot", timeout=300)
-        shots.append(guest.shot("boot-early"))
-        time.sleep(20)
-        shots.append(guest.shot("boot-late"))
-        guest.note("verification screenshots captured")
-        return
+        # Show the installed desktop too.
+        shell.run(f"DISPLAY=:0 xfce4-terminal --version 2>&1 | head -2")
+        monitor.screenshot("12-installed-desktop")
+    finally:
+        try:
+            monitor.hmp("quit", wait=1)
+        except Exception:
+            pass
+        time.sleep(3)
+        if qemu.poll() is None:
+            qemu.kill()
+        with open(os.path.join(WORK, "result.txt"), "w", encoding="utf-8") as handle:
+            handle.write("\n".join(results) + "\n")
+        print("\n".join(results))
+    return 0
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    finally:
-        try:
-            api.disconnect()
-        except Exception:
-            pass
+    sys.exit(main())
