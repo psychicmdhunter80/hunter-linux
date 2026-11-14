@@ -319,16 +319,17 @@ def main():
             shell.run("ls /usr/lib/x86_64-linux-gnu/xfce4/panel/plugins/ | head -40",
                       timeout=60)
             shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel -l | head -40", timeout=60)
-            shell.run("DISPLAY=:0 xfce4-panel -q; sleep 2; "
-                      "mv -f ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml "
-                      "~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml.bak; "
-                      "DISPLAY=:0 xfconf-query -c xfce4-panel -r -R >/dev/null 2>&1; "
-                      "echo reset-done", timeout=120)
-            shell.run("DISPLAY=:0 setsid xfce4-panel >/tmp/panel.log 2>&1 &", timeout=30)
-            time.sleep(25)
-            monitor.screenshot("05-panel-default")
-            shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel -l | head -40", timeout=60)
-            shell.run("cat /tmp/panel.log | head -20", timeout=30)
+            # Ask the running panel to add a plugin itself: if the clock shows
+            # up the panel works and only the plugin-ids binding is missing,
+            # and the saved file then shows the layout 4.20 really uses.
+            shell.run("DISPLAY=:0 xfce4-panel --add clock; sleep 4; "
+                      "DISPLAY=:0 xfce4-panel -s; sleep 4; echo added", timeout=120)
+            time.sleep(15)
+            monitor.screenshot("05-panel-clock-added")
+            shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel -l "
+                      "| grep -E 'plugin-ids|/panels'", timeout=60)
+            shell.run("cat ~/.config/xfce4/xfconf/xfce-perchannel-xml/"
+                      "xfce4-panel.xml", timeout=60, lines=120)
 
         # --- idle memory -----------------------------------------------------
         shell.run("pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; "
