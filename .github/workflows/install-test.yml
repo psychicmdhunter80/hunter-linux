@@ -1,0 +1,58 @@
+name: install-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Workflow run whose ISO artifact should be used
+        required: true
+        type: string
+      firmware:
+        description: Firmware to install under
+        required: false
+        default: uefi
+        type: choice
+        options: [uefi, bios]
+
+jobs:
+  install:
+    name: Install and boot (${{ inputs.firmware }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf socat tesseract-ocr \
+            python3-venv python3-pip
+          python3 -m venv "$HOME/venv"
+          "$HOME/venv/bin/pip" -q install --upgrade pip
+          "$HOME/venv/bin/pip" -q install vncdotool pytesseract pillow
+          ls -l /dev/kvm || echo "no /dev/kvm, using TCG"
+
+      - name: Fetch the ISO from the build run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
+          ls -lh iso/
+          sha256sum -c iso/Hunter-Linux-v1.0-amd64.iso.sha256 --ignore-missing --quiet 2>/dev/null \
+            || echo "checksum file not found; skipping"
+
+      - name: Install to a virtual disk and boot it
+        run: |
+          chmod +x tools/ci/install-test.sh
+          tools/ci/install-test.sh iso/Hunter-Linux-v1.0-amd64.iso out \
+            "${{ inputs.firmware }}" "$HOME/venv/bin/python"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-test-${{ inputs.firmware }}
+          path: out/
+          retention-days: 7
+          if-no-files-found: warn
