@@ -275,11 +275,15 @@ def main():
         if not running:
             # Start it in the foreground so its own complaint is captured.
             shell.run("DISPLAY=:0 timeout 20 xfce4-panel 2>&1 | head -20", timeout=60)
-        shell.run("xfconf-query -c xfce4-panel -p /panels -v 2>&1; "
-                  "xfconf-query -c xfce4-panel -l 2>&1 | head -10")
+        conf = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel -p /panels -v 2>&1; "
+                         "DISPLAY=:0 xfconf-query -c xfce4-panel -l 2>&1 | head -20")
+        plugins = len(re.findall(r"/plugins/plugin-\d+" , conf)) + \
+                  len(re.findall(r"/plugin-\d+", conf))
+        check(results, f"the panel loaded its plugins ({plugins} properties)",
+              plugins > 0)
 
         shell.run("free -m")
-        shell.run("xrandr 2>&1 | head -3")
+        shell.run("DISPLAY=:0 xrandr 2>&1 | head -3")
         shell.run("tail -15 /var/log/lightdm/lightdm.log 2>/dev/null")
 
         # --- applications ----------------------------------------------------
@@ -298,9 +302,10 @@ def main():
                   bool(number) and int(number.group(1)) > 0)
 
         # --- installer -------------------------------------------------------
-        shell.run("DISPLAY=:0 setsid sudo -n calamares -d >/tmp/calamares.log "
+        # Launch the real desktop entry point, exactly as a user would.
+        shell.run("DISPLAY=:0 setsid /usr/local/bin/hunter-install >/tmp/calamares.log "
                   "2>&1 &", timeout=30)
-        time.sleep(75)
+        time.sleep(90)
         monitor.screenshot("03-installer")
         log = shell.run("pgrep -c calamares; echo ---; tail -25 /tmp/calamares.log",
                         timeout=60)

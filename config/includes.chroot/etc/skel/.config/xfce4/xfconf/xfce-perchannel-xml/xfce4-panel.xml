@@ -2,7 +2,12 @@
 
 <!-- Hunter Linux 1.0 - default XFCE panel: one traditional bottom panel. -->
 <channel name="xfce4-panel" version="1.0">
-  <property name="panels" type="uint" value="1"/>
+  <!-- "panels" is an array of panel ids; a scalar here makes xfce4-panel
+       ignore the file and fall back to a default panel. -->
+  <property name="panels" type="array">
+    <value type="int" value="1"/>
+  </property>
+  <property name="panels-version" type="uint" value="2"/>
   <property name="panel-1" type="empty">
     <property name="autohide-behavior" type="uint" value="0"/>
     <property name="disable-struts" type="bool" value="false"/>
@@ -10,8 +15,10 @@
     <property name="length-adjust" type="bool" value="true"/>
     <property name="mode" type="uint" value="0"/>
     <property name="nrows" type="uint" value="1"/>
-    <!-- p=8: bottom edge; length 100 makes the bar span the screen width -->
-    <property name="position" type="string" value="p=8;x=0;y=0"/>
+    <!-- p=6: top edge.  i3 places dock clients along the top of the screen,
+         so asking for the bottom here would just be overridden.  length 100
+         makes the bar span the screen width. -->
+    <property name="position" type="string" value="p=6;x=0;y=0"/>
     <property name="position-locked" type="bool" value="true"/>
     <property name="size" type="uint" value="30"/>
     <property name="size-adjust" type="bool" value="false"/>

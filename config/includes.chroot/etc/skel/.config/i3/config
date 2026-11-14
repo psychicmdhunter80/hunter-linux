@@ -82,8 +82,10 @@ bindsym $mod+Shift+8 move container to workspace number 8
 bindsym $mod+Shift+9 move container to workspace number 9
 bindsym $mod+Shift+0 move container to workspace number 10
 
-bindsym $mod+Shift+Right move container to workspace next
-bindsym $mod+Shift+Left move container to workspace prev
+# Send the focused window to the next/previous workspace.  Super+Shift+arrows
+# are already taken by move left/right above, so this uses Super+Ctrl.
+bindsym $mod+Control+Right move container to workspace next
+bindsym $mod+Control+Left move container to workspace prev
 
 # ---------------------------------------------------------------------------
 # Session: power menu, screen lock, reload/restart
