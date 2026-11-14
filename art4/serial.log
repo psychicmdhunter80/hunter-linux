@@ -1,0 +1,319 @@
+[!p]104[?7h[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
+Hunter Linux 1.0 hunter ttyS0
+hunter login: user
+Password: 
+Linux hunter 6.12.117+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+[?2004huser@hunter:~$ echo "HUNTERMARK""1BEGIN"; (cat /proc/cmdline; uname -r; id) 2>&1 | head -40; echo "HUNTERMARK""1END"
+[?2004lHUNTERMARK1BEGIN
+BOOT_IMAGE=/live/vmlinuz boot=live components quiet splash console=ttyS0,115200 hostname=hunter username=user autologin initrd=/live/initrd.img
+6.12.117+deb13-amd64
+uid=1000(user) gid=1000(user) groups=1000(user),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),102(bluetooth)
+HUNTERMARK1END
+echo "HUNTERMARK""2BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""2END"
+[?2004huser@hunter:~$ echo "HUNTERMARK""2BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""2END"
+[?2004lHUNTERMARK2BEGIN
+WAIT
+X0
+HUNTERMARK2END
+[?2004huser@hunter:~$ echo "HUNTERMARK""3BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""3END"
+[?2004lHUNTERMARK3BEGIN
+WAIT
+X0
+HUNTERMARK3END
+[?2004huser@hunter:~$ echo "HUNTERMARK""4BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""4END"
+[?2004lHUNTERMARK4BEGIN
+WAIT
+X0
+HUNTERMARK4END
+[?2004huser@hunter:~$ echo "HUNTERMARK""5BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""5END"
+[?2004lHUNTERMARK5BEGIN
+WAIT
+X0
+HUNTERMARK5END
+[?2004huser@hunter:~$ echo "HUNTERMARK""6BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""6END"
+[?2004lHUNTERMARK6BEGIN
+WAIT
+X0
+HUNTERMARK6END
+[?2004huser@hunter:~$ echo "HUNTERMARK""7BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""7END"
+[?2004lHUNTERMARK7BEGIN
+WAIT
+X0
+HUNTERMARK7END
+[?2004huser@hunter:~$ echo "HUNTERMARK""8BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""8END"
+[?2004lHUNTERMARK8BEGIN
+WAIT
+X0
+HUNTERMARK8END
+[?2004huser@hunter:~$ echo "HUNTERMARK""9BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""9END"
+[?2004lHUNTERMARK9BEGIN
+WAIT
+X0
+HUNTERMARK9END
+[?2004huser@hunter:~$ echo "HUNTERMARK""10BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""10END"
+[?2004lHUNTERMARK10BEGIN
+WAIT
+X0
+HUNTERMARK10END
+[?2004huser@hunter:~$ echo "HUNTERMARK""11BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""11END"
+[?2004lHUNTERMARK11BEGIN
+WAIT
+X0
+HUNTERMARK11END
+[?2004huser@hunter:~$ echo "HUNTERMARK""12BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""12END"
+[?2004lHUNTERMARK12BEGIN
+WAIT
+X0
+HUNTERMARK12END
+[?2004huser@hunter:~$ echo "HUNTERMARK""13BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""13END"
+[?2004lHUNTERMARK13BEGIN
+WAIT
+X0
+HUNTERMARK13END
+[?2004huser@hunter:~$ echo "HUNTERMARK""14BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""14END"
+[?2004lHUNTERMARK14BEGIN
+WAIT
+X0
+HUNTERMARK14END
+[?2004huser@hunter:~$ echo "HUNTERMARK""15BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""15END"
+[?2004lHUNTERMARK15BEGIN
+WAIT
+X0
+HUNTERMARK15END
+[?2004huser@hunter:~$ echo "HUNTERMARK""16BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""16END"
+[?2004lHUNTERMARK16BEGIN
+WAIT
+X0
+HUNTERMARK16END
+[?2004huser@hunter:~$ echo "HUNTERMARK""17BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""17END"
+[?2004lHUNTERMARK17BEGIN
+WAIT
+X0
+HUNTERMARK17END
+[?2004huser@hunter:~$ echo "HUNTERMARK""18BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""18END"
+[?2004lHUNTERMARK18BEGIN
+WAIT
+X0
+HUNTERMARK18END
+[?2004huser@hunter:~$ echo "HUNTERMARK""19BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""19END"
+[?2004lHUNTERMARK19BEGIN
+WAIT
+X0
+HUNTERMARK19END
+[?2004huser@hunter:~$ echo "HUNTERMARK""20BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""20END"
+[?2004lHUNTERMARK20BEGIN
+WAIT
+X0
+HUNTERMARK20END
+[?2004huser@hunter:~$ echo "HUNTERMARK""21BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""21END"
+[?2004lHUNTERMARK21BEGIN
+WAIT
+X0
+HUNTERMARK21END
+[?2004huser@hunter:~$ echo "HUNTERMARK""22BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""22END"
+[?2004lHUNTERMARK22BEGIN
+WAIT
+X0
+HUNTERMARK22END
+[?2004huser@hunter:~$ echo "HUNTERMARK""23BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""23END"
+[?2004lHUNTERMARK23BEGIN
+WAIT
+X0
+HUNTERMARK23END
+[?2004huser@hunter:~$ echo "HUNTERMARK""24BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""24END"
+[?2004lHUNTERMARK24BEGIN
+WAIT
+X0
+HUNTERMARK24END
+[?2004huser@hunter:~$ echo "HUNTERMARK""25BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""25END"
+[?2004lHUNTERMARK25BEGIN
+WAIT
+X0
+HUNTERMARK25END
+[?2004huser@hunter:~$ echo "HUNTERMARK""26BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""26END"
+[?2004lHUNTERMARK26BEGIN
+WAIT
+X0
+HUNTERMARK26END
+[?2004huser@hunter:~$ echo "HUNTERMARK""27BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""27END"
+[?2004lHUNTERMARK27BEGIN
+WAIT
+X0
+HUNTERMARK27END
+[?2004huser@hunter:~$ echo "HUNTERMARK""28BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""28END"
+[?2004lHUNTERMARK28BEGIN
+WAIT
+X0
+HUNTERMARK28END
+[?2004huser@hunter:~$ echo "HUNTERMARK""29BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""29END"
+[?2004lHUNTERMARK29BEGIN
+WAIT
+X0
+HUNTERMARK29END
+[?2004huser@hunter:~$ echo "HUNTERMARK""30BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""30END"
+[?2004lHUNTERMARK30BEGIN
+WAIT
+X0
+HUNTERMARK30END
+[?2004huser@hunter:~$ echo "HUNTERMARK""31BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""31END"
+[?2004lHUNTERMARK31BEGIN
+WAIT
+X0
+HUNTERMARK31END
+[?2004huser@hunter:~$ echo "HUNTERMARK""32BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""32END"
+[?2004lHUNTERMARK32BEGIN
+WAIT
+X0
+HUNTERMARK32END
+[?2004huser@hunter:~$ echo "HUNTERMARK""33BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""33END"
+[?2004lHUNTERMARK33BEGIN
+WAIT
+X0
+HUNTERMARK33END
+[?2004huser@hunter:~$ echo "HUNTERMARK""34BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""34END"
+[?2004lHUNTERMARK34BEGIN
+WAIT
+X0
+HUNTERMARK34END
+[?2004huser@hunter:~$ echo "HUNTERMARK""35BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""35END"
+[?2004lHUNTERMARK35BEGIN
+WAIT
+X0
+HUNTERMARK35END
+[?2004huser@hunter:~$ echo "HUNTERMARK""36BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""36END"
+[?2004lHUNTERMARK36BEGIN
+WAIT
+X0
+HUNTERMARK36END
+[?2004huser@hunter:~$ echo "HUNTERMARK""37BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""37END"
+[?2004lHUNTERMARK37BEGIN
+WAIT
+X0
+HUNTERMARK37END
+[?2004huser@hunter:~$ echo "HUNTERMARK""38BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""38END"
+[?2004lHUNTERMARK38BEGIN
+WAIT
+X0
+HUNTERMARK38END
+[?2004huser@hunter:~$ echo "HUNTERMARK""39BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""39END"
+[?2004lHUNTERMARK39BEGIN
+WAIT
+X0
+HUNTERMARK39END
+[?2004huser@hunter:~$ echo "HUNTERMARK""40BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""40END"
+[?2004lHUNTERMARK40BEGIN
+WAIT
+X0
+HUNTERMARK40END
+[?2004huser@hunter:~$ echo "HUNTERMARK""41BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""41END"
+[?2004lHUNTERMARK41BEGIN
+WAIT
+X0
+HUNTERMARK41END
+[?2004huser@hunter:~$ echo "HUNTERMARK""42BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""42END"
+[?2004lHUNTERMARK42BEGIN
+WAIT
+X0
+HUNTERMARK42END
+[?2004huser@hunter:~$ echo "HUNTERMARK""43BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""43END"
+[?2004lHUNTERMARK43BEGIN
+WAIT
+X0
+HUNTERMARK43END
+[?2004huser@hunter:~$ echo "HUNTERMARK""44BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""44END"
+[?2004lHUNTERMARK44BEGIN
+WAIT
+X0
+HUNTERMARK44END
+[?2004huser@hunter:~$ echo "HUNTERMARK""45BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""45END"
+[?2004lHUNTERMARK45BEGIN
+WAIT
+X0
+HUNTERMARK45END
+[?2004huser@hunter:~$ echo "HUNTERMARK""46BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""46END"
+[?2004lHUNTERMARK46BEGIN
+WAIT
+X0
+HUNTERMARK46END
+[?2004huser@hunter:~$ echo "HUNTERMARK""47BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""47END"
+[?2004lHUNTERMARK47BEGIN
+WAIT
+X0
+HUNTERMARK47END
+[?2004huser@hunter:~$ echo "HUNTERMARK""48BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""48END"
+[?2004lHUNTERMARK48BEGIN
+WAIT
+X0
+HUNTERMARK48END
+[?2004huser@hunter:~$ echo "HUNTERMARK""49BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""49END"
+[?2004lHUNTERMARK49BEGIN
+WAIT
+X0
+HUNTERMARK49END
+[?2004huser@hunter:~$ echo "HUNTERMARK""50BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""50END"
+[?2004lHUNTERMARK50BEGIN
+WAIT
+X0
+HUNTERMARK50END
+[?2004huser@hunter:~$ echo "HUNTERMARK""51BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""51END"
+[?2004lHUNTERMARK51BEGIN
+WAIT
+X0
+HUNTERMARK51END
+[?2004huser@hunter:~$ echo "HUNTERMARK""52BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""52END"
+[?2004lHUNTERMARK52BEGIN
+WAIT
+X0
+HUNTERMARK52END
+[?2004huser@hunter:~$ echo "HUNTERMARK""53BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""53END"
+[?2004lHUNTERMARK53BEGIN
+WAIT
+X0
+HUNTERMARK53END
+[?2004huser@hunter:~$ echo "HUNTERMARK""54BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""54END"
+[?2004lHUNTERMARK54BEGIN
+WAIT
+X0
+HUNTERMARK54END
+[?2004huser@hunter:~$ echo "HUNTERMARK""55BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""55END"
+[?2004lHUNTERMARK55BEGIN
+WAIT
+X0
+HUNTERMARK55END
+[?2004huser@hunter:~$ echo "HUNTERMARK""56BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""56END"
+[?2004lHUNTERMARK56BEGIN
+WAIT
+X0
+HUNTERMARK56END
+[?2004huser@hunter:~$ echo "HUNTERMARK""57BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""57END"
+[?2004lHUNTERMARK57BEGIN
+WAIT
+X0
+HUNTERMARK57END
+[?2004huser@hunter:~$ echo "HUNTERMARK""58BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""58END"
+[?2004lHUNTERMARK58BEGIN
+WAIT
+X0
+HUNTERMARK58END
+[?2004huser@hunter:~$ echo "HUNTERMARK""59BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""59END"
+[?2004lHUNTERMARK59BEGIN
+WAIT
+X0
+HUNTERMARK59END
+[?2004huser@hunter:~$ echo "HUNTERMARK""60BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""60END"
+[?2004lHUNTERMARK60BEGIN
+WAIT
+X0
+HUNTERMARK60END
+[?2004huser@hunter:~$ echo "HUNTERMARK""61BEGIN"; (xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""61END"
+[?2004lHUNTERMARK61BEGIN
+WAIT
+X0
+HUNTERMARK61END

@@ -173,9 +173,12 @@ class Shell:
     def wait_for_x(self, timeout=600):
         deadline = time.time() + timeout
         while time.time() < deadline:
-            if "READY" in self.run("xdpyinfo >/dev/null 2>&1 && echo READY || "
-                                   "echo WAIT; ls /tmp/.X11-unix/ 2>/dev/null",
-                                   timeout=60):
+            probe = self.run(
+                "DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; "
+                "pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null",
+                timeout=60,
+            )
+            if "READY" in probe:
                 record("PASS: the X display is up")
                 return True
             time.sleep(10)
@@ -254,8 +257,10 @@ def main():
             monitor.screenshot("no-x")
             return 1
 
-        time.sleep(60)
+        time.sleep(30)
         monitor.screenshot("01-desktop")
+        shell.run("pgrep -a lightdm | head -2; pgrep -a i3 | head -2; "
+                  "pgrep -a xfce4-panel | head -2; pgrep -a xfsettingsd | head -2")
 
         # --- i3 -------------------------------------------------------------
         i3out = shell.run("i3 -C -c ~/.config/i3/config; echo rc=$?", timeout=120)
