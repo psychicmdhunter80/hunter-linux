@@ -564,7 +564,18 @@ def main():
         monitor.screenshot("06-desktop")
 
         # --- audio: PipeWire, WirePlumber, a real sink -----------------------
+        # The session may still be settling: give PipeWire up to 30 s to appear
+        # before calling it missing, and print the user units when it does not.
+        for _ in range(10):
+            ready = shell.run("pgrep -x pipewire >/dev/null && "
+                              "pgrep -x wireplumber >/dev/null && echo AUDIO-UP",
+                              timeout=60)
+            if "AUDIO-UP" in ready:
+                break
+            time.sleep(3)
         audio = shell.run(
+            "systemctl --user is-active pipewire pipewire-pulse wireplumber 2>&1; "
+            "echo ---; "
             "pactl info 2>&1 | grep -iE 'server name|server version'; echo ---; "
             "pgrep -x pipewire >/dev/null && echo pipewire-running || echo pipewire-missing; "
             "pgrep -x wireplumber >/dev/null && echo wireplumber-running || echo wireplumber-missing; "
@@ -572,9 +583,11 @@ def main():
             timeout=90)
         chunks = audio.split("---")
         check(results, "the sound server is PipeWire",
-              "PipeWire" in chunks[0])
+              any("PipeWire" in chunk for chunk in chunks))
         check(results, "PipeWire and WirePlumber are running",
-              "pipewire-running" in chunks[1] and "wireplumber-running" in chunks[1])
+              "pipewire-running" in chunks[-2] and
+              "wireplumber-running" in chunks[-2])
+        record(f"INFO: audio units: {chunks[0].strip()[:120]}")
 
         # --- dark theme: the theme has to be present, not just requested ---
         theme = shell.run(
@@ -591,8 +604,11 @@ def main():
               "THEME=present" in tchunks[1])
         check(results, "GTK applications are configured dark",
               tchunks[2].strip().endswith("1"))
-        check(results, "the window decorations are dark",
-              tchunks[3].strip().endswith("1"))
+        try:
+            decorations = int(tchunks[3].strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            decorations = 0
+        check(results, "the window decorations are dark", decorations >= 2)
         record(f"INFO: theme: {' | '.join(c.strip()[:60] for c in tchunks)}")
 
         # --- one installer entry in the live menu ---------------------------
@@ -630,13 +646,16 @@ def main():
             "systemctl is-active hunter-graphics.service 2>&1; echo ---; "
             "test -e /etc/X11/xorg.conf.d/20-intel.conf && echo TEARFREE=present "
             "|| echo TEARFREE=absent; echo ---; "
-            "lspci -nn 2>/dev/null | grep -iE 'VGA|3D' | head -2",
+            "lspci -nn 2>/dev/null | grep -iE 'VGA|3D' | head -2; echo ---; "
+            "systemctl status --no-pager hunter-graphics.service 2>&1 | head -6; "
+            "journalctl -u hunter-graphics.service -n 5 --no-pager 2>&1 | tail -5",
             timeout=90)
         gchunks = graphics.split("---")
         check(results, "the TearFree service is enabled",
               "enabled" in gchunks[0])
         check(results, "the TearFree service ran",
-              "active" in gchunks[1])
+              gchunks[1].strip() in ("active", "activating", "reloading"))
+        record(f"INFO: graphics detail: {gchunks[-1].strip()[:220]}")
         check(results, "TearFree is not forced onto unrelated graphics",
               "TEARFREE=absent" in gchunks[2])
         record(f"INFO: graphics: {' | '.join(c.strip()[:70] for c in gchunks)}")
