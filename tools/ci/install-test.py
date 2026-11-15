@@ -473,15 +473,39 @@ def main():
         # badly at this resolution, so the buttons are clicked at fixed screen
         # positions and every page change is confirmed by comparing the
         # screenshot itself rather than by reading text.
-        NEXT = (1005, 746)
+        # The window is centred in the workspace i3 hands out, so the panel
+        # along the bottom edge moves it.  Read its real origin instead of
+        # assuming one, and keep the widget positions relative to it.
+        origin = (135, 50)
+        win_id = shell.run("DISPLAY=:0 xdotool search --class calamares "
+                           "2>/dev/null | head -1", timeout=60).strip()
+        if win_id:
+            info = shell.run(f"DISPLAY=:0 xdotool getwindowgeometry {win_id} 2>&1",
+                             timeout=60)
+            position = re.search(r"Position:\s*(-?\d+),(-?\d+)", info)
+            size = re.search(r"Geometry:\s*(\d+)x(\d+)", info)
+            if position:
+                origin = (int(position.group(1)), int(position.group(2)))
+            record(f"INFO: installer window at {origin} "
+                   f"{size.groups() if size else ''}")
+        NEXT = (origin[0] + 970, origin[1] + 670)
         time.sleep(20)
         disp.shot("welcome")
 
-        def step(label, tries=4):
+        def step(label, tries=5):
+            """Click the wizard's own button and confirm the page changed.
+
+            The fixed coordinate is only a fallback: the window is centred in
+            the workspace i3 gives it, so its bottom row moved when the panel
+            started reserving space along the bottom edge.
+            """
             before = disp.signature(disp.shot(f"{label}-before"))
-            for _ in range(tries):
-                disp.click(*NEXT)
-                time.sleep(6)
+            for attempt in range(tries):
+                path = disp.shot(f"{label}-try{attempt}")
+                point = disp.button(path) or NEXT
+                record(f"INFO: {label}: clicking {point}")
+                disp.click(*point)
+                time.sleep(7)
                 after = disp.shot(f"{label}-after")
                 if disp.differs(before, disp.signature(after)):
                     record(f"PASS: left the {label} page")
@@ -494,20 +518,20 @@ def main():
         step("keyboard")     # -> Partitions
 
         # Partitions: choose "Erase disk", then continue.
-        disp.shot("partition")
-        disp.click(313, 130)
-        time.sleep(3)
-        disp.shot("partition-erase")
+        disp.select_erase(disp.shot("partition"))
+        time.sleep(2)
         step("partition")    # -> Users
 
         # Users: only the name and the password.  Calamares fills the login
         # name and the computer name from the name by itself, and typing into
         # them would append to the auto-filled text.
         disp.shot("users")
-        for point, value in (((404, 113), FULL_NAME),
-                             ((403, 281), PASSWORD),
-                             ((607, 281), PASSWORD)):
-            disp.click(*point)
+        # Field positions measured from the window's top-left corner when the
+        # wizard was laid out at 1010x700 (name field, password, confirmation).
+        for offset, value in (((269, 63), FULL_NAME),
+                              ((268, 231), PASSWORD),
+                              ((472, 231), PASSWORD)):
+            disp.click(origin[0] + offset[0], origin[1] + offset[1])
             disp.type(value)
         disp.shot("users-filled")
         step("users")        # -> Summary
@@ -683,9 +707,11 @@ def main():
             for line in (pchunks[1].splitlines() if len(pchunks) > 1 else []):
                 if "xfce4-panel" not in line:
                     continue
-                sizes = re.findall(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", line)
-                if sizes:
-                    width, height, x, y = (int(v) for v in sizes[-1])
+                size = re.search(r"(\d+)x(\d+)", line)
+                position = re.findall(r"\+(-?\d+)\+(-?\d+)", line)
+                if size and position:
+                    width, height = int(size.group(1)), int(size.group(2))
+                    x, y = (int(v) for v in position[-1])
                     boxes.append((width, height, x, y))
             boxes.sort(key=lambda box: (box[0], box[1]))
             found = boxes[-1] if boxes else None

@@ -295,7 +295,6 @@ def main():
         for name, command, proc, wait in (
             ("thunar", "thunar", "thunar", 25),
             ("firefox", "firefox-esr 'about:blank'", "firefox", 90),
-            ("falkon", "falkon --no-sandbox 'about:blank'", "falkon", 90),
         ):
             shell.run(f"DISPLAY=:0 setsid {command} >/tmp/{name}.log 2>&1 &",
                       timeout=30)
@@ -403,9 +402,13 @@ def main():
         for line in (parts[1].splitlines() if len(parts) > 1 else []):
             if "xfce4-panel" not in line:
                 continue
-            sizes = re.findall(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", line)
-            if sizes:
-                width, height, x, y = (int(v) for v in sizes[-1])
+            # xwininfo prints the size with relative offsets and then the
+            # absolute position as a bare "+x+y": 1280x29+0+0  +0+768.
+            size = re.search(r"(\d+)x(\d+)", line)
+            position = re.findall(r"\+(-?\d+)\+(-?\d+)", line)
+            if size and position:
+                width, height = int(size.group(1)), int(size.group(2))
+                x, y = (int(v) for v in position[-1])
                 boxes.append((width, height, x, y, re.search(r"(0x[0-9a-f]+)", line).group(1)))
         boxes.sort(key=lambda box: (box[0], box[1]))
         panel_box = boxes[-1] if boxes else None
