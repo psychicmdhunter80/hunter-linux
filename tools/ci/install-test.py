@@ -713,7 +713,7 @@ def main():
                     continue
                 # The window id (0x1000026) looks like a size to this regex.
                 size = re.search(r"(\d+)x(\d+)",
-                                 re.sub(r"0x[0-9a-f]+", "", line))
+                                 re.sub(r"^\s*0x[0-9a-f]+", "", line))
                 position = re.findall(r"\+(-?\d+)\+(-?\d+)", line)
                 if size and position:
                     width, height = int(size.group(1)), int(size.group(2))

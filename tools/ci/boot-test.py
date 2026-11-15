@@ -406,7 +406,7 @@ def main():
             # absolute position as a bare "+x+y": 1280x29+0+0  +0+768.  The
             # window id (0x1000026) must go first: it looks like a size.
             size = re.search(r"(\d+)x(\d+)",
-                             re.sub(r"0x[0-9a-f]+", "", line))
+                             re.sub(r"^\s*0x[0-9a-f]+", "", line))
             position = re.findall(r"\+(-?\d+)\+(-?\d+)", line)
             if size and position:
                 width, height = int(size.group(1)), int(size.group(2))
