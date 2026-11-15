@@ -10,6 +10,46 @@
 
 set -u
 
+# --report prints what this machine has, what the service did and whether Xorg
+# actually loaded the Intel driver with TearFree.  It changes nothing, so it is
+# safe for the owner to run after a reboot:
+#     sudo hunter-graphics --report
+report() {
+	gpu=$(lspci -nn 2>/dev/null | grep -iE "VGA|3D" | head -n 3)
+	echo "graphics hardware:"
+	[ -n "$gpu" ] && echo "$gpu" || echo "  (lspci found no graphics device)"
+	echo "intel driver package:"
+	if [ -e /usr/lib/xorg/modules/drivers/intel_drv.so ]; then
+		echo "  intel_drv.so present"
+	else
+		echo "  intel_drv.so MISSING (xserver-xorg-video-intel not installed)"
+	fi
+	echo "xorg configuration:"
+	if [ -e "$target" ]; then
+		echo "  $target present:"
+		sed 's/^/    /' "$target"
+	else
+		echo "  $target absent (this machine does not get TearFree)"
+	fi
+	echo "running server:"
+	if [ -f /var/log/Xorg.0.log ]; then
+		grep -iE "TearFree|Loading.*intel|Using.*intel" /var/log/Xorg.0.log |
+			tail -n 6 | sed 's/^/  /'
+	else
+		echo "  /var/log/Xorg.0.log not readable (run as root)"
+	fi
+	echo "service:"
+	systemctl is-enabled hunter-graphics.service 2>/dev/null |
+		sed 's/^/  enabled: /'
+	systemctl is-active hunter-graphics.service 2>/dev/null |
+		sed 's/^/  active: /'
+}
+
+if [ "${1:-}" = "--report" ]; then
+	report
+	exit 0
+fi
+
 template=/usr/share/smd/xorg/20-intel-tearfree.conf
 target=/etc/X11/xorg.conf.d/20-intel.conf
 

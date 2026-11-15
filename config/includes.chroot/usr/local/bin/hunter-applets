@@ -64,6 +64,14 @@ if ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1 && \
 	wireplumber >>"$log" 2>&1 &
 fi
 
+# Speaker level: the volume Hunter tuned by hand on the Chromebook (125 %).
+# It runs once per session and only when the active port is the internal
+# speaker and the level is still the untouched 100 %, so headphones and the
+# owner's own changes are never overridden.
+if command -v hunter-volume >/dev/null 2>&1; then
+	hunter-volume >>"$log" 2>&1 &
+fi
+
 # Network, Bluetooth, notifications, battery and power handling.
 start nm-applet nm-applet
 start blueman-applet blueman-applet

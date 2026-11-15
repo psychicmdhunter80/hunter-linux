@@ -55,6 +55,47 @@ watched full screen it is no longer wanted. 1.3 removes `hunter-panel-dock`, the
 bottom edge; panel startup, the single-panel guarantee and the logout/login fix
 are unchanged.
 
+### 0.5 Screen tearing
+
+The TearFree implementation from 1.1 is unchanged and is what runs here. The
+template `/usr/share/smd/xorg/20-intel-tearfree.conf` contains the established
+configuration - `Section "Device"`, `Identifier "Intel Graphics"`,
+`Driver "intel"`, `Option "TearFree" "true"` - and `hunter-graphics.service`
+copies it to `/etc/X11/xorg.conf.d/20-intel.conf` before the display manager
+starts, only when `lspci` reports `8086:0f31`, `0f32` or `0f33` **and** the Intel
+DDX is installed. On any other machine the file is removed. The unit is enabled
+in the image, so it runs on a live boot and on an installed system alike.
+
+New in 1.3: `hunter-graphics --report` prints the GPU, whether `intel_drv.so` exists, the resulting
+configuration file, the `TearFree`/`intel` lines from `/var/log/Xorg.0.log` and
+the service state, so the owner can confirm after a reboot that the driver
+really loaded with TearFree instead of trusting the file. No compositor was
+added.
+
+**Not proven here:** the VM has a QEMU adapter, not Intel Bay Trail, so the test
+can only prove that TearFree is *not* forced onto unrelated graphics. Whether
+the picture is tear-free on the Chromebook needs a physical playback test.
+
+### 0.6 Speaker volume
+
+The original machine was tuned by hand: main PipeWire output at 1.25, the
+Chromium stream at 1.25, and the speaker judged right. 1.3 adds `hunter-volume`,
+run from `hunter-applets` at session start:
+
+* it waits for the sink, then raises it to **1.25** - never stacking on top of an
+  existing boost, because it only acts while the level is still untouched
+  `1.00`;
+* it acts **only when the active port is the internal speaker**; with headphones
+  plugged in it does nothing, so earbuds never get the boost;
+* it runs once per session (`~/.cache/smd/volume-applied`) and logs to
+  `~/.cache/smd/volume.log`;
+* it uses `wpctl`, so PipeWire and WirePlumber stay the only sound stack.
+
+The ALSA hardware values from the original machine (Speaker raw 20, Digital raw
+15, headphone attenuation raw 18) belong to its chtmax98090 codec and are
+deliberately not applied here. The separate fifteen-seconds-of-silence
+observation is untouched and remains unexplained.
+
 ### 0.4 Resource use
 
 The `python3` process seen at 2-4 % CPU in the 1.2 screenshots was

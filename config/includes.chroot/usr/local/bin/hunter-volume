@@ -1,0 +1,70 @@
+#!/bin/sh
+# SMD Linux - the speaker volume Hunter tuned by hand on the Chromebook.
+#
+# On the original installation the main PipeWire output sat at 1.25 (125 %) and
+# the speaker sounded right.  The ISO ships the default 100 %, so this script
+# raises the volume once per session - and only when it is safe to do so:
+#
+#   * only when the sink's active port is the internal speaker.  With
+#     headphones plugged in the active port is analog-output-headphones and this
+#     script does nothing at all, so earbuds never get the boost;
+#   * only when the volume is still the untouched 1.00.  If the owner has
+#     already changed the level, that choice is left alone - it is never stacked
+#     on top of an existing boost;
+#   * once per session, remembered in ~/.cache/smd/volume-applied;
+#   * through PipeWire/WirePlumber with wpctl, never by replacing the sound
+#     server.
+#
+# This is a device-level (sink) setting: it applies to every application,
+# including the browser.  Raising a single Chromium stream instead would apply
+# to all Chromium audio as well, so there is nothing Jellyfin-specific about
+# either choice - a real Jellyfin-only rule is not possible with these tools.
+#
+# The ALSA hardware values recorded on the original machine (Speaker raw 20,
+# Digital raw 15, headphone attenuation raw 18) belong to that chtmax98090 codec
+# and are deliberately NOT applied here: they would be wrong on other hardware.
+
+set -u
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/smd"
+mkdir -p "$cache" 2>/dev/null || exit 0
+marker="$cache/volume-applied"
+log="$cache/volume.log"
+
+[ -e "$marker" ] && exit 0
+
+command -v wpctl >/dev/null 2>&1 || exit 0
+command -v pactl >/dev/null 2>&1 || exit 0
+
+# Wait for PipeWire and the sink to exist: this runs at session start.
+tries=0
+while [ "$tries" -lt 30 ]; do
+	if wpctl get-volume @DEFAULT_AUDIO_SINK@ >/dev/null 2>&1; then
+		break
+	fi
+	tries=$((tries + 1))
+	sleep 1
+done
+
+port=$(pactl list sinks 2>/dev/null | sed -n 's/^[[:space:]]*Active Port: //p' | head -n 1)
+case "$port" in
+*speaker*) : ;;
+*)
+	echo "$(date '+%F %T') active port '$port' is not the speaker, leaving the volume alone" >>"$log"
+	exit 0
+	;;
+esac
+
+current=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | cut -d' ' -f2)
+if [ "${current:-1.00}" != "1.00" ]; then
+	echo "$(date '+%F %T') volume already $current, not stacked" >>"$log"
+	: >"$marker" 2>/dev/null
+	exit 0
+fi
+
+if wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 &&
+   wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.25 >/dev/null 2>&1; then
+	echo "$(date '+%F %T') speaker volume set to 1.25 (was $current)" >>"$log"
+	: >"$marker" 2>/dev/null
+fi
+exit 0

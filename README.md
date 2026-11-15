@@ -267,6 +267,14 @@ brightness keys work on their own. `Ctrl` plus the same key still sends the real
 function key. On a non-Chromebook the file it writes is empty, so an ordinary
 keyboard keeps all of its F keys.
 
+**Speaker volume.** At the start of each session `hunter-volume` raises the
+sink to 125 %, the level tuned by hand on the Chromebook. It only does this when
+the active port is the internal speaker and the level is still the untouched
+100 %, so headphones and any level you set yourself are left alone. It is a
+sound-card setting, not a per-application one: a change to a single Chromium
+stream would affect all browser audio too, so nothing here is specific to
+Jellyfin. The volume keys keep working normally on top of it.
+
 **The dark theme.** The panel, the whisker menu, the task buttons, the window
 title bars, the terminal and every GTK application use Adwaita-dark, set in
 `~/.config/gtk-3.0/settings.ini`, `~/.config/gtk-4.0/settings.ini` and the
@@ -386,12 +394,15 @@ system works normally without it.
   falkon` brings it back if a second engine is ever needed.
 * **Video tearing on Intel graphics.** i3 runs without a compositor, so
   tearing is possible. `hunter-graphics.service` installs the TearFree
-  configuration automatically - but only on Intel Bay Trail / ValleyView
-  graphics (`8086:0f31`, `0f32`, `0f33`), the hardware this release was
-  prepared for. On every other machine the file is removed, so the Intel
-  driver is never forced onto unrelated hardware. Remove
-  `/etc/X11/xorg.conf.d/20-intel.conf` and restart the display manager to roll
-  it back.
+  configuration (`/etc/X11/xorg.conf.d/20-intel.conf`, `Driver "intel"`,
+  `Option "TearFree" "true"`) automatically - but only on Intel Bay Trail /
+  ValleyView graphics (`8086:0f31`, `0f32`, `0f33`), the hardware this release
+  was prepared for. On every other machine the file is removed, so the Intel
+  driver is never forced onto unrelated hardware. After a reboot, check it as
+  root with `hunter-graphics --report`, which prints the GPU, the driver module, the configuration
+  file, the `TearFree` lines from `/var/log/Xorg.0.log` and the service state.
+  Remove `/etc/X11/xorg.conf.d/20-intel.conf` and restart the display manager to
+  roll it back.
 * **The panel does not auto-hide.** i3 refuses to move dock windows (i3 issue
   4153), so the panel stays visible along the bottom edge. Full-screen video
   covers it. If the panel ever fails to appear, `~/.cache/smd/panel.log` has

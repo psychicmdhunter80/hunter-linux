@@ -582,6 +582,39 @@ def main():
         check(results, "PipeWire and WirePlumber are running",
               "pipewire-running" in chunks[1] and "wireplumber-running" in chunks[1])
 
+        # --- speaker level: the 125 % Hunter tuned on the Chromebook --------
+        volume = shell.run(
+            "test -x /usr/local/bin/hunter-volume && echo SCRIPT=ok || echo SCRIPT=missing; "
+            "echo PORT=$(pactl list sinks 2>/dev/null | "
+            "sed -n 's/^[[:space:]]*Active Port: //p' | head -1); "
+            "echo LEVEL=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null "
+            "| cut -d' ' -f2); "
+            "tail -2 ~/.cache/smd/volume.log 2>/dev/null; echo ---; "
+            "grep -c hunter-volume ~/.config/i3/config 2>/dev/null || true",
+            timeout=90)
+        check(results, "the speaker volume policy is installed",
+              "SCRIPT=ok" in volume)
+        record(f"INFO: speaker/volume: {volume.strip()[:220]}")
+
+        # --- graphics: TearFree only where it belongs -----------------------
+        # The VM has a QEMU adapter, not Intel Bay Trail, so the correct result
+        # here is that the intel driver was never forced on this hardware.
+        graphics = shell.run(
+            "systemctl is-enabled hunter-graphics.service 2>&1; echo ---; "
+            "systemctl is-active hunter-graphics.service 2>&1; echo ---; "
+            "test -e /etc/X11/xorg.conf.d/20-intel.conf && echo TEARFREE=present "
+            "|| echo TEARFREE=absent; echo ---; "
+            "lspci -nn 2>/dev/null | grep -iE 'VGA|3D' | head -2",
+            timeout=90)
+        gchunks = graphics.split("---")
+        check(results, "the TearFree service is enabled",
+              "enabled" in gchunks[0])
+        check(results, "the TearFree service ran",
+              "active" in gchunks[1])
+        check(results, "TearFree is not forced onto unrelated graphics",
+              "TEARFREE=absent" in gchunks[2])
+        record(f"INFO: graphics: {' | '.join(c.strip()[:70] for c in gchunks)}")
+
         # --- Wi-Fi: the parts that a virtual machine can show ----------------
         net = shell.run(
             "dpkg-query -W -f='${Status}' wpasupplicant 2>/dev/null "

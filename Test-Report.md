@@ -245,6 +245,11 @@ run assertions.
 
 ## 6d. Version 1.3 - dark theme, installer entry, resources
 
+**Additions in this build:** the speaker-volume policy (`hunter-volume`) and
+the TearFree self-report (`hunter-graphics --report`). TearFree itself is the 1.1 implementation, now
+with checks that the unit is enabled, that it ran, and that the Intel driver is
+not forced onto the VM's virtual adapter.
+
 `<!-- V13-RESULTS -->`
 
 ---
