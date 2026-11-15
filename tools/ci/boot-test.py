@@ -446,27 +446,15 @@ def main():
 
         window = panel_box[4] if panel_box else None
         if window and screen:
-            edge = int(screen.group(1)) - 2
             screen_px = int(screen.group(1))
-            # Away from the bottom edge: the panel hides itself (it moves off
-            # screen, exactly as it does on the Acer install).
-            shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
-            time.sleep(5)
             state, y, height = panel_state(window)
-            monitor.screenshot("06a-panel-hidden")
-            hidden = (state == "IsUnMapped" or
-                      (y is not None and y >= screen_px - 6))
-            check(results, "the panel hides when the pointer leaves the edge", hidden)
-            record(f"INFO: panel away: state {state}, y={y}, height={height}")
-            # Back to the bottom edge: it must come back on screen.
-            shell.run(f"DISPLAY=:0 xdotool mousemove --sync 640 {edge}", timeout=30)
-            time.sleep(5)
-            state, y, height = panel_state(window)
-            monitor.screenshot("06b-panel-revealed")
-            shown = (state == "IsViewable" and y is not None and
-                     y + (height or 0) <= screen_px + 2)
-            check(results, "the panel comes back at the bottom edge", shown)
-            record(f"INFO: panel at edge: state {state}, y={y}, height={height}")
+            monitor.screenshot("06a-panel-visible")
+            # 1.3 retired auto-hide: the panel stays on screen along the bottom
+            # edge, and full-screen video simply covers it.
+            visible = (state == "IsViewable" and y is not None and
+                       y + (height or 0) >= screen_px - 6)
+            check(results, "the panel stays visible along the bottom edge", visible)
+            record(f"INFO: panel: state {state}, y={y}, height={height}")
 
         # The menu button must show the SMD "S", not the old H.
         icon = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
@@ -546,20 +534,36 @@ def main():
         time.sleep(5)
         count = shell.run(
             "echo PANELS=$(pgrep -c -x xfce4-panel); "
-            "p=~/.cache/smd/panel-dock.pid; "
-            "if [ -f $p ] && kill -0 $(cat $p) 2>/dev/null; then "
-            "echo DOCK=alive; else echo DOCK=missing; fi; "
-            "echo LOGS=$([ -s ~/.cache/smd/panel.log ] && echo yes || echo no)",
-            timeout=90)
+            "echo PYTHON=$(pgrep -c -x python3); "
+            "test -e /usr/local/bin/hunter-panel-dock && echo DOCK-HELPER=present "
+            "|| echo DOCK-HELPER=absent", timeout=90)
         panels = re.search(r"PANELS=(\d+)", count)
-        dock = re.search(r"DOCK=(\w+)", count)
+        pythons = re.search(r"PYTHON=(\d+)", count)
+        helper = re.search(r"DOCK-HELPER=(\w+)", count)
         record(f"INFO: after reload {count.strip()[:300]}")
-        check(results, "exactly one panel and one dock helper after a reload",
-              bool(panels and dock) and panels.group(1) == "1" and
-              dock.group(1) == "alive")
-        log = shell.run("tail -4 ~/.cache/smd/panel-hide.log 2>/dev/null; "
-                        "tail -3 ~/.cache/smd/panel.log 2>/dev/null", timeout=60)
-        record(f"INFO: panel logs: {log.strip()[:200]}")
+        check(results, "exactly one panel survives a reload", 
+              bool(panels) and panels.group(1) == "1")
+        check(results, "the retired auto-hide helper is gone",
+              bool(helper) and helper.group(1) == "absent")
+
+        # Idle resources, measured the same way on every image: 90 s after the
+        # session is up, no applications open, live USB boot in the same VM.
+        time.sleep(5)
+        resources = shell.run(
+            "free -m; echo ---; vmstat 1 5 | tail -1; echo ---; "
+            "ps -eo pcpu,pmem,comm --sort=-pcpu | head -6; echo ---; "
+            "swapon --show=NAME,SIZE --noheadings 2>/dev/null | head -3",
+            timeout=120)
+        record("INFO: idle resources: " + " ".join(resources.split())[:300])
+        mem = re.search(r"Mem:\s+(\d+)\s+(\d+)\s+(\d+)", resources)
+        if mem:
+            total, used, free_mem = (int(g) for g in mem.groups())
+            check(results, "idle memory stays under 520 MiB",
+                  used < 520)
+            record(f"INFO: memory {used} MiB used of {total} MiB, "
+                   f"{free_mem} MiB free")
+        log = shell.run("tail -3 ~/.cache/smd/panel.log 2>/dev/null", timeout=60)
+        record(f"INFO: panel log: {log.strip()[:200]}")
 
         shell.run("DISPLAY=:0 xdotool mousemove 640 400", timeout=30)
         time.sleep(2)

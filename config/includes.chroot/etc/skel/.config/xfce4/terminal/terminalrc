@@ -1,0 +1,9 @@
+[Configuration]
+# SMD Linux - terminal colours chosen to match the dark desktop.  Only colours
+# and the font are set; scrollback, shortcuts and everything else stay default.
+ColorForeground=#d8dee9
+ColorBackground=#1b1f24
+ColorCursorUseDefault=FALSE
+ColorCursor=#d8dee9
+ColorPalette=#1b1f24;#f7768e;#9ece6a;#e0af68;#7aa2f7;#bb9af7;#7dcfff;#c0caf5;#414868;#f7768e;#9ece6a;#e0af68;#7aa2f7;#bb9af7;#7dcfff;#c0caf5
+FontName=DejaVu Sans Mono 10

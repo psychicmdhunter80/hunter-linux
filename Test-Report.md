@@ -243,6 +243,12 @@ run assertions.
 
 ---
 
+## 6d. Version 1.3 - dark theme, installer entry, resources
+
+`<!-- V13-RESULTS -->`
+
+---
+
 ## 6c. Version 1.2 - the fixes from live testing
 
 Version 1.2 answers the five faults found while testing 1.1's live session. The

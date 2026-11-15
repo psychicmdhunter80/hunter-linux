@@ -252,8 +252,10 @@ back and forward in Firefox. Use `Alt+H/J/K/L` instead.
 
 The panel holds the application menu, the window list, workspaces, network and
 Bluetooth status, the clock (hover for the date), volume, battery percentage on
-laptops, and the power menu. It sits along the **bottom edge, black, and hides
-itself**; move the pointer to the bottom of the screen to bring it back. It is
+laptops, and the power menu. It sits along the **bottom edge, black, and stays
+visible**; full-screen video covers it. Auto-hide was retired in 1.3 - i3
+cannot move dock windows, so hiding the panel never worked reliably, and it is
+not needed now that video is watched full screen. It is
 started by the i3 configuration (`hunter-panel`), not by the session wrapper, so
 it comes up in the live session and on an installed system alike.
 
@@ -265,14 +267,13 @@ brightness keys work on their own. `Ctrl` plus the same key still sends the real
 function key. On a non-Chromebook the file it writes is empty, so an ordinary
 keyboard keeps all of its F keys.
 
-**Why the panel needs a helper.** xfce4-panel's own auto-hide asks the window
-manager to move it off screen; i3 refuses to move dock windows (i3 issue 4153)
-and reports the panel as still visible, so the setting alone can never work here.
-`hunter-panel-dock` takes only the panel's dock windows away from i3 - the same
-method the Acer Chromebook install used - and from then on the panel's own hide
-and reveal work normally: it slides off the bottom edge and comes back when the
-pointer reaches the edge. The helper needs `python3` and `python3-xlib`, both
-installed; without them the panel still starts, it just cannot hide.
+**The dark theme.** The panel, the whisker menu, the task buttons, the window
+title bars, the terminal and every GTK application use Adwaita-dark, set in
+`~/.config/gtk-3.0/settings.ini`, `~/.config/gtk-4.0/settings.ini` and the
+XSettings file, with i3's own title-bar colours in the i3 configuration. The
+theme package `gnome-themes-extra` is required: it ships `Adwaita-dark`, and
+without it GTK silently falls back to the light Adwaita - which is exactly what
+made the 1.2 panel buttons and application menu white.
 
 ---
 
@@ -391,11 +392,10 @@ system works normally without it.
   driver is never forced onto unrelated hardware. Remove
   `/etc/X11/xorg.conf.d/20-intel.conf` and restart the display manager to roll
   it back.
-* **The panel is hidden by a helper, not by its own setting alone.** The
-  preferences show "Always hide", but under i3 that value has no effect until
-  `hunter-panel-dock` detaches the panel windows (i3 issue 4153, xfce4-panel
-  issue 308). If the panel ever stays on screen, look at
-  `~/.cache/smd/panel.log` and check that `~/.cache/smd/panel-dock.pid` exists.
+* **The panel does not auto-hide.** i3 refuses to move dock windows (i3 issue
+  4153), so the panel stays visible along the bottom edge. Full-screen video
+  covers it. If the panel ever fails to appear, `~/.cache/smd/panel.log` has
+  the reason.
 * **Battery percentage is whatever UPower reports.** The 10-15 % sudden
   power-off seen on the older installation is a hardware/gauge behaviour; the
   image neither fakes the percentage nor forces a cutoff.

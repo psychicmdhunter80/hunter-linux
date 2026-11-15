@@ -10,12 +10,11 @@
   <property name="panels" type="array">
     <value type="int" value="1"/>
     <property name="panel-1" type="empty">
-      <!-- autohide-behavior 2 is what the panel's own preferences call
-           "Always".  The panel cannot act on it under i3 (i3 refuses to move
-           dock windows, i3 issue 4153), so hunter-panel-hide in the session
-           does the hiding by unmapping the panel.  The value stays set so the
-           panel's preference window shows what is really configured. -->
-      <property name="autohide-behavior" type="uint" value="2"/>
+      <!-- The panel is always visible along the bottom edge: 1.3 retired
+           auto-hide.  i3 refuses to move dock windows (i3 issue 4153), so the
+           panel could only be hidden by helpers fighting the window manager,
+           and full-screen video covers the bar anyway. -->
+      <property name="autohide-behavior" type="uint" value="0"/>
       <property name="disable-struts" type="bool" value="false"/>
       <!-- Solid black panel, readable white text: no theme suite and no
            compositor needed, just the panel's own background settings. -->

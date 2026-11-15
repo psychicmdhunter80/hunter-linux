@@ -10,6 +10,61 @@ work.
 
 ---
 
+## 0. What 1.3 changed, and what was actually wrong
+
+Version 1.3 is the dark-theme and tidy-up release. It keeps 1.2's repairs and
+retires the one thing that never worked.
+
+### 0.1 The light panel buttons, menus and applications
+
+**Cause.** The image has always asked for `Adwaita-dark`, but the theme itself
+lives in the `gnome-themes-extra` package, which 1.1 removed as part of the
+size trim. GTK does not fail when a named theme is missing - it falls back to
+light Adwaita and says nothing - so the panel task buttons, the whisker menu,
+the terminal and every GTK application stayed white while the panel background
+was black. Only the panel's own `background-rgba` was actually dark.
+
+**Fix.** `gnome-themes-extra` is back (about 2 MB with its dependencies), and
+the theme is now set in three places so it cannot be lost again:
+`/etc/skel/.config/gtk-3.0/settings.ini`, `/etc/skel/.config/gtk-4.0/settings.ini`
+and the existing XSettings file. i3 draws its own title bars, so their colours
+are set in the i3 configuration (`client.focused` and friends), and the terminal
+gets a matching dark palette in `~/.config/xfce4/terminal/terminalrc`. No
+compositor, no theme daemon and no second theme engine were added.
+
+### 0.2 Two installer entries in the menu
+
+**Cause.** Two launchers, one installer. `/usr/share/applications/hunter-install.desktop`
+is ours and runs `/usr/local/bin/hunter-install`; the `calamares` package also
+installs `/usr/share/applications/calamares.desktop`, which appears as
+"Install System - Calamares System Installer" and starts the same installer.
+The image's own entry also still used the old project logo as its icon, which is
+the "H" Hunter saw.
+
+**Fix.** The generic `calamares.desktop` entry is removed in the build hook while
+the package and every dependency stay installed, and the SMD entry now uses the
+`smd-menu` "S" icon. One entry remains: "Install SMD Linux".
+
+### 0.3 Auto-hide retired
+
+Auto-hide needed a helper because i3 refuses to move dock windows (i3 issue
+4153). Neither attempt made the panel hide on the tested images, and with video
+watched full screen it is no longer wanted. 1.3 removes `hunter-panel-dock`, the
+`python3` and `python3-xlib` packages that existed only for it, and the panel's
+`autohide-behavior` is back to 0 (never). The panel stays visible along the
+bottom edge; panel startup, the single-panel guarantee and the logout/login fix
+are unchanged.
+
+### 0.4 Resource use
+
+The `python3` process seen at 2-4 % CPU in the 1.2 screenshots was
+`hunter-panel-dock`'s interpreter, which scanned for panel windows once a second
+forever. It is gone with the helper. Idle memory, swap and CPU are now measured
+by the boot test under fixed conditions and reported below rather than guessed
+at.
+
+---
+
 ## 0. What 1.2 changed, and what was actually wrong
 
 ### 0.1 The start button showed "H"

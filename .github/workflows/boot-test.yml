@@ -44,14 +44,14 @@ jobs:
         run: |
           gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
           ls -lh iso/
-          cd iso && sha256sum -c SMD-Linux-v1.2-amd64.iso.sha256
+          cd iso && sha256sum -c SMD-Linux-v1.3-amd64.iso.sha256
 
       - name: Boot and test the live system
         env:
           PANEL_DIAG: ${{ inputs.panel_diag }}
         run: |
           chmod +x tools/ci/boot-test.py
-          python3 tools/ci/boot-test.py iso/SMD-Linux-v1.2-amd64.iso \
+          python3 tools/ci/boot-test.py iso/SMD-Linux-v1.3-amd64.iso \
             "${{ matrix.mode }}" "out-${{ matrix.mode }}"
         timeout-minutes: 60
 

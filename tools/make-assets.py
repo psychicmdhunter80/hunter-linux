@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the SMD Linux 1.2 image assets.
+"""Generate the SMD Linux 1.3 image assets.
 
 Everything visual in SMD Linux is produced by this script, so the artwork
 is reproducible from source with no drawing tools and no binary blobs:
@@ -252,7 +252,7 @@ def installer_logo(path):
     canvas = Canvas(480, 120, alpha=True)
     canvas.mark(52, 58, 64, INK, 1.0)
     canvas.text(112, 44, "SMD LINUX", 4, INK, 1.0)
-    canvas.text(114, 82, "VERSION 1.2", 2, MUTED, 1.0)
+    canvas.text(114, 82, "VERSION 1.3", 2, MUTED, 1.0)
     canvas.save(path)
 
 
@@ -283,7 +283,7 @@ def slide(path, headline, subline):
 
 
 def main():
-    print("SMD Linux 1.2 - generating image assets")
+    print("SMD Linux 1.3 - generating image assets")
     wallpaper()
     boot_splash(640, 480, os.path.join(ROOT, "config", "bootloaders", "isolinux",
                                        "splash.png"))

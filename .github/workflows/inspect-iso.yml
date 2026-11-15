@@ -32,24 +32,24 @@ jobs:
       - name: Unpack and inspect
         run: |
           chmod +x tools/ci/inspect-iso.sh
-          tools/ci/inspect-iso.sh iso/SMD-Linux-v1.2-amd64.iso work 2>&1 | tee inspect.log
+          tools/ci/inspect-iso.sh iso/SMD-Linux-v1.3-amd64.iso work 2>&1 | tee inspect.log
 
       - name: Boot menu and bootloader files
         run: |
           echo "===== ISO tree ====="
-          xorriso -indev iso/SMD-Linux-v1.2-amd64.iso -find / -maxdepth 2 2>/dev/null \
+          xorriso -indev iso/SMD-Linux-v1.3-amd64.iso -find / -maxdepth 2 2>/dev/null \
             | head -60 || true
           echo
           echo "===== isolinux config on the ISO ====="
-          xorriso -osirrox on -indev iso/SMD-Linux-v1.2-amd64.iso \
+          xorriso -osirrox on -indev iso/SMD-Linux-v1.3-amd64.iso \
             -extract /isolinux/isolinux.cfg work/isolinux.cfg >/dev/null 2>&1
           cat work/isolinux.cfg 2>/dev/null || echo "not found"
           for f in live.cfg menu.cfg stdmenu.cfg; do
-            xorriso -osirrox on -indev iso/SMD-Linux-v1.2-amd64.iso \
+            xorriso -osirrox on -indev iso/SMD-Linux-v1.3-amd64.iso \
               -extract "/isolinux/$f" "work/$f" >/dev/null 2>&1
             echo "--- $f"; cat "work/$f" 2>/dev/null
           done
           echo "===== grub config on the ISO ====="
-          xorriso -osirrox on -indev iso/SMD-Linux-v1.2-amd64.iso \
+          xorriso -osirrox on -indev iso/SMD-Linux-v1.3-amd64.iso \
             -extract /boot/grub/grub.cfg work/grub.cfg >/dev/null 2>&1
           sed -n '1,80p' work/grub.cfg 2>/dev/null

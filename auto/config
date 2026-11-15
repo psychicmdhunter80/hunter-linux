@@ -17,7 +17,7 @@ lb config noauto \
 	--parent-distribution trixie \
 	--architectures amd64 \
 	--binary-images iso-hybrid \
-	--image-name SMD-Linux-v1.2 \
+	--image-name SMD-Linux-v1.3 \
 	--linux-flavours amd64 \
 	--linux-packages linux-image \
 	--bootloaders syslinux,grub-efi \
@@ -39,7 +39,7 @@ lb config noauto \
 	--iso-application "SMD Linux 1.1" \
 	--iso-preparer "SMD Linux build (live-build)" \
 	--iso-publisher "SMD Linux Project" \
-	--iso-volume "SMD_LINUX_1_2" \
+	--iso-volume "SMD_LINUX_1_3" \
 	--mirror-bootstrap "${MIRROR}" \
 	--mirror-chroot "${MIRROR}" \
 	--mirror-binary "${MIRROR}" \
