@@ -41,20 +41,34 @@ command -v xdotool >/dev/null 2>&1 || {
 # How close to the bottom edge the pointer has to be to bring the panel back.
 REVEAL=4
 
+# The panel's WM_CLASS is "xfce4-panel" for the instance and "Xfce4-panel" for
+# the class, and xdotool's --class is a case-sensitive regex, so search every
+# spelling and deduplicate instead of relying on one.
+panel_windows() {
+	{
+		xdotool search --class xfce4-panel 2>/dev/null
+		xdotool search --class Xfce4-panel 2>/dev/null
+		xdotool search --classname xfce4-panel 2>/dev/null
+		xdotool search --name xfce4-panel 2>/dev/null
+	} | sort -u
+}
+
 hide() {
-	for id in $(xdotool search --class xfce4-panel 2>/dev/null); do
+	for id in $(panel_windows); do
 		xdotool windowunmap "$id" 2>/dev/null
 	done
 }
 
 show() {
-	for id in $(xdotool search --class xfce4-panel 2>/dev/null); do
+	for id in $(panel_windows); do
 		xdotool windowmap "$id" 2>/dev/null
 		xdotool windowraise "$id" 2>/dev/null
 	done
 }
 
 echo "$(date '+%F %T') watching the pointer for the panel" >>"$log"
+count=$(panel_windows | wc -l)
+echo "$(date '+%F %T') found $count panel window(s)" >>"$log"
 shown=1
 
 while :; do

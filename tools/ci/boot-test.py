@@ -483,10 +483,14 @@ def main():
               notify.strip().splitlines()[-1:] == ["5"])
 
         # Mail Reader was an unusable launcher, not a mail client.
-        mail = shell.run("ls /usr/share/applications/ | grep -ci mail | tail -1",
-                         timeout=60)
+        mail = shell.run(
+            "ls /usr/share/applications | grep -i '[m]ail' | head -5; "
+            "echo MAILCOUNT=$(ls /usr/share/applications | grep -ci '[m]ail')",
+            timeout=60)
+        match = re.search(r"MAILCOUNT=(\d+)", mail)
+        record(f"INFO: mail entries seen: {mail.strip()[:120]}")
         check(results, "no Mail Reader entry is left in the menu",
-              mail.strip().splitlines()[-1:] == ["0"])
+              bool(match) and match.group(1) == "0")
 
         # Chromebook top row: the printed volume keys are F9/F10 there.  The
         # harness forces the Chromebook layout because a VM is not a Chromebook.
@@ -503,28 +507,46 @@ def main():
         check(results, "the Chromebook top row bindings are generated",
               toprow.strip().splitlines()[-1:] == ["1"])
         # Start from half volume: the default sink is already at 1.0, where a
-        # "5%+" would be capped and look like a broken key.
-        shell.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5", timeout=60)
+        # "5%+" would be capped and look like a broken key.  The values are
+        # printed with a marker because the log echoes the command itself.
+        shell.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5; sleep 1; "
+                  "echo VOLBEFORE=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
+                  "| awk '{print $2}')", timeout=90)
         time.sleep(2)
-        before = shell.run("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>&1", timeout=60)
+        before = shell.run("echo VOLBEFORE=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
+                           "| awk '{print $2}')", timeout=60)
         shell.run("DISPLAY=:0 xdotool key F10", timeout=60)
         time.sleep(3)
-        after = shell.run("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>&1", timeout=60)
-        try:
-            rose = float(after.split()[1]) > float(before.split()[1])
-        except (IndexError, ValueError):
-            rose = False
+        after = shell.run("echo VOLAFTER=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
+                          "| awk '{print $2}')", timeout=60)
+        bindings = shell.run("DISPLAY=:0 i3-msg -t get_config | "
+                             "grep -c 'bindsym F10'", timeout=90)
+        first = re.search(r"VOLBEFORE=([0-9.]+)", before)
+        second = re.search(r"VOLAFTER=([0-9.]+)", after)
+        rose = bool(first and second and float(second.group(1)) > float(first.group(1)))
         check(results, "the printed volume-up key raises the volume", rose)
-        record(f"INFO: volume before {before.strip()[:30]}, after {after.strip()[:30]}")
+        record(f"INFO: volume {first.group(1) if first else '?'} -> "
+               f"{second.group(1) if second else '?'}; i3 config: "
+               f"{bindings.strip()[-40:]}")
 
         # No second panel or watchdog after an i3 restart: the exec_always
         # scripts are flushed and re-run, and must not stack.
         time.sleep(5)
-        count = shell.run("pgrep -c xfce4-panel; pgrep -c -f hunter-panel-hide",
-                          timeout=60)
-        numbers = count.split()
+        count = shell.run(
+            "echo PANELS=$(pgrep -c -x xfce4-panel); "
+            "echo HIDERS=$(pgrep -c -f '[h]unter-panel-hide'); "
+            "echo WATCHDOGS=$(pgrep -c -f '[h]unter-panel$')", timeout=90)
+        panels = re.search(r"PANELS=(\d+)", count)
+        hiders = re.search(r"HIDERS=(\d+)", count)
+        watchdogs = re.search(r"WATCHDOGS=(\d+)", count)
+        record(f"INFO: after reload {count.strip()[:120]}")
         check(results, "exactly one panel and one hide helper survive a reload",
-              numbers[:2] == ["1", "1"])
+              bool(panels and hiders and watchdogs) and
+              panels.group(1) == "1" and hiders.group(1) == "1" and
+              watchdogs.group(1) == "1")
+        log = shell.run("tail -4 ~/.cache/smd/panel-hide.log 2>/dev/null; "
+                        "tail -3 ~/.cache/smd/panel.log 2>/dev/null", timeout=60)
+        record(f"INFO: panel logs: {log.strip()[:200]}")
 
         shell.run("DISPLAY=:0 xdotool mousemove 640 400", timeout=30)
         time.sleep(2)
