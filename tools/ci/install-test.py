@@ -487,7 +487,13 @@ def main():
                 origin = (int(position.group(1)), int(position.group(2)))
             record(f"INFO: installer window at {origin} "
                    f"{size.groups() if size else ''}")
-        NEXT = (origin[0] + 970, origin[1] + 670)
+        # Measured from a screenshot of the running wizard: Back, Next and
+        # Cancel sit in a row 38 px above the window's bottom edge, and Next is
+        # the middle one.  Clicking Cancel opens "do you really want to cancel"
+        # and the installation never starts, so this is a fixed offset from the
+        # window origin rather than a guess from OCR.
+        NEXT = (origin[0] + 875, origin[1] + 662)
+        CANCEL_NO = (origin[0] + 664, origin[1] + 362)
         time.sleep(20)
         disp.shot("welcome")
 
@@ -503,13 +509,16 @@ def main():
                 path = disp.shot(f"{label}-try{attempt}")
                 point = disp.button(path) or NEXT
                 record(f"INFO: {label}: clicking {point}")
-                # Two clicks: on a fresh window the first one only gives the
-                # wizard focus, and Calamares needs a moment to lay the next
-                # page out before its signature can differ.
                 disp.click(*point)
-                time.sleep(2)
-                disp.click(*point)
-                time.sleep(10)
+                time.sleep(4)
+                # A stray Cancel opens a modal dialog that swallows the next
+                # page; notice it and answer No.
+                guard = disp.shot(f"{label}-guard{attempt}")
+                if "cancel the current install" in disp.text(guard).lower():
+                    record("WARN: the cancel dialog appeared; answering No")
+                    disp.click(*CANCEL_NO)
+                    time.sleep(2)
+                time.sleep(6)
                 after = disp.shot(f"{label}-after")
                 if disp.differs(before, disp.signature(after)):
                     record(f"PASS: left the {label} page")
