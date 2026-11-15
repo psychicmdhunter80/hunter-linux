@@ -396,7 +396,7 @@ class Display:
             handle.write(self.text(path))
         return path
 
-    def select_erase(self, path):
+    def select_erase(self, path, origin=(135, 50)):
         """Pick the 'Erase disk' radio button on the partitioning page."""
         body = (150, 120, 1160, 690)
         point = self.find(path, "Erase", region=body) \
@@ -405,10 +405,9 @@ class Display:
             self.click(point[0] - 22, point[1])
             record("PASS: selected 'Erase disk'")
         else:
-            record("WARN: 'Erase disk' not found by OCR; using the keyboard")
-            for _ in range(4):
-                self.press("tab")
-            self.press("space")
+            record("WARN: 'Erase disk' not found by OCR; clicking the radio "
+                   "at its position relative to the window")
+            self.click(origin[0] + 178, origin[1] + 80)
         time.sleep(3)
         return self.shot("partition-selected")
 
@@ -504,8 +503,13 @@ def main():
                 path = disp.shot(f"{label}-try{attempt}")
                 point = disp.button(path) or NEXT
                 record(f"INFO: {label}: clicking {point}")
+                # Two clicks: on a fresh window the first one only gives the
+                # wizard focus, and Calamares needs a moment to lay the next
+                # page out before its signature can differ.
                 disp.click(*point)
-                time.sleep(7)
+                time.sleep(2)
+                disp.click(*point)
+                time.sleep(10)
                 after = disp.shot(f"{label}-after")
                 if disp.differs(before, disp.signature(after)):
                     record(f"PASS: left the {label} page")
@@ -518,7 +522,7 @@ def main():
         step("keyboard")     # -> Partitions
 
         # Partitions: choose "Erase disk", then continue.
-        disp.select_erase(disp.shot("partition"))
+        disp.select_erase(disp.shot("partition"), origin)
         time.sleep(2)
         step("partition")    # -> Users
 
@@ -707,7 +711,9 @@ def main():
             for line in (pchunks[1].splitlines() if len(pchunks) > 1 else []):
                 if "xfce4-panel" not in line:
                     continue
-                size = re.search(r"(\d+)x(\d+)", line)
+                # The window id (0x1000026) looks like a size to this regex.
+                size = re.search(r"(\d+)x(\d+)",
+                                 re.sub(r"0x[0-9a-f]+", "", line))
                 position = re.findall(r"\+(-?\d+)\+(-?\d+)", line)
                 if size and position:
                     width, height = int(size.group(1)), int(size.group(2))

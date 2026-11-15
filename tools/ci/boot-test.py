@@ -403,8 +403,10 @@ def main():
             if "xfce4-panel" not in line:
                 continue
             # xwininfo prints the size with relative offsets and then the
-            # absolute position as a bare "+x+y": 1280x29+0+0  +0+768.
-            size = re.search(r"(\d+)x(\d+)", line)
+            # absolute position as a bare "+x+y": 1280x29+0+0  +0+768.  The
+            # window id (0x1000026) must go first: it looks like a size.
+            size = re.search(r"(\d+)x(\d+)",
+                             re.sub(r"0x[0-9a-f]+", "", line))
             position = re.findall(r"\+(-?\d+)\+(-?\d+)", line)
             if size and position:
                 width, height = int(size.group(1)), int(size.group(2))
@@ -419,6 +421,7 @@ def main():
                    panel_box[3] + panel_box[1] >= int(screen.group(1)) - 6))
         record(f"INFO: panel window {panel_box[:4] if panel_box else 'not found'} "
                f"on a {screen.group(1) if screen else '?'}px high screen")
+        window = panel_box[4] if panel_box else None
 
         if window:
             shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)

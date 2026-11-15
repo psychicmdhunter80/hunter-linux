@@ -1,0 +1,196 @@
+[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x2,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x2,0xFFFF,0x0)
+[!p]104[?7h[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
+SMD Linux 1.1 smd ttyS0
+Web console: https://localhost:9090/ or https://10.0.2.15:9090/
+
+smd login: user
+Password: 
+Linux smd 6.12.117+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Web console: https://localhost:9090/ or https://10.0.2.15:9090/
+
+[?2004huser@smd:~$ echo "HUNTERMARK""1BEGIN"; (cat /proc/cmdline; uname -r; id) 2>&1 | head -40; echo "HUNTERMARK""1END"
+[?2004lHUNTERMARK1BEGIN
+BOOT_IMAGE=/live/vmlinuz-6.12.117+deb13-amd64 boot=live components quiet splash console=ttyS0,115200 hostname=smd username=user autologin
+6.12.117+deb13-amd64
+uid=1000(user) gid=1000(user) groups=1000(user),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),102(bluetooth)
+HUNTERMARK1END
+echo "HUNTERMARK""2BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""2END"
+[?2004huser@smd:~$ echo "HUNTERMARK""2BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""2END"
+[?2004lHUNTERMARK2BEGIN
+WAIT
+1213 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
+X0
+HUNTERMARK2END
+[?2004huser@smd:~$ echo "HUNTERMARK""3BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""3END"
+[?2004lHUNTERMARK3BEGIN
+READY
+1213 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
+X0
+HUNTERMARK3END
+[?2004huser@smd:~$ echo "HUNTERMARK""4BEGIN"; (pgrep -a lightdm | head -2; pgrep -a i3 | head -2; pgrep -a xfce4-panel | head -2; pgrep -a xfsettingsd | head -2) 2>&1 | head -40; echo "HUNTERMARK""4END"
+[?2004lHUNTERMARK4BEGIN
+1195 /usr/sbin/lightdm
+1280 lightdm --session-child 13 16
+1287 i3
+1349 xfce4-panel --disable-wm-check
+1351 xfsettingsd --replace
+HUNTERMARK4END
+echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""5BEGIN"; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo "HUNTERMARK""5END"
+[?2004lHUNTERMARK5BEGIN
+rc=0
+HUNTERMARK5END
+[?2004huser@smd:~$ echo "HUNTERMARK""6BEGIN"; (pgrep -a i3; ls -l ~/.config/i3/config) 2>&1 | head -40; echo "HUNTERMARK""6END"
+[?2004lHUNTERMARK6BEGIN
+1287 i3
+-rw-r--r-- 1 user user 7250 Nov 15 00:22 /home/user/.config/i3/config
+HUNTERMARK6END
+echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""7BEGIN"; (pgrep -a xfce4-panel; xfce4-panel --version 2>&1) 2>&1 | head -40; echo "HUNTERMARK""7END"
+[?2004lHUNTERMARK7BEGIN
+1349 xfce4-panel --disable-wm-check
+
+(xfce4-panel:1534): Gtk-WARNING **: 00:23:53.907: cannot open display: 
+HUNTERMARK7END
+[?2004huser@smd:~$ echo "HUNTERMARK""8BEGIN"; (DISPLAY=:0 xfconf-query -c xfce4-panel -p /panels -v 2>&1; DISPLAY=:0 xfconf-query -c xfce4-panel -l 2>&1 | head -20) 2>&1 | head -40; echo "HUNTERMARK""8END"
+[?2004lHUNTERMARK8BEGIN
+Value is an array with 1 items:
+
+1
+/configver
+/panels
+/panels/panel-1/autohide-behavior
+/panels/panel-1/enable-struts
+/panels/panel-1/length
+/panels/panel-1/length-adjust
+/panels/panel-1/mode
+/panels/panel-1/nrows
+/panels/panel-1/plugin-ids
+/panels/panel-1/position
+/panels/panel-1/position-locked
+/panels/panel-1/size
+/panels/panel-1/size-adjust
+/panels-version
+/plugins/plugin-1
+/plugins/plugin-1/button-icon
+/plugins/plugin-1/show-button-title
+/plugins/plugin-2
+/plugins/plugin-2/show-labels
+/plugins/plugin-3
+HUNTERMARK8END
+[?2004huser@smd:~$ echo "HUNTERMARK""9BEGIN"; (free -m) 2>&1 | head -40; echo "HUNTERMARK""9END"
+[?2004lHUNTERMARK9BEGIN
+               total        used        free      shared  buff/cache   available
+Mem:            1967         394        1140          13         583        1573
+Swap:            491           0         491
+HUNTERMARK9END
+echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""10BEGIN"; (DISPLAY=:0 xrandr 2>&1 | head -3) 2>&1 | head -40; echo "HUNTERMARK""10END"
+[?2004lHUNTERMARK10BEGIN
+Screen 0: minimum 320 x 200, current 1280 x 800, maximum 8192 x 8192
+Virtual-1 connected 1280x800+0+0 (normal left inverted right x axis y axis) 325mm x 203mm
+   1280x800      74.99*+
+HUNTERMARK10END
+[?2004huser@smd:~$ echo "HUNTERMARK""11BEGIN"; (tail -15 /var/log/lightdm/lightdm.log 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""11END"
+[?2004lHUNTERMARK11BEGIN
+HUNTERMARK11END
+[?2004huser@smd:~$ echo "HUNTERMARK""12BEGIN"; (DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""12END"
+[?2004lHUNTERMARK12BEGIN
+HUNTERMARK12END
+[?2004huser@smd:~$ echo "HUNTERMARK""13BEGIN"; (pgrep -c -f '^[a-z]*thunar') 2>&1 | head -40; echo "HUNTERMARK""13END"
+[?2004lHUNTERMARK13BEGIN
+1
+HUNTERMARK13END
+[?2004huser@smd:~$ echo "HUNTERMARK""14BEGIN"; (DISPLAY=:0 setsid firefox-esr 'about:blank' >/tmp/firefox.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""14END"
+[?2004lHUNTERMARK14BEGIN
+HUNTERMARK14END
+[?2004huser@smd:~$ echo "HUNTERMARK""15BEGIN"; (pgrep -c -f '^[a-z]*firefox') 2>&1 | head -40; echo "HUNTERMARK""15END"
+[?2004lHUNTERMARK15BEGIN
+1
+HUNTERMARK15END
+[?2004huser@smd:~$ echo "HUNTERMARK""16BEGIN"; (systemctl is-active cockpit.socket; echo ---; curl -sk -o /dev/null -w '%{http_code}' https://localhost:9090 2>&1) 2>&1 | head -40; echo "HUNTERMARK""16END"
+[?2004lHUNTERMARK16BEGIN
+active
+---
+200HUNTERMARK16ENDecho "HUNTERMARK""17BEGIN"; (/usr/local/bin/hunter-cockpit) 2>&1 | head -40; echo "HUNTERMARK""17END"
+
+[?2004huser@smd:~$ echo "HUNTERMARK""17BEGIN"; (/usr/local/bin/hunter-cockpit) 2>&1 | head -40; echo "HUNTERMARK""17END"
+[?2004lHUNTERMARK17BEGIN
+Cockpit - browser-based administration for this computer
+
+  Address:  https://10.0.2.15:9090
+  Service:  cockpit.socket is active
+
+Open that address in a browser on another computer on the same trusted
+network, then log in with the account you use on this computer:
+
+  live session      user (password: live)
+  installed system  the account created during installation
+
+The browser warns about the self-signed certificate on first use; that is
+expected for a machine-local service.  Use `sudo systemctl status
+cockpit.socket` if the service is not running.
+HUNTERMARK17END
+[?2004huser@smd:~$ echo "HUNTERMARK""18BEGIN"; (DISPLAY=:0 setsid /usr/local/bin/hunter-install >/tmp/calamares.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""18END"
+[?2004lHUNTERMARK18BEGIN
+HUNTERMARK18END
+[?2004huser@smd:~$ echo "HUNTERMARK""19BEGIN"; (pgrep -c calamares; echo ---; tail -25 /tmp/calamares.log) 2>&1 | head -40; echo "HUNTERMARK""19END"
+[?2004lHUNTERMARK19BEGIN
+1
+---
+00:27:37 [6]: void Calamares::RequirementsChecker::addCheckedRequirements(Calamares::Module*)
+    Got 1 requirement results from "partition" 
+00:27:37 [6]: Calamares::RequirementsList GeneralRequirements::checkRequirements()
+    GeneralRequirements output: 
+     storage :   8589934592 
+     enoughStorage :   false 
+     RAM :   1610612736 
+     enoughRam :   true 
+     hasPower :   unchecked 
+     hasInternet :   unchecked 
+     isRoot :   true 
+00:27:37 [6]: void Calamares::RequirementsChecker::addCheckedRequirements(Calamares::Module*)
+    Got 3 requirement results from "welcome" 
+00:27:37 [6]: void Calamares::RequirementsChecker::finished()
+    All requirements have been checked. 
+00:27:37 [6]: void Calamares::RequirementsModel::describe() const
+    Requirements model has 4 items 
+    .. requirement 0 "partitions" satisfied? false mandatory? true 
+    .. requirement 1 "storage" satisfied? false mandatory? true 
+    .. requirement 2 "ram" satisfied? true mandatory? true 
+    .. requirement 3 "root" satisfied? true mandatory? true 
+00:27:37 [6]: void CheckerContainer::requirementsComplete(bool)
+    Requirements not satisfied 4 entries: 
+    .. 0 "partitions" not-satisfied mandatory? true 
+    .. 1 "storage" not-satisfied mandatory? true 
+HUNTERMARK19END
+echo "HUNTERMARK""20BEGIN"; (pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; pkill -f thunar; sleep 8; free -m) 2>&1 | head -40; echo "HUNTERMARK""20END"
+[?2004huser@smd:~$ echo "HUNTERMARK""20BEGIN"; (pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; pkill -f thunar; sleep 8; free -m) 2>&1 | head -40; echo "HUNTERMARK""20END"
+[?2004lHUNTERMARK20BEGIN
+pkill: killing pid 2055 failed: Operation not permitted
+               total        used        free      shared  buff/cache   available
+Mem:            1967         523         651         135        1067        1443
+Swap:            491           0         491
+HUNTERMARK20END
+[?2004huser@smd:~$ echo "HUNTERMARK""21BEGIN"; (test -f /usr/share/backgrounds/smd/smd-linux-wallpaper.png && echo present || echo missing; echo ---; DISPLAY=:0 xprop -root _XROOTPMAP_ID 2>&1 | head -2) 2>&1 | head -40; echo "HUNTERMARK""21END"
+[?2004lHUNTERMARK21BEGIN
+present
+---
+_XROOTPMAP_ID(PIXMAP): pixmap id # 0x1400001
+HUNTERMARK21END
+echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""22BEGIN"; (pgrep -x xfce4-panel >/dev/null && echo panel-running || echo panel-missing; echo ---; DISPLAY=:0 xwininfo -root -tree 2>/dev/null | grep -i xfce4-panel | head -3; echo ---; DISPLAY=:0 xwininfo -root 2>/dev/null | grep -E 'Width:|Height:') 2>&1 | head -40; echo "HUNTERMARK""22END"
+[?2004lHUNTERMARK22BEGIN
+panel-running
+---
+     0x1000001 "xfce4-panel": ("xfce4-panel" "Xfce4-panel")  10x10+10+10  +10+10
+        0x1000026 "xfce4-panel": ("xfce4-panel" "Xfce4-panel")  1280x3+0+0  +0+797
+        0x1000003 "xfce4-panel": ("xfce4-panel" "Xfce4-panel")  1280x29+0+0  +0+768
+---
+  Width: 1280
+  Height: 800
+HUNTERMARK22END
