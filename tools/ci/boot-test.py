@@ -587,7 +587,18 @@ def main():
         check(results, "PipeWire and WirePlumber are running",
               "pipewire-running" in chunks[-2] and
               "wireplumber-running" in chunks[-2])
-        record(f"INFO: audio units: {chunks[0].strip()[:120]}")
+        record(f"INFO: audio units: {chunks[0].strip()[:200]}")
+        if "PipeWire" not in audio:
+            diag = shell.run(
+                "systemctl --user list-units 'pipewire*' 'wireplumber*' "
+                "--all --no-pager 2>&1 | head -10; echo ===; "
+                "systemctl --user status pipewire.service --no-pager 2>&1 "
+                "| tail -8; echo ===; "
+                "journalctl --user -u pipewire -n 12 --no-pager 2>&1 | tail -12; "
+                "echo ===; ls -l ${XDG_RUNTIME_DIR:-/run/user/$(id -u)} 2>&1 | head -8",
+                timeout=120)
+            record("INFO: audio diagnostics: " +
+                   " ".join(diag.split())[:600])
 
         # --- dark theme: the theme has to be present, not just requested ---
         theme = shell.run(
@@ -655,7 +666,7 @@ def main():
               "enabled" in gchunks[0])
         check(results, "the TearFree service ran",
               gchunks[1].strip() in ("active", "activating", "reloading"))
-        record(f"INFO: graphics detail: {gchunks[-1].strip()[:220]}")
+        record(f"INFO: graphics detail: {gchunks[-1].strip()[:500]}")
         check(results, "TearFree is not forced onto unrelated graphics",
               "TEARFREE=absent" in gchunks[2])
         record(f"INFO: graphics: {' | '.join(c.strip()[:70] for c in gchunks)}")
