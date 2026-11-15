@@ -295,7 +295,9 @@ class Display:
         self.client.mouseMove(x, y)
         time.sleep(0.3)
         self.client.mousePress(1)
-        time.sleep(0.15)
+        # Long enough for the guest to register a real click rather than a
+        # momentary button flap.
+        time.sleep(0.35)
         self.client.mouseUp(1)
         time.sleep(1.2)
 
@@ -496,8 +498,12 @@ def main():
         # installation never starts, which is what a guessed constant did.
         right = origin[0] + shape[0]
         bottom = origin[1] + shape[1]
-        NEXT = (right - 135, bottom - 35)
-        CANCEL_NO = ((origin[0] + right) // 2 + 159, (origin[1] + bottom) // 2 + 12)
+        # Measured on a 1280x800 screenshot of the running wizard: with the
+        # window at (130,38) and 1024x696, Next is at (1005,712) and Cancel at
+        # (1103,712), i.e. 149 px and 51 px from the right edge, 22 px above
+        # the bottom edge.
+        NEXT = (right - 149, bottom - 22)
+        CANCEL_NO = ((origin[0] + right) // 2 + 152, (origin[1] + bottom) // 2 + 26)
         time.sleep(20)
         disp.shot("welcome")
 
@@ -524,7 +530,7 @@ def main():
                     time.sleep(2)
                 time.sleep(6)
                 after = disp.shot(f"{label}-after")
-                if disp.differs(before, disp.signature(after)):
+                if disp.differs(before, disp.signature(after), 1.5):
                     record(f"PASS: left the {label} page")
                     return True
             record(f"FAIL: the {label} page did not advance")
