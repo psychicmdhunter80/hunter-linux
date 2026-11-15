@@ -434,27 +434,39 @@ def main():
         check(results, "the panel leaves a reveal strip along the bottom edge",
               edge_strip)
 
+        def panel_state(window_id):
+            """(map state, y, height) of the panel window, as X sees it."""
+            info = shell.run(f"DISPLAY=:0 xwininfo -id {window_id}", timeout=60)
+            state = re.search(r"Map State:\s*(\S+)", info)
+            corner = re.search(r"Corners:\s*\+(-?\d+)\+(-?\d+)", info)
+            height = re.search(r"Height:\s*(\d+)", info)
+            return (state.group(1) if state else "?",
+                    int(corner.group(2)) if corner else None,
+                    int(height.group(1)) if height else None)
+
         window = panel_box[4] if panel_box else None
         if window and screen:
             edge = int(screen.group(1)) - 2
-            # Away from the bottom edge: the panel must actually disappear.
+            screen_px = int(screen.group(1))
+            # Away from the bottom edge: the panel hides itself (it moves off
+            # screen, exactly as it does on the Acer install).
             shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
-            time.sleep(4)
-            away = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
-                             "| grep 'Map State'", timeout=60)
+            time.sleep(5)
+            state, y, height = panel_state(window)
             monitor.screenshot("06a-panel-hidden")
-            check(results, "the panel hides when the pointer leaves the edge",
-                  "IsUnMapped" in away)
-            # Back to the bottom edge: it must come back.
+            hidden = (state == "IsUnMapped" or
+                      (y is not None and y >= screen_px - 6))
+            check(results, "the panel hides when the pointer leaves the edge", hidden)
+            record(f"INFO: panel away: state {state}, y={y}, height={height}")
+            # Back to the bottom edge: it must come back on screen.
             shell.run(f"DISPLAY=:0 xdotool mousemove --sync 640 {edge}", timeout=30)
-            time.sleep(4)
-            near = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
-                             "| grep 'Map State'", timeout=60)
+            time.sleep(5)
+            state, y, height = panel_state(window)
             monitor.screenshot("06b-panel-revealed")
-            check(results, "the panel comes back at the bottom edge",
-                  "IsViewable" in near)
-            record(f"INFO: pointer away: {away.strip()[:50]}; "
-                   f"at the edge: {near.strip()[:50]}")
+            shown = (state == "IsViewable" and y is not None and
+                     y + (height or 0) <= screen_px + 2)
+            check(results, "the panel comes back at the bottom edge", shown)
+            record(f"INFO: panel at edge: state {state}, y={y}, height={height}")
 
         # The menu button must show the SMD "S", not the old H.
         icon = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
@@ -533,7 +545,7 @@ def main():
         time.sleep(5)
         count = shell.run(
             "echo PANELS=$(pgrep -c -x xfce4-panel); "
-            "echo HIDERS=$(pgrep -c -f '[h]unter-panel-hide'); "
+            "echo HIDERS=$(pgrep -c -f '[h]unter-panel-dock'); "
             "echo WATCHDOGS=$(pgrep -c -f '[h]unter-panel$')", timeout=90)
         panels = re.search(r"PANELS=(\d+)", count)
         hiders = re.search(r"HIDERS=(\d+)", count)
