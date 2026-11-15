@@ -1,0 +1,13 @@
+[Unit]
+Description=SMD Linux - hardware-matched Intel TearFree configuration
+Documentation=file:/usr/share/smd/xorg/20-intel-tearfree.conf
+# The configuration is read when Xorg starts, so it has to be in place first.
+Before=lightdm.service display-manager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/hunter-graphics
+
+[Install]
+WantedBy=multi-user.target

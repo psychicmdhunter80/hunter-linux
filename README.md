@@ -365,12 +365,14 @@ system works normally without it.
 * **One browser only.** Falkon was removed in 1.1: Qt6 WebEngine cost ~230 MB
   and used more memory than Firefox ESR for the same page. `sudo apt install
   falkon` brings it back if a second engine is ever needed.
-* **Video tearing is possible on Intel graphics.** i3 runs without a
-  compositor. A ready-made TearFree configuration ships **disabled** as
-  `/etc/X11/xorg.conf.d/20-intel-tearfree.conf.disabled`; rename it to
-  `...conf` and restart the display manager on an affected machine. It is not
-  enabled by default because it pins the Intel driver and would be wrong on
-  other GPUs.
+* **Video tearing on Intel graphics.** i3 runs without a compositor, so
+  tearing is possible. `hunter-graphics.service` installs the TearFree
+  configuration automatically - but only on Intel Bay Trail / ValleyView
+  graphics (`8086:0f31`, `0f32`, `0f33`), the hardware this release was
+  prepared for. On every other machine the file is removed, so the Intel
+  driver is never forced onto unrelated hardware. Remove
+  `/etc/X11/xorg.conf.d/20-intel.conf` and restart the display manager to roll
+  it back.
 * **Battery percentage is whatever UPower reports.** The 10-15 % sudden
   power-off seen on the older installation is a hardware/gauge behaviour; the
   image neither fakes the percentage nor forces a cutoff.

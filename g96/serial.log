@@ -1,300 +1,0 @@
-[!p]104[?7h[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
-SMD Linux 1.1 smd ttyS0
-Web console: https://localhost:9090/ or https://10.0.2.15:9090/
-
-smd login: user
-Password: 
-Linux smd 6.12.117+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64
-
-The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
-
-Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-Web console: https://localhost:9090/ or https://10.0.2.15:9090/
-
-[?2004huser@smd:~$ echo "HUNTERMARK""1BEGIN"; (cat /proc/cmdline; uname -r; id) 2>&1 | head -40; echo "HUNTERMARK""1END"
-[?2004lHUNTERMARK1BEGIN
-BOOT_IMAGE=/live/vmlinuz boot=live components quiet splash console=ttyS0,115200 hostname=smd username=user autologin initrd=/live/initrd.img
-6.12.117+deb13-amd64
-uid=1000(user) gid=1000(user) groups=1000(user),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),102(bluetooth)
-HUNTERMARK1END
-[?2004huser@smd:~$ echo "HUNTERMARK""2BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""2END"
-[?2004lHUNTERMARK2BEGIN
-WAIT
-1195 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
-X0
-HUNTERMARK2END
-[?2004huser@smd:~$ echo "HUNTERMARK""3BEGIN"; (DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; pgrep -a Xorg | head -2; ls /tmp/.X11-unix/ 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""3END"
-[?2004lHUNTERMARK3BEGIN
-READY
-1195 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
-X0
-HUNTERMARK3END
-[?2004huser@smd:~$ echo "HUNTERMARK""4BEGIN"; (pgrep -a lightdm | head -2; pgrep -a i3 | head -2; pgrep -a xfce4-panel | head -2; pgrep -a xfsettingsd | head -2) 2>&1 | head -40; echo "HUNTERMARK""4END"
-[?2004lHUNTERMARK4BEGIN
-1177 /usr/sbin/lightdm
-1262 lightdm --session-child 13 16
-1269 i3
-1331 xfce4-panel --disable-wm-check
-1333 xfsettingsd --replace
-HUNTERMARK4END
-echo "HUNTERMARK""5BEGIN"; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo "HUNTERMARK""5END"
-[?2004huser@smd:~$ echo "HUNTERMARK""5BEGIN"; (i3 -C -c ~/.config/i3/config; echo rc=$?) 2>&1 | head -40; echo "HUNTERMARK""5END"
-[?2004lHUNTERMARK5BEGIN
-rc=0
-HUNTERMARK5END
-[?2004huser@smd:~$ echo "HUNTERMARK""6BEGIN"; (pgrep -a i3; ls -l ~/.config/i3/config) 2>&1 | head -40; echo "HUNTERMARK""6END"
-[?2004lHUNTERMARK6BEGIN
-1269 i3
--rw-r--r-- 1 user user 7250 Nov 15 01:05 /home/user/.config/i3/config
-HUNTERMARK6END
-[?2004huser@smd:~$ echo "HUNTERMARK""7BEGIN"; (pgrep -a xfce4-panel; xfce4-panel --version 2>&1) 2>&1 | head -40; echo "HUNTERMARK""7END"
-[?2004lHUNTERMARK7BEGIN
-1331 xfce4-panel --disable-wm-check
-
-(xfce4-panel:1516): Gtk-WARNING **: 01:06:26.162: cannot open display: 
-HUNTERMARK7END
-[?2004huser@smd:~$ echo "HUNTERMARK""8BEGIN"; (DISPLAY=:0 xfconf-query -c xfce4-panel -p /panels -v 2>&1; DISPLAY=:0 xfconf-query -c xfce4-panel -l 2>&1 | head -20) 2>&1 | head -40; echo "HUNTERMARK""8END"
-[?2004lHUNTERMARK8BEGIN
-Value is an array with 1 items:
-
-1
-/configver
-/panels
-/panels/panel-1/autohide-behavior
-/panels/panel-1/enable-struts
-/panels/panel-1/length
-/panels/panel-1/length-adjust
-/panels/panel-1/mode
-/panels/panel-1/nrows
-/panels/panel-1/plugin-ids
-/panels/panel-1/position
-/panels/panel-1/position-locked
-/panels/panel-1/size
-/panels/panel-1/size-adjust
-/panels-version
-/plugins/plugin-1
-/plugins/plugin-1/button-icon
-/plugins/plugin-1/show-button-title
-/plugins/plugin-2
-/plugins/plugin-2/show-labels
-/plugins/plugin-3
-HUNTERMARK8END
-[?2004huser@smd:~$ echo "HUNTERMARK""9BEGIN"; (free -m) 2>&1 | head -40; echo "HUNTERMARK""9END"
-[?2004lHUNTERMARK9BEGIN
-               total        used        free      shared  buff/cache   available
-Mem:            1973         399        1140          12         583        1574
-Swap:            493           0         493
-HUNTERMARK9END
-[?2004huser@smd:~$ echo "HUNTERMARK""10BEGIN"; (DISPLAY=:0 xrandr 2>&1 | head -3) 2>&1 | head -40; echo "HUNTERMARK""10END"
-[?2004lHUNTERMARK10BEGIN
-Screen 0: minimum 320 x 200, current 1280 x 800, maximum 8192 x 8192
-Virtual-1 connected 1280x800+0+0 (normal left inverted right x axis y axis) 325mm x 203mm
-   1280x800      74.99*+
-HUNTERMARK10END
-echo "HUNTERMARK"[?2004huser@smd:~$ echo "HUNTERMARK""11BEGIN"; (tail -15 /var/log/lightdm/lightdm.log 2>/dev/null) 2>&1 | head -40; echo "HUNTERMARK""11END"
-[?2004lHUNTERMARK11BEGIN
-HUNTERMARK11END
-[?2004huser@smd:~$ echo "HUNTERMARK""12BEGIN"; (DISPLAY=:0 setsid thunar >/tmp/thunar.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""12END"
-[?2004lHUNTERMARK12BEGIN
-HUNTERMARK12END
-[?2004huser@smd:~$ echo "HUNTERMARK""13BEGIN"; (pgrep -c -f '^[a-z]*thunar') 2>&1 | head -40; echo "HUNTERMARK""13END"
-[?2004lHUNTERMARK13BEGIN
-1
-HUNTERMARK13END
-[?2004huser@smd:~$ echo "HUNTERMARK""14BEGIN"; (DISPLAY=:0 setsid firefox-esr 'about:blank' >/tmp/firefox.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""14END"
-[?2004lHUNTERMARK14BEGIN
-HUNTERMARK14END
-[?2004huser@smd:~$ echo "HUNTERMARK""15BEGIN"; (pgrep -c -f '^[a-z]*firefox') 2>&1 | head -40; echo "HUNTERMARK""15END"
-[?2004lHUNTERMARK15BEGIN
-1
-HUNTERMARK15END
-[?2004huser@smd:~$ echo "HUNTERMARK""16BEGIN"; (systemctl is-active cockpit.socket; echo ---; curl -sk -o /dev/null -w '%{http_code}' https://localhost:9090 2>&1) 2>&1 | head -40; echo "HUNTERMARK""16END"
-[?2004lHUNTERMARK16BEGIN
-active
----
-200HUNTERMARK16END
-echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""17BEGIN"; (/usr/local/bin/hunter-cockpit) 2>&1 | head -40; echo "HUNTERMARK""17END"
-[?2004lHUNTERMARK17BEGIN
-Cockpit - browser-based administration for this computer
-
-  Address:  https://10.0.2.15:9090
-  Service:  cockpit.socket is active
-
-Open that address in a browser on another computer on the same trusted
-network, then log in with the account you use on this computer:
-
-  live session      user (password: live)
-  installed system  the account created during installation
-
-The browser warns about the self-signed certificate on first use; that is
-expected for a machine-local service.  Use `sudo systemctl status
-cockpit.socket` if the service is not running.
-HUNTERMARK17END
-[?2004huser@smd:~$ echo "HUNTERMARK""18BEGIN"; (DISPLAY=:0 setsid /usr/local/bin/hunter-install >/tmp/calamares.log 2>&1 &) 2>&1 | head -40; echo "HUNTERMARK""18END"
-[?2004lHUNTERMARK18BEGIN
-HUNTERMARK18END
-[?2004huser@smd:~$ [  247.602038] I/O error, dev fd0, sector 0 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 2
-echo "HUNTERMARK""19BEGIN"; (pgrep -c calamares; echo ---; tail -25 /tmp/calamares.log) 2>&1 | head -40; echo "HUNTERMARK""19END"
-[?2004lHUNTERMARK19BEGIN
-1
----
-01:10:01 [6]: void Calamares::RequirementsChecker::addCheckedRequirements(Calamares::Module*)
-    Got 1 requirement results from "partition" 
-01:10:01 [6]: Calamares::RequirementsList GeneralRequirements::checkRequirements()
-    GeneralRequirements output: 
-     storage :   8589934592 
-     enoughStorage :   false 
-     RAM :   1610612736 
-     enoughRam :   true 
-     hasPower :   unchecked 
-     hasInternet :   unchecked 
-     isRoot :   true 
-01:10:01 [6]: void Calamares::RequirementsChecker::addCheckedRequirements(Calamares::Module*)
-    Got 3 requirement results from "welcome" 
-01:10:01 [6]: void Calamares::RequirementsChecker::finished()
-    All requirements have been checked. 
-01:10:01 [6]: void Calamares::RequirementsModel::describe() const
-    Requirements model has 4 items 
-    .. requirement 0 "partitions" satisfied? false mandatory? true 
-    .. requirement 1 "storage" satisfied? false mandatory? true 
-    .. requirement 2 "ram" satisfied? true mandatory? true 
-    .. requirement 3 "root" satisfied? true mandatory? true 
-01:10:01 [6]: void CheckerContainer::requirementsComplete(bool)
-    Requirements not satisfied 4 entries: 
-    .. 0 "partitions" not-satisfied mandatory? true 
-    .. 1 "storage" not-satisfied mandatory? true 
-HUNTERMARK19END
-echo "HUNTERMARK""20BEGIN"; (pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; pkill -f thunar; sleep 8; free -m) 2>&1 | head -40; echo "HUNTERMARK""20END"
-[?2004huser@smd:~$ echo "HUNTERMARK""20BEGIN"; (pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; pkill -f thunar; sleep 8; free -m) 2>&1 | head -40; echo "HUNTERMARK""20END"
-[?2004lHUNTERMARK20BEGIN
-pkill: killing pid 2038 failed: Operation not permitted
-               total        used        free      shared  buff/cache   available
-Mem:            1973         534         642         135        1071        1438
-Swap:            493           0         493
-HUNTERMARK20END
-echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""21BEGIN"; (test -f /usr/share/backgrounds/smd/smd-linux-wallpaper.png && echo present || echo missing; echo ---; DISPLAY=:0 xprop -root _XROOTPMAP_ID 2>&1 | head -2) 2>&1 | head -40; echo "HUNTERMARK""21END"
-[?2004lHUNTERMARK21BEGIN
-present
----
-_XROOTPMAP_ID(PIXMAP): pixmap id # 0x1400001
-HUNTERMARK21END
-echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""22BEGIN"; (pgrep -x xfce4-panel >/dev/null && echo panel-running || echo panel-missing; echo ---; DISPLAY=:0 xwininfo -root -tree 2>/dev/null | grep -i xfce4-panel | head -3; echo ---; DISPLAY=:0 xwininfo -root 2>/dev/null | grep -E 'Width:|Height:') 2>&1 | head -40; echo "HUNTERMARK""22END"
-[?2004lHUNTERMARK22BEGIN
-panel-running
----
-     0x1200001 "xfce4-panel": ("xfce4-panel" "Xfce4-panel")  10x10+10+10  +10+10
-        0x1200022 "xfce4-panel": ("xfce4-panel" "Xfce4-panel")  1280x3+0+0  +0+797
-        0x1200003 "xfce4-panel": ("xfce4-panel" "Xfce4-panel")  1280x29+0+0  +0+768
----
-  Width: 1280
-  Height: 800
-HUNTERMARK22END
-[?2004huser@smd:~$ echo "HUNTERMARK""23BEGIN"; (DISPLAY=:0 xdotool mousemove 300 300) 2>&1 | head -40; echo "HUNTERMARK""23END"
-[?2004lHUNTERMARK23BEGIN
-HUNTERMARK23END
-[?2004huser@smd:~$ echo "HUNTERMARK""24BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""24END"
-[?2004lHUNTERMARK24BEGIN
-  Map State: IsViewable
-HUNTERMARK24END
-[?2004huser@smd:~$ echo "HUNTERMARK""25BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""25END"
-[?2004lHUNTERMARK25BEGIN
-  Map State: IsViewable
-HUNTERMARK25END
-[?2004huser@smd:~$ echo "HUNTERMARK""26BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""26END"
-[?2004lHUNTERMARK26BEGIN
-  Map State: IsViewable
-HUNTERMARK26END
-[?2004huser@smd:~$ echo "HUNTERMARK""27BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""27END"
-[?2004lHUNTERMARK27BEGIN
-  Map State: IsViewable
-HUNTERMARK27END
-[?2004huser@smd:~$ echo "HUNTERMARK""28BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""28END"
-[?2004lHUNTERMARK28BEGIN
-  Map State: IsViewable
-HUNTERMARK28END
-[?2004huser@smd:~$ echo "HUNTERMARK""29BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""29END"
-[?2004lHUNTERMARK29BEGIN
-  Map State: IsViewable
-HUNTERMARK29END
-[?2004huser@smd:~$ echo "HUNTERMARK""30BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""30END"
-[?2004lHUNTERMARK30BEGIN
-  Map State: IsViewable
-HUNTERMARK30END
-echo "HUNTERMARK""31BEGIN"; (DISPLAY=:0 xdotool mousemove 640 798) 2>&1 | head -40; echo "HUNTERMARK""31END"
-[?2004huser@smd:~$ echo "HUNTERMARK""31BEGIN"; (DISPLAY=:0 xdotool mousemove 640 798) 2>&1 | head -40; echo "HUNTERMARK""31END"
-[?2004lHUNTERMARK31BEGIN
-HUNTERMARK31END
-[?2004huser@smd:~$ echo "HUNTERMARK""32BEGIN"; (DISPLAY=:0 xwininfo -id 0x1200003 | grep 'Map State') 2>&1 | head -40; echo "HUNTERMARK""32END"
-[?2004lHUNTERMARK32BEGIN
-  Map State: IsViewable
-HUNTERMARK32END
-[?2004huser@smd:~$ echo "HUNTERMARK""33BEGIN"; (pactl info 2>&1 | grep -iE 'server name|server version'; echo ---; pgrep -x pipewire >/dev/null && echo pipewire-running || echo pipewire-missing; pgrep -x wireplumber >/dev/null && echo wireplumber-running || echo wireplumber-missing; echo ---; wpctl status 2>&1 | grep -iE 'sinks|default' | head -4) 2>&1 | head -40; echo "HUNTERMARK""33END"
-[?2004lHUNTERMARK33BEGIN
-Server Name: PulseAudio (on PipeWire 1.4.2)
-Server Version: 15.0.0
----
-pipewire-running
-wireplumber-running
----
- ���─ Sinks:
- ├─ Sinks:
- └─ Default Configured Devices:
-HUNTERMARK33END
-[?2004huser@smd:~$ echo "HUNTERMARK""34BEGIN"; (dpkg-query -W -f='${Status}' wpasupplicant 2>/dev/null | grep -c 'install ok installed'; echo ---; ls /lib/firmware/iwlwifi-7260* 2>/dev/null | head -3; echo ---; systemctl is-active NetworkManager; nmcli -t -f RUNNING general 2>&1) 2>&1 | head -40; echo "HUNTERMARK""34END"
-[?2004lHUNTERMARK34BEGIN
-1
----
-/lib/firmware/iwlwifi-7260-17.ucode
----
-active
-running
-HUNTERMARK34END
-echo "HUNTERMARK""35BEGIN"; (for p in falkon mpv ristretto xarchiver; do command -v $p >/dev/null && echo present:$p || echo gone:$p; done; echo ---; command -v firefox-esr >/dev/null && echo browser-present; command -v xfce4-panel >/dev/null && echo panel-present) 2>&1 | head -40; echo "HUNTERMARK""35END"
-[?2004huser@smd:~$ echo "HUNTERMARK""35BEGIN"; (for p in falkon mpv ristretto xarchiver; do command -v $p >/dev/null && echo present:$p || echo gone:$p; done; echo ---; command -v firefox-esr >/dev/null && echo browser-present; command -v xfce4-panel >/dev/null && echo panel-present) 2>&1 | head -40; echo "HUNTERMARK""35END"
-[?2004lHUNTERMARK35BEGIN
-gone:falkon
-gone:mpv
-gone:ristretto
-gone:xarchiver
----
-browser-present
-panel-present
-HUNTERMARK35END
-[?2004huser@smd:~$ echo "HUNTERMARK""36BEGIN"; (DISPLAY=:0 xdotool mousemove 300 300) 2>&1 | head -40; echo "HUNTERMARK""36END"
-[?2004lHUNTERMARK36BEGIN
-HUNTERMARK36END
-[?2004huser@smd:~$ echo "HUNTERMARK""37BEGIN"; (DISPLAY=:0 xdotool key --clearmodifiers Super_L) 2>&1 | head -40; echo "HUNTERMARK""37END"
-[?2004lHUNTERMARK37BEGIN
-HUNTERMARK37END
-[?2004huser@smd:~$ echo "HUNTERMARK""38BEGIN"; (DISPLAY=:0 xwininfo -root -tree 2>/dev/null | grep -ci rofi) 2>&1 | head -40; echo "HUNTERMARK""38END"
-[?2004lHUNTERMARK38BEGIN
-1
-HUNTERMARK38END
-echo "HUNTERMARK""39BEGIN"; (DISPLAY=:0 xdotool key Escape) 2>&1 | head -40; echo "HUNTERMARK""39END"
-[?2004huser@smd:~$ echo "HUNTERMARK""39BEGIN"; (DISPLAY=:0 xdotool key Escape) 2>&1 | head -40; echo "HUNTERMARK""39END"
-[?2004lHUNTERMARK39BEGIN
-HUNTERMARK39END
-echo "HU[?2004huser@smd:~$ echo "HUNTERMARK""40BEGIN"; (DISPLAY=:0 xmodmap -pm 2>/dev/null | grep -E 'mod1|mod4') 2>&1 | head -40; echo "HUNTERMARK""40END"
-[?2004lHUNTERMARK40BEGIN
-mod1        Alt_L (0x40),  Alt_R (0x6c),  Alt_L (0xcc),  Meta_L (0xcd)
-mod4        Super_L (0x85),  Super_R (0x86),  Super_L (0xce),  Hyper_L (0xcf)
-HUNTERMARK40END
-echo "HUNTERMARK""41BEGIN[?2004huser@smd:~$ echo "HUNTERMARK""41BEGIN"; (systemd-analyze 2>&1; systemd-analyze blame 2>/dev/null | head -8; systemctl --failed --no-pager | head -6) 2>&1 | head -40; echo "HUNTERMARK""41END"
-[?2004lHUNTERMARK41BEGIN
-Startup finished in 14.975s (kernel) + 42.087s (userspace) = 57.063s 
-graphical.target reached after 42.083s in userspace.
-30.950s live-config.service
-13.664s ldconfig.service
-12.646s console-setup.service
-10.774s dev-sr0.device
- 4.833s dev-loop0.device
- 2.615s networking.service
- 2.507s udisks2.service
- 2.457s accounts-daemon.service
-  UNIT LOAD ACTIVE SUB DESCRIPTION
-
-0 loaded units listed.
-HUNTERMARK41END

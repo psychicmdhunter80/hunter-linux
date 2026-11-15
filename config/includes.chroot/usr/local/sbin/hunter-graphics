@@ -1,0 +1,48 @@
+#!/bin/sh
+# SMD Linux - apply the Intel TearFree configuration only where it belongs.
+#
+# Runs before the display manager (hunter-graphics.service).  The ISO supports
+# every machine with Intel, AMD, NVIDIA or virtual graphics, but the TearFree
+# option pins Driver "intel": that is correct on the Bay Trail Chromebook this
+# release was tested on and wrong everywhere else.  So the file is installed
+# only for the matching PCI IDs, and removed otherwise - including on a machine
+# that had it from an earlier boot.
+
+set -u
+
+template=/usr/share/smd/xorg/20-intel-tearfree.conf
+target=/etc/X11/xorg.conf.d/20-intel.conf
+
+log() { echo "hunter-graphics: $*"; }
+
+# Bay Trail / ValleyView integrated graphics.
+ids="0f31 0f32 0f33"
+
+[ -f "$template" ] || exit 0
+mkdir -p /etc/X11/xorg.conf.d
+
+matched=""
+if command -v lspci >/dev/null 2>&1; then
+	for id in $ids; do
+		if lspci -nn 2>/dev/null | grep -qi "8086:${id}.*VGA"; then
+			matched=$id
+			break
+		fi
+	done
+fi
+
+if [ -n "$matched" ] && [ -e /usr/lib/xorg/modules/drivers/intel_drv.so ]; then
+	if cmp -s "$template" "$target" 2>/dev/null; then
+		exit 0
+	fi
+	if cp -f "$template" "$target"; then
+		log "TearFree enabled for Intel graphics 8086:${matched}"
+	fi
+	exit 0
+fi
+
+if [ -e "$target" ]; then
+	rm -f "$target"
+	log "removed a TearFree configuration that does not belong to this machine"
+fi
+exit 0

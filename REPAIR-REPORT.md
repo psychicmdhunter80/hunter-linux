@@ -139,11 +139,15 @@ only the menu clutter is gone. No `xfwm4` was added.
   `load_video` removal, so the "press any key" stop is gone. Start-up phases are
   measured by the test (`systemd-analyze`), not assumed; USB flash speed is
   recorded as a plausible contributor, not as a proven cause.
-* Tearing: i3 runs without a compositor. The Intel DDX can remove tearing
-  without one, so the image now ships
-  `/etc/X11/xorg.conf.d/20-intel-tearfree.conf.disabled` - a ready-to-use
-  TearFree configuration that is **off by default** and enabled with one `mv`
-  on the affected machine only. No compositor and no overclocking were added.
+* Tearing: i3 runs without a compositor. The Intel DDX removes tearing without
+  one, so the image now applies the established TearFree configuration
+  (`Driver "intel"`, `Option "TearFree" "true"`) through
+  `hunter-graphics.service`, which runs before the display manager. It is
+  **hardware-matched**: the file is written only when `lspci` reports Intel Bay
+  Trail / ValleyView graphics (`8086:0f31`, `0f32`, `0f33`) and the Intel DDX is
+  installed, and it is removed on every other machine, so a single ISO never
+  forces the intel driver onto an AMD, NVIDIA or virtual GPU. No compositor was
+  added and nothing was overclocked.
 * Battery: the 10-15 % sudden power-off is a hardware/gauge report from the
   older installation and is **not** reproduced or explained here; nothing
   subtracts a fixed percentage or forces a cutoff. The panel shows the battery

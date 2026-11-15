@@ -573,24 +573,40 @@ def main():
         # "Done", so its process is not the signal.  The finish-up script
         # removes the installer launcher from the target as its first act, so
         # that file disappearing means the installation itself is complete.
+        def target_has_menu():
+            """True once the target really holds a GRUB menu."""
+            probe = shell.run(
+                "sudo -n sh -c 'mkdir -p /mnt/chk; mount -o ro /dev/vda2 /mnt/chk "
+                "2>/dev/null && { test -f /mnt/chk/boot/grub/grub.cfg && echo "
+                "GRUB-READY; }; umount /mnt/chk 2>/dev/null; true'", timeout=120)
+            return "GRUB-READY" in probe
+
+        # The target being unmounted is necessary but not sufficient: the
+        # finish-up step runs after it and writes the boot loader.  v1.1's first
+        # run stopped here too early, rebooted into a machine with no boot
+        # loader at all, and firmware fell through to PXE.  Completion now also
+        # requires the installer's finished page and a real menu on the disk.
         deadline = time.time() + 3600
         finished = False
         poll = 0
         while time.time() < deadline:
             poll += 1
-            if poll % 5 == 1:
+            if poll % 2 == 1:
                 monitor.screenshot("install-progress")
-            # The installer unmounts the target as its very last step, so an
-            # empty calamares-root mount table means the installation is over.
             state = shell.run("mount | grep -c calamares-root", timeout=90)
             try:
                 mounted = int(state.strip().splitlines()[-1])
             except (ValueError, IndexError):
                 mounted = 1
-            if mounted == 0:
+            page = disp.shot("finished-page") if mounted == 0 else None
+            done_page = bool(page and (disp.find(page, "Done")
+                                       or disp.find(page, "Restart")))
+            if mounted == 0 and done_page and target_has_menu():
                 finished = True
                 break
-            time.sleep(20)
+            record(f"INFO: still installing (calamares mounts: {mounted}, "
+                   f"finished page: {done_page})")
+            time.sleep(25)
         record("PASS: the installer completed the installation" if finished
                else "FAIL: the installation never completed")
         if not finished:

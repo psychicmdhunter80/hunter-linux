@@ -20,7 +20,8 @@ mkdir -p /etc/skel/.cache
 chmod 0755 /usr/local/bin/hunter-session /usr/local/bin/hunter-power \
 	/usr/local/bin/hunter-install /usr/local/bin/hunter-cockpit \
 	/usr/local/bin/hunter-panel /usr/local/bin/hunter-applets
-chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader
+chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader \
+	/usr/local/sbin/hunter-graphics
 chmod 0644 /usr/share/xsessions/hunter.desktop
 chmod 0644 /usr/share/applications/hunter-install.desktop \
 	/usr/share/applications/hunter-power.desktop \
