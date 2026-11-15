@@ -502,6 +502,10 @@ def main():
                            timeout=60)
         check(results, "the Chromebook top row bindings are generated",
               toprow.strip().splitlines()[-1:] == ["1"])
+        # Start from half volume: the default sink is already at 1.0, where a
+        # "5%+" would be capped and look like a broken key.
+        shell.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5", timeout=60)
+        time.sleep(2)
         before = shell.run("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>&1", timeout=60)
         shell.run("DISPLAY=:0 xdotool key F10", timeout=60)
         time.sleep(3)
