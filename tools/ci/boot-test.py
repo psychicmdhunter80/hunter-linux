@@ -425,16 +425,26 @@ def main():
 
         if window:
             shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
-            time.sleep(4)
-            hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
-                               "| grep 'Map State'", timeout=60)
+            # The panel waits for its own popdown timeout, so poll instead of
+            # assuming a delay.
+            hidden = ""
+            for _ in range(7):
+                time.sleep(3)
+                hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
+                                   "| grep 'Map State'", timeout=60)
+                if "IsUnMapped" in hidden or "IsUnviewable" in hidden:
+                    break
             # The pointer has to reach the last pixel row: the hidden panel
             # leaves only its three pixel reveal strip there.
             edge = (int(screen.group(1)) - 2) if screen else 798
             shell.run(f"DISPLAY=:0 xdotool mousemove 640 {edge}", timeout=30)
-            time.sleep(4)
-            shown = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
-                              "| grep 'Map State'", timeout=60)
+            shown = ""
+            for _ in range(7):
+                time.sleep(2)
+                shown = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
+                                  "| grep 'Map State'", timeout=60)
+                if "IsViewable" in shown:
+                    break
             record(f"INFO: panel map state with the pointer away: {hidden.strip()[:70]}")
             record(f"INFO: panel map state at the bottom edge: {shown.strip()[:70]}")
             check(results, "the panel hides itself when the pointer is away",

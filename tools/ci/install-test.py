@@ -742,14 +742,22 @@ def main():
             window = re.search(r"(0x[0-9a-f]+)", pchunks[1]) if len(pchunks) > 1 else None
             if window:
                 shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
-                time.sleep(4)
-                hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
-                                   "| grep 'Map State'", timeout=60)
+                hidden = ""
+                for _ in range(7):
+                    time.sleep(3)
+                    hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+                                       "| grep 'Map State'", timeout=60)
+                    if "IsUnMapped" in hidden or "IsUnviewable" in hidden:
+                        break
                 edge = (int(screen.group(1)) - 2) if screen else 798
                 shell.run(f"DISPLAY=:0 xdotool mousemove 640 {edge}", timeout=30)
-                time.sleep(4)
-                shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
-                                  "| grep 'Map State'", timeout=60)
+                shown = ""
+                for _ in range(7):
+                    time.sleep(2)
+                    shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
+                                      "| grep 'Map State'", timeout=60)
+                    if "IsViewable" in shown:
+                        break
                 record(f"INFO: installed panel away: {hidden.strip()[:70]}")
                 record(f"INFO: installed panel at the bottom: {shown.strip()[:70]}")
                 record("PASS: the installed panel auto-hides"
