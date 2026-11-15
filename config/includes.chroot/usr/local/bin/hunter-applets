@@ -49,8 +49,8 @@ done
 # no sound server at all, so start them here too and fall back to the binaries.
 if command -v systemctl >/dev/null 2>&1; then
 	if ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1; then
-		systemctl --user start pipewire.socket pipewire-pulse.socket \
-			wireplumber.service >>"$log" 2>&1 || true
+		systemctl --user start pipewire.service wireplumber.service \
+			pipewire-pulse.service >>"$log" 2>&1 || true
 	fi
 fi
 if ! pgrep -u "$(id -u)" -x pipewire >/dev/null 2>&1 && \
@@ -62,6 +62,13 @@ if ! pgrep -u "$(id -u)" -x wireplumber >/dev/null 2>&1 && \
    command -v wireplumber >/dev/null 2>&1; then
 	echo "$(date '+%F %T') starting wireplumber directly" >>"$log"
 	wireplumber >>"$log" 2>&1 &
+fi
+# The PulseAudio protocol front end is its own process; without it the browser
+# and pactl have nothing to talk to even when PipeWire itself is running.
+if ! pgrep -u "$(id -u)" -x pipewire-pulse >/dev/null 2>&1 && \
+   command -v pipewire-pulse >/dev/null 2>&1; then
+	echo "$(date '+%F %T') starting pipewire-pulse directly" >>"$log"
+	pipewire-pulse >>"$log" 2>&1 &
 fi
 
 # Speaker level: the volume Hunter tuned by hand on the Chromebook (125 %).

@@ -594,7 +594,9 @@ def main():
                 "--all --no-pager 2>&1 | head -10; echo ===; "
                 "systemctl --user status pipewire.service --no-pager 2>&1 "
                 "| tail -8; echo ===; "
-                "journalctl --user -u pipewire -n 12 --no-pager 2>&1 | tail -12; "
+                "journalctl --user -u pipewire -n 8 --no-pager 2>&1 | tail -8; "
+                "journalctl --user -u pipewire.socket -n 6 --no-pager 2>&1 "
+                "| tail -6; "
                 "echo ===; ls -l ${XDG_RUNTIME_DIR:-/run/user/$(id -u)} 2>&1 | head -8",
                 timeout=120)
             record("INFO: audio diagnostics: " +
@@ -658,8 +660,8 @@ def main():
             "test -e /etc/X11/xorg.conf.d/20-intel.conf && echo TEARFREE=present "
             "|| echo TEARFREE=absent; echo ---; "
             "lspci -nn 2>/dev/null | grep -iE 'VGA|3D' | head -2; echo ---; "
-            "systemctl status --no-pager hunter-graphics.service 2>&1 | head -6; "
-            "journalctl -u hunter-graphics.service -n 5 --no-pager 2>&1 | tail -5",
+            "journalctl -u hunter-graphics.service -n 6 --no-pager 2>&1 "
+            "| tr '\n' ' '",
             timeout=90)
         gchunks = graphics.split("---")
         check(results, "the TearFree service is enabled",

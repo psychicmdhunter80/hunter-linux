@@ -19,8 +19,21 @@ done
 
 # PipeWire for every user, enabled globally: the user units ship with the
 # package but nothing enables them, so the sound server never started and the
-# session had no audio at all.  Socket activation means it starts on demand.
-for unit in pipewire.socket pipewire-pulse.socket wireplumber.service; do
+# session had no audio at all.
+#
+# Activation is by service, not by socket.  Socket activation left
+# pipewire.socket in a failed state on the tested images, and a failed socket
+# takes pipewire.service with it - the session then had no sound server at all
+# even though every package was installed.  The sockets are masked so nothing
+# tries them again, and the three services are started at login instead.
+for unit in pipewire.socket pipewire-pulse.socket; do
+	if systemctl --global mask "${unit}" >/dev/null 2>&1; then
+		echo "hunter:   masked (user) ${unit} in favour of the service"
+	else
+		echo "hunter:   warning: could not mask user unit ${unit}" >&2
+	fi
+done
+for unit in pipewire.service pipewire-pulse.service wireplumber.service; do
 	if systemctl --global enable "${unit}" >/dev/null 2>&1; then
 		echo "hunter:   enabled (user) ${unit}"
 	else
