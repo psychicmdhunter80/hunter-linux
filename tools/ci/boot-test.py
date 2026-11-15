@@ -503,6 +503,7 @@ def main():
         # "5%+" would be capped and look like a broken key.  The values are
         # printed with a marker because the log echoes the command itself.
         # cut, not awk: this image has no awk installed.
+        SINK = "env XDG_RUNTIME_DIR=/run/user/$(id -u) wpctl"
         # wpctl has to reach the running session's PipeWire: without the
         # session's runtime directory it starts a private instance and every
         # reading comes back unchanged.
