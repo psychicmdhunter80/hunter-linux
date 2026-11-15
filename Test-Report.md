@@ -178,6 +178,71 @@ above:
 
 ---
 
+## 6b. Version 1.1 - what this revision changed and re-tested
+
+Version 1.0's results above are kept as history. Version 1.1 repairs the faults
+reported from use on the Acer Chromebook 11 CB3-111; the root causes and the
+source changes are in `REPAIR-REPORT.md`. This section records what was
+measured on the 1.1 image.
+
+Image under test: `SMD-Linux-v1.1-amd64.iso`, 868 MiB (909,895,680 bytes),
+SHA-256 `2f6ee47d5a3c4a21b089b236b39b9d1622a96cbd1b66a3ab5e1cb08969dc6c2f`.
+
+### 6b.1 Live session, BIOS and UEFI
+
+**28 checks per firmware, 28 pass, 0 fail** on BIOS and on UEFI. The checks are
+the 1.0 set plus: panel running in the session, panel along the bottom edge,
+auto-hide configured, reveal strip present, PipeWire server identity,
+WirePlumber running, Wi-Fi supplicant installed, Intel 7260 firmware present,
+NetworkManager active, trimmed application set, removed applications actually
+gone, and the Search key opening the launcher on its own.
+
+Measured on the final image:
+
+| Measurement | 1.0 | 1.1 |
+|---|---|---|
+| Idle memory, live desktop | 425 MiB of 1967 MiB | **397 MiB**, 1570 MiB available |
+| ISO size | 1.04 GiB (1,117,487,104 B) | **868 MiB** (909,895,680 B) |
+| Startup (VM) | 14.0 s kernel + 61.2 s userspace | 19.0 s kernel + 57.1 s userspace |
+| Panel position | top edge | **bottom edge, 1280x29 at y=768 on an 800 px screen** |
+| `pactl info` | *(no sound server)* | **PipeWire server, WirePlumber running** |
+| `xfce4-panel` autohide-behavior | 0 (never) | **2 (always)** |
+
+Recorded, not asserted: the pointer was warped to the bottom edge
+(`xdotool mousemove 640 798`) and the panel's map state was read before and
+after. A warped pointer does not always produce the motion events GTK needs, so
+the result is reported as observational rather than as a passed check.
+
+### 6b.2 Installation, UEFI (final image)
+
+| Step | Result |
+|---|---|
+| Installer starts from the live session | PASS |
+| All wizard pages completed | PASS - welcome, location, keyboard, partitions, users, summary |
+| Installation completes, installer unmounts the target | PASS |
+| Target partitioned and formatted | PASS - 300 MiB vfat ESP + 19.7 GiB ext4 |
+| Installer finish-up step runs | PASS |
+| GRUB menu on the installed system | PASS |
+| EFI system partition holds the boot loader | **PASS** - the 1.0 failure, now fixed |
+| Installed disk boots on its own | PASS |
+| Serial login on the installed system | FAIL - no prompt appeared |
+| Automated post-login checks on the installed system | not executed (see 6b.3) |
+
+### 6b.3 What the installed system still could not prove
+
+The installed system boots from its own disk, but the harness logs in over the
+serial console and the installed system produced no login prompt there, so the
+post-login command checks (panel, audio, applications, power action) did not
+run on the installed machine. They were run in the live session instead, where
+the same packages, session file and configuration are in place.
+
+This is a limitation of the harness, not a demonstrated defect, and it is the
+first thing to fix next: an installed-system console login does work at the
+greeter, which the harness uses as a fallback, but without a shell it cannot
+run assertions.
+
+---
+
 ## 7. Installation test
 
 Method: the ISO is booted under QEMU with UEFI firmware (OVMF) and an empty

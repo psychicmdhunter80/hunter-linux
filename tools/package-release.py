@@ -107,12 +107,14 @@ def main():
     if os.path.exists(iso_path):
         files.insert(0, iso_path)
     with open(sums_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write("# SMD Linux 1.0 checksums\n")
+        handle.write("# SMD Linux 1.1 checksums - verify with: sha256sum -c SHA256SUMS\n")
         if os.path.exists(iso_path):
             handle.write("# The first entry is the bootable ISO image.\n")
         else:
             handle.write("# The ISO image is not present in this directory.\n")
         for path in files:
+            handle.write("# size %s bytes  %s\n" % (os.path.getsize(path),
+                                                     os.path.basename(path)))
             handle.write("%s  %s\n" % (sha256(path), os.path.basename(path)))
     print("wrote SHA256SUMS")
     return 0

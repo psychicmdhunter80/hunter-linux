@@ -642,6 +642,10 @@ def main():
             "test -e /mnt/root/usr/local/bin/hunter-install "
             "&& echo POSTINSTALL-NOT-RUN || echo postinstall-ran ; "
             "find /mnt/root/boot/efi -maxdepth 3 -type f | sort ; "
+            "echo SERIAL-CMDLINE: ; grep -o 'console=[^ ]*' "
+            "/mnt/root/boot/grub/grub.cfg | sort -u ; "
+            "echo GETTY-UNITS: ; ls /mnt/root/etc/systemd/system/getty.target.wants "
+            "2>&1 | tr '\\n' ' ' ; echo ; "
             "umount -R /mnt/root 2>/dev/null; true'", timeout=300)
         if "postinstall-ran" in probe:
             record("PASS: the installer ran its finish-up step")
@@ -861,12 +865,25 @@ def main():
             # so the name has to be typed first and Tab moves to the password.
             try:
                 greeter = Display()
-                greeter.type(LOGIN)
-                greeter.press("tab")
+                # LightDM preselects the only account, so the password box
+                # already holds the keyboard.  Typing the account name there
+                # was the first 1.1 harness failure: it put the name in the
+                # password box, moved focus to the name box on Tab and left the
+                # password empty, so the login was rejected.
+                greeter.shot("screen-11-login")
                 greeter.type(PASSWORD)
-                greeter.press("enter")
+                greeter.press("return")
                 time.sleep(60)
-                greeter.shot("11-desktop-after-login")
+                after = greeter.shot("01-11-desktop-after-login")
+                if greeter.find(after, "Log In"):
+                    # The greeter did show an empty name box: fill it, then the
+                    # password, then submit.
+                    greeter.type(LOGIN)
+                    greeter.press("tab")
+                    greeter.type(PASSWORD)
+                    greeter.press("return")
+                    time.sleep(60)
+                    greeter.shot("11-desktop-after-login")
                 record("WARN: no serial login; the greeter login was used instead")
             except Exception as error:  # noqa: BLE001 - report and continue
                 record(f"WARN: greeter login failed: {error}")

@@ -157,10 +157,78 @@ only the menu clutter is gone. No `xfwm4` was added.
 
 ## 2. Verification
 
-<!-- RESULTS -->
+Image tested: `SMD-Linux-v1.1-amd64.iso` - 868 MiB (909,895,680 bytes),
+SHA-256 `2f6ee47d5a3c4a21b089b236b39b9d1622a96cbd1b66a3ab5e1cb08969dc6c2f`.
+
+### VERIFIED in a virtual machine
+
+BIOS and UEFI live sessions, **28 checks each, 28 pass, no failures**:
+
+* live boot to the i3 desktop on both firmwares, wallpaper drawn;
+* **the panel runs in the session** - one xfce4-panel, no duplicates;
+* **the panel is along the bottom edge** - 1280x29 at `+0+768` on an 800 px screen;
+* **auto-hide is set to always** (`autohide-behavior = 2`) and the panel leaves
+  a 1280x3 reveal strip at `+0+797`;
+* **the sound server is PipeWire**, and both `pipewire` and `wireplumber` are
+  running in the session - audio existed at all for the first time;
+* **the Search key opens the launcher on its own**, with no modifier and no
+  `Super+D`;
+* `wpasupplicant` installed, `iwlwifi-7260` firmware present, NetworkManager
+  active - the packages the 1.0 image was missing for Wi-Fi;
+* removed applications (Falkon, mpv, Ristretto, Xarchiver, Mousepad, Blueman)
+  are gone and their menu entries are gone;
+* no failed systemd units.
+
+Measured on this image: 397 MiB of 1967 MiB used at idle (425 MiB in 1.0),
+19.0 s kernel + 57.1 s userspace to `graphical.target` (QEMU with emulated USB,
+not comparable to the Acer).
+
+### VERIFIED: installation, UEFI
+
+The wizard now completes end to end and the installed disk boots on its own:
+installer finishes, target partitioned (300 MiB ESP + 19.7 GiB ext4), finish-up
+runs, **GRUB menu present, and the EFI system partition holds the boot loader** -
+the exact 1.0 failure. The installed system is then booted from its own disk by
+the harness.
+
+### Not verified here, and why
+
+The harness logs into the installed system over the serial console. The
+installed system produced no serial login prompt, so the automated post-login
+assertions did not run on the installed machine; they ran in the live session,
+where the same packages, session file, panel XML and i3 config are in place.
+This is a harness gap - it is the first item of the follow-up list - and not a
+reproduced defect.
 
 ---
 
 ## 3. What is still not verified, and what Hunter should check
 
-<!-- REMAINING -->
+Everything below needs the physical Acer Chromebook 11 CB3-111. A virtual
+machine cannot emulate a wireless card, a battery, or Intel Bay Trail graphics,
+and no claim here is made from real hardware.
+
+**NOT YET VERIFIED - Hunter, please check these and report back:**
+
+1. **Wi-Fi.** Does the network icon appear, do networks list, and does joining
+   your network work? The missing supplicant is fixed and the firmware is
+   present, but association, DHCP, DNS and HTTPS on real hardware are untested.
+   Do not send your Wi-Fi password.
+2. **Audio.** Play something with the volume keys audible. PipeWire and
+   WirePlumber now start and `pactl info` reports PipeWire, but no sound has
+   been heard on real hardware.
+3. **Battery percentage.** The applet is in the panel; the reading depends on
+   the Acer's firmware exposing a battery to the kernel.
+4. **Tearing.** `hunter-graphics.service` writes
+   `/etc/X11/xorg.conf.d/20-intel.conf` on this machine and you should see no
+   tearing when scrolling or playing video. If tearing remains, say so and post
+   the output of `systemctl status hunter-graphics` and `lspci -nn | grep -i vga`.
+5. **Panel behaviour.** It should be at the bottom, hidden until you touch the
+   bottom edge, opening on a touch and staying open while you use it.
+6. **Keyboard.** Search alone opens the launcher, Left Alt is the modifier,
+   browser shortcuts still work.
+
+**Harness items to fix for the next round:** make the installed-system login
+work (the serial console has no prompt, so the post-login assertions are
+skipped), and make the pointer reveal of the auto-hiding panel a real assertion
+rather than a recorded observation.
