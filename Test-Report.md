@@ -243,6 +243,15 @@ run assertions.
 
 ---
 
+## 6c. Version 1.2 - the fixes from live testing
+
+Version 1.2 answers the five faults found while testing 1.1's live session. The
+root causes are in `REPAIR-REPORT.md` section 0; this is what was measured.
+
+`<!-- V12-RESULTS -->`
+
+---
+
 ## 7. Installation test
 
 Method: the ISO is booted under QEMU with UEFI firmware (OVMF) and an empty
