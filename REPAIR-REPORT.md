@@ -266,6 +266,32 @@ only the menu clutter is gone. No `xfwm4` was added.
 
 ## 2. Verification
 
+### Version 1.2 - status as published
+
+Image: `SMD-Linux-v1.2-amd64.iso`, 869 MiB, SHA-256
+`6486736000b1d0673d599216297409abdefe87c14d94b571a1e7b2bce000cd15`, commit
+`addfb00`. BIOS and UEFI live sessions: 36 checks pass, 2 fail.
+
+**VERIFIED in the VM:** the S menu icon is installed and used, the panel is
+solid black and along the bottom edge, notifications expire after five seconds,
+the Mail Reader entry is gone while the other applications remain, PipeWire and
+WirePlumber run, the Wi-Fi supplicant and 7260 firmware are present, the Search
+key opens the launcher on its own, exactly one panel survives an i3 restart, and
+F6-F10 are bound and routed through `hunter-media`.
+
+**FAILED in the VM:** the panel did not hide. `hunter-panel-dock` detached no
+window at this revision because it looked for `_NET_WM_PID`, which xfce4-panel
+had not published; it now matches the window class as well, and that change
+(build `43683121288`) was not boot-tested before this ISO was published.
+**Auto-hide is unverified on this image - do not treat it as fixed.**
+
+**NOT VERIFIED, needs the Acer:** whether the printed volume/mute/brightness
+keys act without a modifier (the VM cannot produce Chromebook key events), the
+Wi-Fi association and internet access, audible audio, battery percentage,
+tearing, and whether the panel's hide/reveal works on the real display.
+
+### Version 1.1 - what was verified on that image
+
 Image tested: `SMD-Linux-v1.1-amd64.iso` - 868 MiB (909,895,680 bytes),
 SHA-256 `2f6ee47d5a3c4a21b089b236b39b9d1622a96cbd1b66a3ab5e1cb08969dc6c2f`.
 

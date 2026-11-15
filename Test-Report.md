@@ -248,7 +248,40 @@ run assertions.
 Version 1.2 answers the five faults found while testing 1.1's live session. The
 root causes are in `REPAIR-REPORT.md` section 0; this is what was measured.
 
-`<!-- V12-RESULTS -->`
+Image under test: `SMD-Linux-v1.2-amd64.iso`, 869 MiB (911,212,544 bytes),
+SHA-256 `6486736000b1d0673d599216297409abdefe87c14d94b571a1e7b2bce000cd15`,
+built from commit `addfb00`. BIOS and UEFI live sessions: **36 checks pass,
+2 fail**.
+
+### 6c.1 Verified in the virtual machine
+
+| Check | Result |
+|---|---|
+| Start button shows the SMD "S" | PASS - `button-icon=smd-menu`, icon installed |
+| Panel is solid black | PASS - `background-style=1`, RGBA `0,0,0,1` |
+| Panel sits along the bottom edge | PASS - 1280x28 at y=769 |
+| Notifications expire | PASS - `xfce4-notifyd` `expire-timeout=5` |
+| Mail Reader gone, other apps kept | PASS - no `*mail*` entry left in `/usr/share/applications` |
+| PipeWire and WirePlumber running | PASS |
+| Wi-Fi supplicant + 7260 firmware present | PASS |
+| Search alone opens the launcher | PASS |
+| Exactly one panel after an i3 restart | PASS |
+| F6-F10 are bound and dispatched | PASS - `bindsym F10` present in the loaded config |
+
+### 6c.2 Failed in the virtual machine
+
+| Check | Result |
+|---|---|
+| Panel hides when the pointer leaves the edge | **FAIL** - still mapped at y=769 |
+| Printed volume-up key changes the volume | **FAIL** - harness could not read the volume before/after; the binding itself is present |
+
+The panel failure is a real product failure at this revision, not a harness
+artifact: `hunter-panel-dock` did not detach any window, so xfce4-panel's own
+auto-hide never takes effect. The first helper matched windows by
+`_NET_WM_PID`, which xfce4-panel did not publish here, so it found nothing. It
+now also matches the window class; that change is in build `43683121288` and had
+not been boot-tested when this ISO was published. **Auto-hide is unverified on
+this image.**
 
 ---
 
