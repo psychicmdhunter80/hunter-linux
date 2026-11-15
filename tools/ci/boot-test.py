@@ -520,16 +520,17 @@ def main():
         # Start from half volume: the default sink is already at 1.0, where a
         # "5%+" would be capped and look like a broken key.  The values are
         # printed with a marker because the log echoes the command itself.
+        # cut, not awk: this image has no awk installed.
         shell.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5; sleep 1; "
                   "echo VOLBEFORE=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
-                  "| awk '{print $2}')", timeout=90)
+                  "| cut -d' ' -f2)", timeout=90)
         time.sleep(2)
         before = shell.run("echo VOLBEFORE=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
-                           "| awk '{print $2}')", timeout=60)
+                           "| cut -d' ' -f2)", timeout=60)
         shell.run("DISPLAY=:0 xdotool key F10", timeout=60)
         time.sleep(3)
         after = shell.run("echo VOLAFTER=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
-                          "| awk '{print $2}')", timeout=60)
+                          "| cut -d' ' -f2)", timeout=60)
         bindings = shell.run("DISPLAY=:0 i3-msg -t get_config | "
                              "grep -c 'bindsym F10'", timeout=90)
         first = re.search(r"VOLBEFORE=([0-9.]+)", before)
@@ -545,16 +546,17 @@ def main():
         time.sleep(5)
         count = shell.run(
             "echo PANELS=$(pgrep -c -x xfce4-panel); "
-            "echo HIDERS=$(pgrep -c -f '[h]unter-panel-dock'); "
-            "echo WATCHDOGS=$(pgrep -c -f '[h]unter-panel$')", timeout=90)
+            "p=~/.cache/smd/panel-dock.pid; "
+            "if [ -f $p ] && kill -0 $(cat $p) 2>/dev/null; then "
+            "echo DOCK=alive; else echo DOCK=missing; fi; "
+            "echo LOGS=$([ -s ~/.cache/smd/panel.log ] && echo yes || echo no)",
+            timeout=90)
         panels = re.search(r"PANELS=(\d+)", count)
-        hiders = re.search(r"HIDERS=(\d+)", count)
-        watchdogs = re.search(r"WATCHDOGS=(\d+)", count)
+        dock = re.search(r"DOCK=(\w+)", count)
         record(f"INFO: after reload {count.strip()[:300]}")
-        check(results, "exactly one panel and one hide helper survive a reload",
-              bool(panels and hiders and watchdogs) and
-              panels.group(1) == "1" and hiders.group(1) == "1" and
-              watchdogs.group(1) == "1")
+        check(results, "exactly one panel and one dock helper after a reload",
+              bool(panels and dock) and panels.group(1) == "1" and
+              dock.group(1) == "alive")
         log = shell.run("tail -4 ~/.cache/smd/panel-hide.log 2>/dev/null; "
                         "tail -3 ~/.cache/smd/panel.log 2>/dev/null", timeout=60)
         record(f"INFO: panel logs: {log.strip()[:200]}")

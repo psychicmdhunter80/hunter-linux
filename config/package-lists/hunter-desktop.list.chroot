@@ -23,8 +23,10 @@ i3lock
 rofi
 lightdm
 lightdm-gtk-greeter
-# python3-xlib is what hunter-panel-dock needs to take the panel's dock windows
-# away from i3 so the panel's own auto-hide works (see that script).
+# python3 + python3-xlib are what hunter-panel-dock needs to take the panel's
+# dock windows away from i3 so the panel's own auto-hide works (see that script).
+# Without them the wrapper falls back to a plain panel that cannot hide.
+python3
 python3-xlib
 xfce4-panel
 xfce4-settings

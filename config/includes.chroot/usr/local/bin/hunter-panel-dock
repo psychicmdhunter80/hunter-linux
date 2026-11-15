@@ -83,10 +83,24 @@ def detach(x_display, root, window):
         return False
 
 
+def pid_file():
+    cache = os.path.join(os.environ.get("XDG_CACHE_HOME",
+                                        os.path.expanduser("~/.cache")), "smd")
+    os.makedirs(cache, exist_ok=True)
+    return os.path.join(cache, "panel-dock.pid")
+
+
 def main():
     panel = subprocess.Popen(
         ["xfce4-panel", "--disable-wm-check"],
         stdout=sys.stdout, stderr=sys.stderr)
+
+    marker = pid_file()
+    try:
+        with open(marker, "w", encoding="utf-8") as handle:
+            handle.write(str(os.getpid()))
+    except OSError:
+        marker = None
 
     x_display = display.Display()
     root = x_display.screen().root
@@ -109,6 +123,11 @@ def main():
     except KeyboardInterrupt:
         return 0
     finally:
+        try:
+            if marker:
+                os.unlink(marker)
+        except OSError:
+            pass
         try:
             if panel.poll() is None:
                 panel.terminate()
