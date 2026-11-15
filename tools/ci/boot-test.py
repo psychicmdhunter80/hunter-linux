@@ -421,18 +421,12 @@ def main():
                    panel_box[3] + panel_box[1] >= int(screen.group(1)) - 6))
         record(f"INFO: panel window {panel_box[:4] if panel_box else 'not found'} "
                f"on a {screen.group(1) if screen else '?'}px high screen")
-        # Auto-hide is proven by what the running panel itself reports and by
-        # the strip it leaves at the screen edge: the strip window (a few pixels
-        # tall, full width, at the bottom) only exists while auto-hide is on.
+        # 1.3 retired auto-hide: the panel is set to stay visible (0 = never
+        # hide), and the retired helper must not be running.
         hide = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
                          "-p /panels/panel-1/autohide-behavior 2>&1", timeout=60)
-        check(results, "the panel is configured to auto-hide",
-              hide.strip().endswith("2"))
-        edge_strip = bool(screen and any(
-            box[0] > 500 and box[1] <= 6 and box[3] >= int(screen.group(1)) - 6
-            for box in boxes))
-        check(results, "the panel leaves a reveal strip along the bottom edge",
-              edge_strip)
+        check(results, "the panel is set never to hide",
+              hide.strip().endswith("0"))
 
         def panel_state(window_id):
             """(map state, y, height) of the panel window, as X sees it."""
@@ -558,8 +552,8 @@ def main():
         mem = re.search(r"Mem:\s+(\d+)\s+(\d+)\s+(\d+)", resources)
         if mem:
             total, used, free_mem = (int(g) for g in mem.groups())
-            check(results, "idle memory stays under 520 MiB",
-                  used < 520)
+            # No target is asserted: the handoff asked for measurements under
+            # fixed conditions, not for a number to hit.
             record(f"INFO: memory {used} MiB used of {total} MiB, "
                    f"{free_mem} MiB free")
         log = shell.run("tail -3 ~/.cache/smd/panel.log 2>/dev/null", timeout=60)
@@ -581,6 +575,38 @@ def main():
               "PipeWire" in chunks[0])
         check(results, "PipeWire and WirePlumber are running",
               "pipewire-running" in chunks[1] and "wireplumber-running" in chunks[1])
+
+        # --- dark theme: the theme has to be present, not just requested ---
+        theme = shell.run(
+            "DISPLAY=:0 xfconf-query -c xsettings -p /Net/ThemeName 2>&1; echo ---; "
+            "test -d /usr/share/themes/Adwaita-dark && echo THEME=present "
+            "|| echo THEME=missing; echo ---; "
+            "grep -c 'gtk-theme-name=Adwaita-dark' ~/.config/gtk-3.0/settings.ini "
+            "2>/dev/null; echo ---; "
+            "grep -c '^client.focused' ~/.config/i3/config 2>/dev/null",
+            timeout=90)
+        tchunks = theme.split("---")
+        check(results, "the dark theme is selected", "Adwaita-dark" in tchunks[0])
+        check(results, "the dark theme is actually installed",
+              "THEME=present" in tchunks[1])
+        check(results, "GTK applications are configured dark",
+              tchunks[2].strip().endswith("1"))
+        check(results, "the window decorations are dark",
+              tchunks[3].strip().endswith("1"))
+        record(f"INFO: theme: {' | '.join(c.strip()[:60] for c in tchunks)}")
+
+        # --- one installer entry in the live menu ---------------------------
+        entries = shell.run(
+            "ls /usr/share/applications | grep -iE 'calamares|install' | sort; echo ---; "
+            "grep -h '^Icon=' /usr/share/applications/hunter-install.desktop 2>/dev/null",
+            timeout=60)
+        echunks = entries.split("---")
+        listing = [line for line in echunks[0].split() if line.endswith(".desktop")]
+        check(results, "exactly one installer entry is in the menu",
+              listing == ["hunter-install.desktop"])
+        check(results, "the installer entry uses the SMD icon",
+              echunks[1].strip().endswith("smd-menu"))
+        record(f"INFO: installer entries: {listing} {echunks[1].strip()}")
 
         # --- speaker level: the 125 % Hunter tuned on the Chromebook --------
         volume = shell.run(
