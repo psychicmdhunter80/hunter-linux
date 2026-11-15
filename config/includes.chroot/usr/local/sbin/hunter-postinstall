@@ -70,5 +70,15 @@ else
 	log "warning: /usr/share/xsessions/hunter.desktop is missing"
 fi
 
+# 7. Brightness keys: brightnessctl writes to /sys/class/backlight, which the
+#    kernel creates owned by root.  The udev rule hands it to the video group,
+#    so every human account on this machine has to be in that group.
+for account in $(awk -F: '$3 >= 1000 && $3 < 60000 { print $1 }' /etc/passwd); do
+	if ! id -nG "$account" 2>/dev/null | tr ' ' '\n' | grep -qx video; then
+		usermod -aG video "$account" >/dev/null 2>&1 &&
+			log "added $account to the video group"
+	fi
+done
+
 log "completed"
 exit 0

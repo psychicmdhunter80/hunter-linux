@@ -244,17 +244,33 @@ itself. A one-page reference is on the desktop ("Keyboard Shortcuts") and on
 | `Alt+R` | Resize mode |
 | `Alt+Shift+E` | Power menu (lock, log out, restart, shut down) |
 | `Alt+Shift+X` | Lock the screen |
-| Volume / brightness keys | Work as labelled (PipeWire via `wpctl`) |
+| Volume / mute / brightness keys | Work as labelled, no `Fn` (PipeWire via `wpctl`, backlight via `brightnessctl`) |
+| `Ctrl` + a top-row key | The real function key, on a Chromebook (`Ctrl+F10` is F10) |
 
 Arrow keys are deliberately **not** bound to window focus: `Alt+Left/Right` is
 back and forward in Firefox. Use `Alt+H/J/K/L` instead.
 
 The panel holds the application menu, the window list, workspaces, network and
 Bluetooth status, the clock (hover for the date), volume, battery percentage on
-laptops, and the power menu. It sits along the **bottom edge and hides itself**;
-move the pointer to the bottom of the screen to bring it back. It is started by
-the i3 configuration (`hunter-panel`), not by the session wrapper, so it comes up
-in the live session and on an installed system alike.
+laptops, and the power menu. It sits along the **bottom edge, black, and hides
+itself**; move the pointer to the bottom of the screen to bring it back. It is
+started by the i3 configuration (`hunter-panel`), not by the session wrapper, so
+it comes up in the live session and on an installed system alike.
+
+**Chromebook top row.** On this hardware the top row is not F1-F12: the printed
+keys send F1-F10 instead of the media keysyms, which is why the volume and
+brightness keys did nothing in 1.1. `hunter-toprow` detects a Chromebook and
+writes the i3 bindings for that layout, so the printed volume, mute and
+brightness keys work on their own. `Ctrl` plus the same key still sends the real
+function key. On a non-Chromebook the file it writes is empty, so an ordinary
+keyboard keeps all of its F keys.
+
+**Why the panel needs a helper.** xfce4-panel's own auto-hide asks the window
+manager to move it off screen; i3 refuses to move dock windows (i3 issue 4153)
+and reports the panel as still visible, so the setting alone can never work here.
+`hunter-panel-hide` unmaps the panel when the pointer leaves the bottom edge and
+maps it again at the edge, and `gaps bottom 28` in the i3 configuration keeps the
+space reserved so windows neither jump nor sit under the panel.
 
 ---
 
@@ -373,6 +389,11 @@ system works normally without it.
   driver is never forced onto unrelated hardware. Remove
   `/etc/X11/xorg.conf.d/20-intel.conf` and restart the display manager to roll
   it back.
+* **The panel is hidden by a helper, not by its own setting.** The panel's
+  preferences show "Always hide", but under i3 that value has no effect (i3
+  issue 4153, xfce4-panel issue 308). `hunter-panel-hide` does the hiding. If
+  the panel ever stays on screen, look at `~/.cache/smd/panel-hide.log` and
+  `~/.cache/smd/panel.log`.
 * **Battery percentage is whatever UPower reports.** The 10-15 % sudden
   power-off seen on the older installation is a hardware/gauge behaviour; the
   image neither fakes the percentage nor forces a cutoff.

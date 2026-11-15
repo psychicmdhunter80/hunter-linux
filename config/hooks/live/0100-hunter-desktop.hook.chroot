@@ -21,7 +21,8 @@ chmod 0755 /usr/local/bin/hunter-session /usr/local/bin/hunter-power \
 	/usr/local/bin/hunter-install /usr/local/bin/hunter-cockpit \
 	/usr/local/bin/hunter-panel /usr/local/bin/hunter-applets
 chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader \
-	/usr/local/sbin/hunter-graphics
+	/usr/local/sbin/hunter-graphics /usr/local/bin/hunter-panel-hide \
+	/usr/local/bin/hunter-toprow
 chmod 0644 /usr/share/xsessions/hunter.desktop
 chmod 0644 /usr/share/applications/hunter-install.desktop \
 	/usr/share/applications/hunter-power.desktop \
@@ -44,7 +45,8 @@ rm -f /usr/share/xsessions/i3.desktop
 for entry in xfce4-settings-manager xfce4-about xfce4-accessibility-settings \
 	xfce4-color-settings xfce4-mime-settings xfce4-settings-editor \
 	xfce4-keyboard-settings xfce4-ui-settings thunar-settings \
-	xfce4-notes rofi-theme-selector; do
+	xfce4-notes rofi-theme-selector exo-mail-reader exo-web-browser \
+	exo-terminal-emulator exo-file-manager; do
 	rm -f "/usr/share/applications/${entry}.desktop"
 done
 # The installer entry is created by the live image itself.

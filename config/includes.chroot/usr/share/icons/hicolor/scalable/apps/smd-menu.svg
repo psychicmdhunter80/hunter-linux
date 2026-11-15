@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SMD Linux - application menu button.  A plain "S" on a rounded square:
+     the panel is 28 px high and the button is about 22 px, so anything with
+     fine detail turns to mud at that size. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect x="4" y="4" width="120" height="120" rx="26" ry="26" fill="#f2f4f7" stroke="#1d232b" stroke-width="6"/>
+  <path d="M84.5 44.5c-3.4-7.4-10.4-11.8-19.9-11.8-12.1 0-20.6 6.9-20.6 17.2 0 9.9 7.3 14.6 18.9 17 8.6 1.8 12.4 3.9 12.4 8.1 0 4.9-4.5 8.1-11.6 8.1-8.9 0-15.1-4.1-17.9-11.2l-8 3.9C41.6 86.6 50.4 92 63.8 92c13.4 0 22.4-6.9 22.4-17.9 0-10.1-7.1-15.4-19.6-17.9-8.3-1.7-11.7-3.5-11.7-7.4 0-4.1 4.2-6.9 10.6-6.9 6.9 0 11.6 3.1 14 8.9z" fill="#1d232b"/>
+</svg>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- SMD Linux - notification behaviour.
+     The bubble that stayed in the top-right corner after joining a Wi-Fi
+     network is an ordinary notification from nm-applet, and this daemon is
+     what draws and owns it.  The default expiry is long enough that the bubble
+     looks stuck, so every normal notification now disappears after five
+     seconds.  Errors are not suppressed: they keep their own lifetime and stay
+     clickable, and the daemon itself is unchanged. -->
+<channel name="xfce4-notifyd" version="1.0">
+  <property name="expire-timeout" type="int" value="5"/>
+  <property name="do-not-disturb" type="bool" value="false"/>
+  <property name="notification-log" type="bool" value="false"/>
+  <property name="initial-opacity" type="double" value="0.95"/>
+  <property name="theme" type="string" value="Default"/>
+</channel>

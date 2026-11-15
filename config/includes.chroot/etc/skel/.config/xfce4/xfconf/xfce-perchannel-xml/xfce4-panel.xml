@@ -10,8 +10,22 @@
   <property name="panels" type="array">
     <value type="int" value="1"/>
     <property name="panel-1" type="empty">
+      <!-- autohide-behavior 2 is what the panel's own preferences call
+           "Always".  The panel cannot act on it under i3 (i3 refuses to move
+           dock windows, i3 issue 4153), so hunter-panel-hide in the session
+           does the hiding by unmapping the panel.  The value stays set so the
+           panel's preference window shows what is really configured. -->
       <property name="autohide-behavior" type="uint" value="2"/>
       <property name="disable-struts" type="bool" value="false"/>
+      <!-- Solid black panel, readable white text: no theme suite and no
+           compositor needed, just the panel's own background settings. -->
+      <property name="background-style" type="uint" value="1"/>
+      <property name="background-rgba" type="array">
+        <value type="double" value="0"/>
+        <value type="double" value="0"/>
+        <value type="double" value="0"/>
+        <value type="double" value="1"/>
+      </property>
       <property name="length" type="uint" value="100"/>
       <property name="length-adjust" type="bool" value="true"/>
       <property name="mode" type="uint" value="0"/>
@@ -42,7 +56,7 @@
   <property name="plugins" type="empty">
     <!-- Application menu -->
     <property name="plugin-1" type="string" value="whiskermenu">
-      <property name="button-icon" type="string" value="hunter-linux"/>
+      <property name="button-icon" type="string" value="smd-menu"/>
       <property name="show-button-title" type="bool" value="false"/>
     </property>
 

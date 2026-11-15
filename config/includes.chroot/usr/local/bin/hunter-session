@@ -27,5 +27,13 @@ if grep -qw 'hunter.installer=1' /proc/cmdline 2>/dev/null; then
 	) >/dev/null 2>&1 &
 fi
 
+# The i3 configuration includes ~/.config/i3/toprow.conf.  Write it before i3
+# reads its configuration, so a fresh account never parses a missing include.
+# On a Chromebook this is what makes the printed volume and brightness keys
+# work; on other machines it writes a comment and leaves F1-F12 alone.
+if command -v hunter-toprow >/dev/null 2>&1; then
+	hunter-toprow >/dev/null 2>&1 || true
+fi
+
 # i3 stays in the foreground: when it exits, the session ends.
 exec i3

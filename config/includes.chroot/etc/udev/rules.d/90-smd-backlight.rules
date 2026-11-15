@@ -1,0 +1,15 @@
+# SMD Linux - let the desktop user change the screen brightness.
+#
+# brightnessctl writes to /sys/class/backlight/*/brightness, which the kernel
+# creates owned by root.  Without this rule the printed brighter/dimmer keys do
+# nothing for a normal session user, even when the key itself reaches i3.  The
+# device is handed to the "video" group, which is the standard group for this
+# and the one the desktop user is added to.
+
+SUBSYSTEM=="backlight", ACTION=="add", TAG+="uaccess", \
+	RUN+="/bin/sh -c 'chgrp video /sys/class/backlight/%k/brightness; chmod g+w /sys/class/backlight/%k/brightness'"
+
+# Same for an existing filesystem backlight that was already probed before this
+# rule was read.
+SUBSYSTEM=="backlight", TAG+="uaccess", \
+	RUN+="/bin/sh -c 'chgrp video /sys/class/backlight/%k/brightness; chmod g+w /sys/class/backlight/%k/brightness'"

@@ -1,4 +1,109 @@
-# SMD Linux 1.1 — repair report
+# SMD Linux 1.2 — repair report
+
+Version 1.2 repairs the five faults reported from testing the 1.1 live image on
+the Acer Chromebook 11 CB3-111: the start button still showed an "H", the panel
+did not auto-hide, the panel did not come back after logging out and in, a
+"Mail Reader" entry was left in the menu, the Wi-Fi "connected" bubble stayed on
+screen, and the printed top-row volume and brightness keys did nothing.
+Sections 1 to 3 below are the 1.1 record, kept as history. Section 0 is the 1.2
+work.
+
+---
+
+## 0. What 1.2 changed, and what was actually wrong
+
+### 0.1 The start button showed "H"
+
+**Cause.** The whisker menu button was configured with the icon name
+`hunter-linux`, and the only icon shipped under that name is the project logo,
+not a menu symbol.
+
+**Fix.** A new icon, `smd-menu`, is shipped as
+`/usr/share/icons/hicolor/scalable/apps/smd-menu.svg` - a plain white rounded
+square with a dark "S", drawn to stay legible at the 22 px the button gets on a
+28 px panel - and the panel configuration uses it. Only the menu button was
+renamed: no internal paths or package names changed.
+
+### 0.2 The panel did not auto-hide
+
+**Cause, and this is the real one.** The panel configuration did say
+`autohide-behavior=2`, and the running panel did report that value, but
+xfce4-panel hides itself by asking the window manager to move it off screen. i3
+refuses to move dock windows - its log says *"Dock client will not be moved, we
+only support moving it to another output"* - and then tells the panel it is
+still where it was. This is i3 issue 4153 and xfce4-panel issue 308, both open
+since 2020. Under i3 the panel therefore **cannot** hide, whatever the setting
+says. 1.1 shipped the setting and no mechanism, so the panel stayed on screen.
+
+**Fix.** `hunter-panel-hide` (started with `exec_always` from the i3
+configuration) does the hiding: it unmaps the panel windows when the pointer is
+away from the bottom edge and maps them again when the pointer reaches it,
+keeping the panel on screen while the pointer is over the panel or any of its
+menus. `gaps bottom 28` is set in the i3 configuration, so the 28 px the panel
+occupies stay reserved and windows neither jump when it disappears nor end up
+underneath it. The panel is now solid black through the panel's own
+`background-style`/`background-rgba` settings - no compositor, no theme suite,
+no transparency effects.
+
+### 0.3 The panel did not come back after logout and login
+
+**Cause.** `hunter-panel` runs a restart loop and protects itself with an
+`flock` so an i3 reload cannot start a second panel. At logout the X server
+takes the panel with it, but the loop survives with no display, keeps failing to
+restart the panel, keeps the lock - and the next login's `hunter-panel` sees the
+lock held and exits. No panel.
+
+**Fix.** The loop now checks the X display each time the panel exits and stops
+when it is gone, releasing the lock; the lock itself is keyed by display. A
+panel left over from an old session can no longer block the next one.
+
+### 0.4 "Mail Reader" in the menu
+
+**Cause.** No mail client is installed. The entry was `exo-mail-reader.desktop`,
+a generic "open your mail program" launcher shipped by `exo-utils`, which Thunar
+depends on - so it could not simply be removed, and it did nothing useful.
+
+**Fix.** The entry is removed in the build hook, together with the other `exo`
+launcher stubs (`exo-web-browser`, `exo-terminal-emulator`,
+`exo-file-manager`), which duplicate entries this image already has. Packages,
+including `exo-utils` and Thunar, are untouched. Appearance settings stay: they
+configure GTK, the icons and the panel, which are all in use under i3.
+
+### 0.5 The Wi-Fi "connected" notification stayed on screen
+
+**Cause.** The bubble is an ordinary notification from `nm-applet`, drawn by
+`xfce4-notifyd`. With no expiry setting the daemon uses its long default, so a
+"you are connected" message sits there until it is dismissed.
+
+**Fix.** `xfce4-notifyd` now expires normal notifications after five seconds
+(`/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-notifyd.xml`).
+Nothing is suppressed: error notifications keep their behaviour and stay
+clickable, the daemon still runs, and the network applet is unchanged.
+
+### 0.6 The printed volume and brightness keys did nothing
+
+**Cause.** A Chromebook top row is not F1-F12. The keys are printed as
+dimmer / brighter / mute / volume down / volume up, but they reach X as F6, F7,
+F8, F9 and F10, and no `XF86Audio*` or `XF86MonBrightness*` keysym is ever
+produced - so the i3 bindings 1.1 shipped for those keysyms could not fire. A
+second, smaller fault: `brightnessctl` writes to `/sys/class/backlight`, which
+is root-owned, so even a correct binding could not change the backlight for a
+normal session user.
+
+**Fix.** `hunter-toprow` runs at session start, detects a Chromebook from DMI
+and writes `~/.config/i3/toprow.conf`, which the i3 configuration includes:
+F6/F7 brighten and dim through `brightnessctl`, F8 toggles mute, F9 and F10
+change the PipeWire volume. There is no `Fn` and no modifier involved, because
+these are the keys the hardware actually sends. `Ctrl` plus the same key sends
+the real function key to the application (`xdotool key --clearmodifiers F9`),
+which is the secondary access Hunter asked for. On any other machine the script
+writes a comment instead, so an ordinary keyboard keeps all of its F keys. A
+udev rule hands the backlight to the `video` group and to the active seat, and
+the installer adds the account to that group.
+
+---
+
+## Part A — the 1.1 repairs (kept as history)
 
 Version 1.1 repairs the faults reported on the Acer Chromebook 11 CB3-111
 against 1.0. It keeps the SMD name, branding and wallpaper, keeps the installer

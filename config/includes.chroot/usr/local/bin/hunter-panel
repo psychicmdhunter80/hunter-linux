@@ -16,9 +16,11 @@ cache="${XDG_CACHE_HOME:-$HOME/.cache}/smd"
 mkdir -p "$cache" 2>/dev/null || exit 0
 log="$cache/panel.log"
 
-# One watchdog only.  If the lock cannot be taken another instance owns the
-# panel and this copy must not start a second one.
-exec 9>"$cache/panel.lock" || exit 0
+# One watchdog only, per display: another instance on this X server owns the
+# panel and this copy must not start a second one.  The lock is keyed by the
+# display so a panel started on :0 can never block :1.
+lockname=$(printf '%s' "${DISPLAY:-:0}" | tr ':/' '__')
+exec 9>"$cache/panel${lockname}.lock" || exit 0
 if command -v flock >/dev/null 2>&1; then
 	flock -n 9 || exit 0
 fi
@@ -37,7 +39,16 @@ while :; do
 	fi
 	xfce4-panel --disable-wm-check >>"$log" 2>&1
 	status=$?
-	echo "$(date '+%F %T') xfce4-panel exited with $status, restarting" >>"$log"
+	echo "$(date '+%F %T') xfce4-panel exited with $status" >>"$log"
+	# At logout the X server takes the panel with it while this loop survives.
+	# If that happened, stop here: a leftover watchdog would hold the lock, fail
+	# to start a panel without a display and leave the next login with no
+	# panel at all - the "panel does not come back" report.
+	if ! xset q >/dev/null 2>&1; then
+		echo "$(date '+%F %T') display is gone, stopping the watchdog" >>"$log"
+		break
+	fi
 	# A crash loop should not spin the CPU or flood the log.
 	sleep 2
 done
+exit 0

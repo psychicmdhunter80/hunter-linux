@@ -437,23 +437,91 @@ def main():
         window = panel_box[4] if panel_box else None
         if window and screen:
             edge = int(screen.group(1)) - 2
+            # Away from the bottom edge: the panel must actually disappear.
             shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
-            time.sleep(3)
+            time.sleep(4)
             away = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
                              "| grep 'Map State'", timeout=60)
+            monitor.screenshot("06a-panel-hidden")
+            check(results, "the panel hides when the pointer leaves the edge",
+                  "IsUnMapped" in away)
+            # Back to the bottom edge: it must come back.
             shell.run(f"DISPLAY=:0 xdotool mousemove --sync 640 {edge}", timeout=30)
-            time.sleep(3)
-            pointer = shell.run("DISPLAY=:0 xdotool getmouselocation 2>&1", timeout=60)
+            time.sleep(4)
             near = shell.run(f"DISPLAY=:0 xwininfo -id {window} "
                              "| grep 'Map State'", timeout=60)
-            record(f"INFO: pointer away from the edge: {away.strip()[:60]}, "
-                   f"at the edge: {near.strip()[:60]}")
-            record(f"INFO: pointer position after moving to the bottom: "
-                   f"{pointer.strip()[:60]}")
+            monitor.screenshot("06b-panel-revealed")
+            check(results, "the panel comes back at the bottom edge",
+                  "IsViewable" in near)
+            record(f"INFO: pointer away: {away.strip()[:50]}; "
+                   f"at the edge: {near.strip()[:50]}")
 
-        # Reveal test: the pointer is warped onto the strip and the panel is
-        # expected to slide up.  Recorded, not asserted - a warped pointer does
-        # not always generate the motion events GTK reacts to.
+        # The menu button must show the SMD "S", not the old H.
+        icon = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                         "-p /plugins/plugin-1/button-icon 2>&1", timeout=60)
+        check(results, "the menu button uses the SMD icon",
+              icon.strip().endswith("smd-menu"))
+        icon_file = shell.run(
+            "test -f /usr/share/icons/hicolor/scalable/apps/smd-menu.svg "
+            "&& grep -c '<path' /usr/share/icons/hicolor/scalable/apps/smd-menu.svg",
+            timeout=60)
+        check(results, "the SMD menu icon is installed",
+              icon_file.strip().splitlines()[-1:] == ["1"])
+
+        # Black panel: solid background style with a black colour.
+        style = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                          "-p /panels/panel-1/background-style 2>&1", timeout=60)
+        rgba = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                         "-p /panels/panel-1/background-rgba 2>&1", timeout=60)
+        check(results, "the panel has a solid black background",
+              style.strip().endswith("1") and "0.000000" in rgba)
+
+        # The stuck Wi-Fi bubble: the notification daemon must expire messages.
+        notify = shell.run("DISPLAY=:0 xfconf-query -c xfce4-notifyd "
+                           "-p /expire-timeout 2>&1", timeout=60)
+        check(results, "notifications expire after a few seconds",
+              notify.strip().splitlines()[-1:] == ["5"])
+
+        # Mail Reader was an unusable launcher, not a mail client.
+        mail = shell.run("ls /usr/share/applications/ | grep -ci mail | tail -1",
+                         timeout=60)
+        check(results, "no Mail Reader entry is left in the menu",
+              mail.strip().splitlines()[-1:] == ["0"])
+
+        # Chromebook top row: the printed volume keys are F9/F10 there.  The
+        # harness forces the Chromebook layout because a VM is not a Chromebook.
+        # A restart re-runs the unforced hunter-toprow, which on a VM writes the
+        # no-Chromebook file; force it again and reload so i3 re-reads the
+        # include without re-running the exec lines.
+        shell.run("DISPLAY=:0 i3-msg restart", timeout=120)
+        time.sleep(8)
+        shell.run("DISPLAY=:0 hunter-toprow --force; DISPLAY=:0 i3-msg reload",
+                  timeout=120)
+        time.sleep(5)
+        toprow = shell.run("grep -c 'bindsym F10' ~/.config/i3/toprow.conf 2>&1",
+                           timeout=60)
+        check(results, "the Chromebook top row bindings are generated",
+              toprow.strip().splitlines()[-1:] == ["1"])
+        before = shell.run("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>&1", timeout=60)
+        shell.run("DISPLAY=:0 xdotool key F10", timeout=60)
+        time.sleep(3)
+        after = shell.run("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>&1", timeout=60)
+        try:
+            rose = float(after.split()[1]) > float(before.split()[1])
+        except (IndexError, ValueError):
+            rose = False
+        check(results, "the printed volume-up key raises the volume", rose)
+        record(f"INFO: volume before {before.strip()[:30]}, after {after.strip()[:30]}")
+
+        # No second panel or watchdog after an i3 restart: the exec_always
+        # scripts are flushed and re-run, and must not stack.
+        time.sleep(5)
+        count = shell.run("pgrep -c xfce4-panel; pgrep -c -f hunter-panel-hide",
+                          timeout=60)
+        numbers = count.split()
+        check(results, "exactly one panel and one hide helper survive a reload",
+              numbers[:2] == ["1", "1"])
+
         shell.run("DISPLAY=:0 xdotool mousemove 640 400", timeout=30)
         time.sleep(2)
         monitor.screenshot("06-desktop")

@@ -39,15 +39,15 @@ jobs:
           # The container runs as root; give the workspace back to the runner
           # user so later steps can write checksums and upload artefacts.
           sudo chown -R "$(id -u):$(id -g)" .
-          test -f SMD-Linux-v1.1-amd64.iso
+          test -f SMD-Linux-v1.2-amd64.iso
 
       - name: Inspect the result
         if: always()
         run: |
           ls -lh *.iso || true
           if ls *.iso >/dev/null 2>&1; then
-            sha256sum *.iso > SMD-Linux-v1.1-amd64.iso.sha256
-            cat SMD-Linux-v1.1-amd64.iso.sha256
+            sha256sum *.iso > SMD-Linux-v1.2-amd64.iso.sha256
+            cat SMD-Linux-v1.2-amd64.iso.sha256
             file *.iso
           fi
 
@@ -57,8 +57,8 @@ jobs:
         with:
           name: iso
           path: |
-            SMD-Linux-v1.1-amd64.iso
-            SMD-Linux-v1.1-amd64.iso.sha256
+            SMD-Linux-v1.2-amd64.iso
+            SMD-Linux-v1.2-amd64.iso.sha256
           retention-days: 7
           compression-level: 0
 

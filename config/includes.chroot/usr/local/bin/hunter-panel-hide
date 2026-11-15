@@ -1,0 +1,96 @@
+#!/bin/sh
+# SMD Linux - make the panel hide and reveal under i3.
+#
+# Why this exists: xfce4-panel's own auto-hide works by asking the window
+# manager to move the panel off screen.  i3 refuses to move dock windows - its
+# log says "Dock client will not be moved, we only support moving it to another
+# output" - and fakes a configure event that tells the panel it is still where
+# it was, so the panel can never hide.  That is i3 issue 4153 and xfce4-panel
+# issue 308, both open.  The panel XML still says autohide-behavior=2, but on
+# i3 that value alone does nothing.
+#
+# This helper does the hiding itself: the panel keeps its normal place at the
+# bottom edge and is simply unmapped when the pointer is away from it and
+# mapped again when the pointer reaches the bottom.  The space it occupies is
+# reserved by "gaps bottom 28" in the i3 configuration, so windows do not jump
+# when the panel disappears and never end up underneath it.
+#
+# The panel is kept on screen whenever the pointer is over it or over any of
+# its own windows - menus, tooltips, the whisker menu - so clicking through a
+# menu does not make the panel vanish mid-click.
+#
+# One copy only: started from the i3 configuration with exec_always, so an i3
+# restart after "reload" does not leave a second watcher fighting this one.
+
+set -u
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/smd"
+mkdir -p "$cache" 2>/dev/null || exit 0
+log="$cache/panel-hide.log"
+
+exec 9>"$cache/panel-hide.lock" || exit 0
+if command -v flock >/dev/null 2>&1; then
+	flock -n 9 || exit 0
+fi
+
+command -v xdotool >/dev/null 2>&1 || {
+	echo "$(date '+%F %T') xdotool is missing, panel stays visible" >>"$log"
+	exit 0
+}
+
+# How close to the bottom edge the pointer has to be to bring the panel back.
+REVEAL=4
+
+hide() {
+	for id in $(xdotool search --class xfce4-panel 2>/dev/null); do
+		xdotool windowunmap "$id" 2>/dev/null
+	done
+}
+
+show() {
+	for id in $(xdotool search --class xfce4-panel 2>/dev/null); do
+		xdotool windowmap "$id" 2>/dev/null
+		xdotool windowraise "$id" 2>/dev/null
+	done
+}
+
+echo "$(date '+%F %T') watching the pointer for the panel" >>"$log"
+shown=1
+
+while :; do
+	# The X server goes away at logout.  Without this the loop would survive
+	# the session, keep this lock and start the next login with no panel - the
+	# "panel does not come back" report.  Leave cleanly instead.
+	if ! xset q >/dev/null 2>&1; then
+		echo "$(date '+%F %T') display is gone, exiting" >>"$log"
+		exit 0
+	fi
+
+	geom=$(xdotool getdisplaygeometry 2>/dev/null) || { sleep 1; continue; }
+	screen_h=${geom#* }
+
+	eval "$(xdotool getmouselocation --shell 2>/dev/null)" || { sleep 1; continue; }
+
+	want=0
+	# At the bottom edge, or anywhere on the panel and its menus.
+	if [ "${Y:-0}" -ge $((screen_h - REVEAL)) ]; then
+		want=1
+	else
+		panel_pid=$(pgrep -x xfce4-panel 2>/dev/null | head -n 1)
+		if [ -n "${WINDOW:-0}" ] && [ "${WINDOW:-0}" != "0" ] && \
+		   [ -n "$panel_pid" ]; then
+			window_pid=$(xdotool getwindowpid "$WINDOW" 2>/dev/null || true)
+			[ "$window_pid" = "$panel_pid" ] && want=1
+		fi
+	fi
+
+	if [ "$want" = 1 ] && [ "$shown" = 0 ]; then
+		show
+		shown=1
+	elif [ "$want" = 0 ] && [ "$shown" = 1 ]; then
+		hide
+		shown=0
+	fi
+
+	sleep 0.2
+done
