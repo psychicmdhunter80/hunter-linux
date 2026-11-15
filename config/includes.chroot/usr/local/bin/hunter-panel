@@ -37,7 +37,16 @@ while :; do
 		echo "$(date '+%F %T') xfce4-panel is not installed" >>"$log"
 		exit 0
 	fi
-	xfce4-panel --disable-wm-check >>"$log" 2>&1
+	# The dock helper is what makes the panel's own auto-hide work under i3
+	# (see hunter-panel-dock).  Without python3-xlib it is not started, and the
+	# panel still appears - it just cannot hide itself.
+	if [ -x /usr/local/bin/hunter-panel-dock ] &&
+	   python3 -c 'import Xlib' >/dev/null 2>&1; then
+		hunter-panel-dock >>"$log" 2>&1
+	else
+		echo "$(date '+%F %T') panel dock helper unavailable, running the panel directly" >>"$log"
+		xfce4-panel --disable-wm-check >>"$log" 2>&1
+	fi
 	status=$?
 	echo "$(date '+%F %T') xfce4-panel exited with $status" >>"$log"
 	# At logout the X server takes the panel with it while this loop survives.
