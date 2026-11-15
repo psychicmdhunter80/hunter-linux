@@ -503,16 +503,21 @@ def main():
         # "5%+" would be capped and look like a broken key.  The values are
         # printed with a marker because the log echoes the command itself.
         # cut, not awk: this image has no awk installed.
-        shell.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5; sleep 1; "
-                  "echo VOLBEFORE=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
-                  "| cut -d' ' -f2)", timeout=90)
+        # wpctl has to reach the running session's PipeWire: without the
+        # session's runtime directory it starts a private instance and every
+        # reading comes back unchanged.
+        shell.run("%s set-volume @DEFAULT_AUDIO_SINK@ 0.5; sleep 1; "
+                  "echo VOLBEFORE=$(%s get-volume @DEFAULT_AUDIO_SINK@ "
+                  "| cut -d' ' -f2)" % (SINK, SINK), timeout=90)
         time.sleep(2)
-        before = shell.run("echo VOLBEFORE=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
-                           "| cut -d' ' -f2)", timeout=60)
+        before = shell.run("echo VOLBEFORE=$(%s get-volume "
+                           "@DEFAULT_AUDIO_SINK@ | cut -d' ' -f2)" % SINK,
+                           timeout=60)
         shell.run("DISPLAY=:0 xdotool key F10", timeout=60)
         time.sleep(3)
-        after = shell.run("echo VOLAFTER=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ "
-                          "| cut -d' ' -f2)", timeout=60)
+        after = shell.run("echo VOLAFTER=$(%s get-volume "
+                          "@DEFAULT_AUDIO_SINK@ | cut -d' ' -f2)" % SINK,
+                          timeout=60)
         bindings = shell.run("DISPLAY=:0 i3-msg -t get_config | "
                              "grep -c 'bindsym F10'", timeout=90)
         first = re.search(r"VOLBEFORE=([0-9.]+)", before)
@@ -642,7 +647,7 @@ def main():
             "test -x /usr/local/bin/hunter-volume && echo SCRIPT=ok || echo SCRIPT=missing; "
             "echo PORT=$(pactl list sinks 2>/dev/null | "
             "sed -n 's/^[[:space:]]*Active Port: //p' | head -1); "
-            "echo LEVEL=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null "
+            "echo LEVEL=$(env XDG_RUNTIME_DIR=/run/user/$(id -u) wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null "
             "| cut -d' ' -f2); "
             "tail -2 ~/.cache/smd/volume.log 2>/dev/null; echo ---; "
             "grep -c hunter-volume ~/.config/i3/config 2>/dev/null || true",
