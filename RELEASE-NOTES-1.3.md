@@ -29,7 +29,11 @@ Dark-theme and tidy-up release for the Acer Chromebook 11 CB3-111. Everything
   before the display manager and only for Intel Bay Trail graphics
   (`8086:0f31`/`0f32`/`0f33`). It had never actually run: the script was
   committed with Windows line endings, so its shebang was unreadable and the
-  unit failed at every boot. It starts now, and `hunter-graphics --report`
+  unit failed at every boot. It also searched `lspci` for the PCI ID before the
+  `VGA` class, but `lspci` prints the class first, so it never recognised the
+  Chromebook and deleted the file again after each reboot; the match is now
+  `VGA.*8086:<id>`, and a test feeds it a real Chromebook line. It starts now,
+  and `hunter-graphics --report`
   prints the graphics device, the driver module, the configuration, the
   `TearFree` lines from `/var/log/Xorg.0.log` and the service state so the
   result can be checked after a reboot. No compositor was added.
