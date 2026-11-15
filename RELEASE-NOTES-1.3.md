@@ -55,11 +55,57 @@ Dark-theme and tidy-up release for the Acer Chromebook 11 CB3-111. Everything
 
 ## Verified in a virtual machine
 
-`<!-- RESULTS -->`
+Checks run against the delivered ISO under both BIOS and UEFI; **56 passed, 0
+failed** on each:
+
+* the dark theme is selected *and* installed, GTK3/GTK4 settings point at it and
+  the i3 title-bar colours are set;
+* the menu holds exactly one installer entry, `hunter-install.desktop`, with the
+  SMD icon;
+* the panel is set never to hide and stays visible along the bottom edge; no
+  `hunter-panel-dock` and no `python3` process is running; exactly one panel
+  survives an i3 reload;
+* resource use recorded under the test conditions: 498 MiB used of 1967 MiB with
+  662 MiB free after the session settles;
+* PipeWire is the sound server and PipeWire, WirePlumber and `pipewire-pulse`
+  are running; `hunter-volume` is installed and logs that it left the volume
+  alone, because the virtual machine's sink has no speaker port;
+* the quantum is 2048 in `/etc/pipewire/pipewire.conf.d/50-hunter-quantum.conf`
+  (quantum, min and max) and `pw-metadata` reports `clock.quantum` 2048 at
+  runtime;
+* `hunter-audio-hw.service` is enabled and active and did **not** edit any UCM
+  file on the virtual machine, which has no max98090 codec;
+* the TearFree matcher matches a real Chromebook `lspci` line
+  (`00:02.0 VGA compatible controller [0300]: ... [8086:0f31]`), the unit is
+  enabled and active, and no `20-intel.conf` is written for the VM's QEMU
+  adapter;
+* `i965-va-driver` is installed and the shim's `mpv.conf` sets
+  `hwdec=auto-safe` without `display-resample`.
+
+The installer was also run end to end: it partitions, installs, writes GRUB and
+the EFI entries, reboots, and the installed system reaches the SMD greeter. The
+harness could not open a serial login on the installed system, so it logged in
+at the greeter instead and the installed desktop's own checks were not automated
+in this run.
 
 ## Not verified
 
-`<!-- REMAINING -->`
+These need the Chromebook itself, and none of them is claimed here:
+
+* whether the picture is actually tear-free in YouTube and Jellyfin, in window
+  and full screen (the VM has no Intel graphics, so it can only prove the file is
+  not forced where it does not belong);
+* whether the speaker is as loud as the level Hunter accepted after the codec
+  fix, and that headphones still switch and stay unboosted;
+* whether Jellyfin starts with sound immediately and stays free of dropouts over
+  a long session;
+* frame drops with VA-API over a long playback (a short run on the Chromebook
+  showed none, longer runs still dropped some);
+* the top-row keys, Wi-Fi association and battery reporting, which the VM cannot
+  exercise.
+
+The CPU governor was tested on the Chromebook and made no noticeable difference,
+so no performance-mode change is included.
 
 ## Files
 
