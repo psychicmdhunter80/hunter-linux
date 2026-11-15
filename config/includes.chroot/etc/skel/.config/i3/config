@@ -34,11 +34,25 @@ exec_always --no-startup-id hunter-applets
 # companion unmaps it when the pointer leaves the bottom edge (i3 issue 4153).
 exec_always --no-startup-id hunter-panel-hide
 
-# Chromebook top row: on a Chromebook the volume and brightness keys arrive as
-# F8/F9/F10/F6/F7.  hunter-toprow writes the bindings for that layout only on
-# Chromebook hardware, which keeps every F key on an ordinary keyboard.
+# Chromebook top row.  On a Chromebook the printed dimmer/brighter/mute/volume
+# down/volume up keys arrive as F6-F10, not as the XF86 keysyms bound further
+# down, so those five function keys are routed through hunter-media: it does
+# the printed job on a Chromebook and hands the real F key to the application
+# on any other keyboard (hunter-toprow decides which, at session start).
 exec --no-startup-id hunter-toprow
-include ~/.config/i3/toprow.conf
+bindsym F6 exec --no-startup-id hunter-media brightness-down F6
+bindsym F7 exec --no-startup-id hunter-media brightness-up F7
+bindsym F8 exec --no-startup-id hunter-media mute F8
+bindsym F9 exec --no-startup-id hunter-media volume-down F9
+bindsym F10 exec --no-startup-id hunter-media volume-up F10
+
+# The secondary route Hunter suggested: Ctrl plus a top-row key is the real
+# function key, always.
+bindsym Control+F6 exec --no-startup-id xdotool key --clearmodifiers F6
+bindsym Control+F7 exec --no-startup-id xdotool key --clearmodifiers F7
+bindsym Control+F8 exec --no-startup-id xdotool key --clearmodifiers F8
+bindsym Control+F9 exec --no-startup-id xdotool key --clearmodifiers F9
+bindsym Control+F10 exec --no-startup-id xdotool key --clearmodifiers F10
 
 # The panel slides away over this area, so keep 28 px free at the bottom for
 # it: windows neither jump when it hides nor end up underneath it.

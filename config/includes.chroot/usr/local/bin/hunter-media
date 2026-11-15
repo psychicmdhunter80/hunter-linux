@@ -1,0 +1,40 @@
+#!/bin/sh
+# SMD Linux - top-row key dispatcher.
+#
+# On a Chromebook the printed volume, mute and brightness keys reach X as
+# F6/F7/F8/F9/F10, not as XF86 keysyms, so the i3 configuration binds those
+# function keys and this script decides what they do:
+#
+#   * on a Chromebook (hunter-toprow wrote ~/.config/i3/chromebook-keys at
+#     session start) the printed function is performed;
+#   * on any other machine the very same key is passed straight through to the
+#     focused application, so an ordinary keyboard keeps every F key.
+#
+# Ctrl plus the key is deliberately not routed here: the i3 configuration sends
+# that combination to the application as the real function key.
+
+set -u
+
+action="${1:-}"
+key="${2:-}"
+
+chromebook=0
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/i3/chromebook-keys" ] && chromebook=1
+
+case "$action" in
+brightness-down) wanted="brightnessctl set 5%-" ;;
+brightness-up) wanted="brightnessctl set 5%+" ;;
+mute) wanted="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" ;;
+volume-down) wanted="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" ;;
+volume-up) wanted="wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+" ;;
+*) exit 0 ;;
+esac
+
+if [ "$chromebook" = 1 ]; then
+	# shellcheck disable=SC2086
+	exec $wanted
+fi
+
+# Not a Chromebook: this really is the F key, hand it back to the application.
+[ -n "$key" ] || exit 0
+exec xdotool key --clearmodifiers "$key"

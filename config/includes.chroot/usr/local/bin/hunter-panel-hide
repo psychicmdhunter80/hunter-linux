@@ -4,23 +4,20 @@
 # Why this exists: xfce4-panel's own auto-hide works by asking the window
 # manager to move the panel off screen.  i3 refuses to move dock windows - its
 # log says "Dock client will not be moved, we only support moving it to another
-# output" - and fakes a configure event that tells the panel it is still where
-# it was, so the panel can never hide.  That is i3 issue 4153 and xfce4-panel
-# issue 308, both open.  The panel XML still says autohide-behavior=2, but on
-# i3 that value alone does nothing.
+# output" - and then reports the panel as still visible, so the panel can never
+# hide.  That is i3 issue 4153 and xfce4-panel issue 308, both open.  The panel
+# XML still says autohide-behavior=2, but on i3 that value alone does nothing.
 #
-# This helper does the hiding itself: the panel keeps its normal place at the
-# bottom edge and is simply unmapped when the pointer is away from it and
-# mapped again when the pointer reaches the bottom.  The space it occupies is
-# reserved by "gaps bottom 28" in the i3 configuration, so windows do not jump
-# when the panel disappears and never end up underneath it.
-#
-# The panel is kept on screen whenever the pointer is over it or over any of
-# its own windows - menus, tooltips, the whisker menu - so clicking through a
-# menu does not make the panel vanish mid-click.
+# This helper does the hiding itself: the panel keeps its place at the bottom
+# edge and is unmapped when the pointer is away from it, and mapped again when
+# the pointer reaches the edge.  "gaps bottom 28" in the i3 configuration
+# reserves the space, so windows neither jump when the panel disappears nor end
+# up underneath it.  The panel stays on screen whenever the pointer is over it
+# or over one of its own windows - a menu, the whisker menu - so clicking
+# through a menu does not make it vanish mid-click.
 #
 # One copy only: started from the i3 configuration with exec_always, so an i3
-# restart after "reload" does not leave a second watcher fighting this one.
+# reload cannot leave a second watcher behind.
 
 set -u
 
@@ -34,49 +31,33 @@ if command -v flock >/dev/null 2>&1; then
 fi
 
 command -v xdotool >/dev/null 2>&1 || {
-	echo "$(date '+%F %T') xdotool is missing, panel stays visible" >>"$log"
+	echo "$(date '+%F %T') xdotool is missing, the panel stays visible" >>"$log"
 	exit 0
 }
 
 # How close to the bottom edge the pointer has to be to bring the panel back.
 REVEAL=4
 
-# The panel's WM_CLASS is "xfce4-panel" for the instance and "Xfce4-panel" for
-# the class, and xdotool's --class is a case-sensitive regex, so search every
-# spelling and deduplicate instead of relying on one.
+# Windows are looked up by the panel's process id: the WM_CLASS spelling is not
+# stable ("xfce4-panel" as the instance, "Xfce4-panel" as the class) and xdotool
+# matches case-sensitively, which is why the first version found no windows and
+# never hid anything.
 panel_windows() {
-	{
-		xdotool search --class xfce4-panel 2>/dev/null
-		xdotool search --class Xfce4-panel 2>/dev/null
-		xdotool search --classname xfce4-panel 2>/dev/null
-		xdotool search --name xfce4-panel 2>/dev/null
-	} | sort -u
+	pid=$(pgrep -x xfce4-panel 2>/dev/null | head -n 1)
+	[ -n "$pid" ] || return 0
+	xdotool search --pid "$pid" 2>/dev/null
 }
 
-hide() {
-	for id in $(panel_windows); do
-		xdotool windowunmap "$id" 2>/dev/null
-	done
-}
+echo "$(date '+%F %T') panel watcher started on ${DISPLAY:-?}" >>"$log"
 
-show() {
-	for id in $(panel_windows); do
-		xdotool windowmap "$id" 2>/dev/null
-		xdotool windowraise "$id" 2>/dev/null
-	done
-}
-
-echo "$(date '+%F %T') watching the pointer for the panel" >>"$log"
-count=$(panel_windows | wc -l)
-echo "$(date '+%F %T') found $count panel window(s)" >>"$log"
 shown=1
-
+ticks=0
 while :; do
-	# The X server goes away at logout.  Without this the loop would survive
-	# the session, keep this lock and start the next login with no panel - the
-	# "panel does not come back" report.  Leave cleanly instead.
+	# The X server goes away at logout.  Without this the loop would survive the
+	# session and keep the lock, so the next login would find it held and start
+	# no panel at all - the "panel does not come back" report.
 	if ! xset q >/dev/null 2>&1; then
-		echo "$(date '+%F %T') display is gone, exiting" >>"$log"
+		echo "$(date '+%F %T') display is gone, stopping the watcher" >>"$log"
 		exit 0
 	fi
 
@@ -86,24 +67,36 @@ while :; do
 	eval "$(xdotool getmouselocation --shell 2>/dev/null)" || { sleep 1; continue; }
 
 	want=0
-	# At the bottom edge, or anywhere on the panel and its menus.
 	if [ "${Y:-0}" -ge $((screen_h - REVEAL)) ]; then
 		want=1
 	else
-		panel_pid=$(pgrep -x xfce4-panel 2>/dev/null | head -n 1)
-		if [ -n "${WINDOW:-0}" ] && [ "${WINDOW:-0}" != "0" ] && \
-		   [ -n "$panel_pid" ]; then
+		pid=$(pgrep -x xfce4-panel 2>/dev/null | head -n 1)
+		if [ -n "${WINDOW:-0}" ] && [ "${WINDOW:-0}" != "0" ] && [ -n "$pid" ]; then
 			window_pid=$(xdotool getwindowpid "$WINDOW" 2>/dev/null || true)
-			[ "$window_pid" = "$panel_pid" ] && want=1
+			[ "$window_pid" = "$pid" ] && want=1
 		fi
 	fi
 
 	if [ "$want" = 1 ] && [ "$shown" = 0 ]; then
-		show
+		for id in $(panel_windows); do
+			xdotool windowmap "$id" 2>/dev/null
+			xdotool windowraise "$id" 2>/dev/null
+		done
+		echo "$(date '+%F %T') panel shown" >>"$log"
 		shown=1
 	elif [ "$want" = 0 ] && [ "$shown" = 1 ]; then
-		hide
+		for id in $(panel_windows); do
+			xdotool windowunmap "$id" 2>/dev/null
+		done
+		count=$(panel_windows | wc -l)
+		echo "$(date '+%F %T') panel hidden ($count window(s))" >>"$log"
 		shown=0
+	fi
+
+	ticks=$((ticks + 1))
+	# Keep the log short: one status line a minute is enough to diagnose it.
+	if [ $((ticks % 300)) = 1 ]; then
+		echo "$(date '+%F %T') alive, $(panel_windows | wc -l) window(s), panel $([ "$shown" = 1 ] && echo shown || echo hidden)" >>"$log"
 	fi
 
 	sleep 0.2

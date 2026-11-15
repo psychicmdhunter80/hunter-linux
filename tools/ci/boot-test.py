@@ -494,18 +494,17 @@ def main():
 
         # Chromebook top row: the printed volume keys are F9/F10 there.  The
         # harness forces the Chromebook layout because a VM is not a Chromebook.
-        # A restart re-runs the unforced hunter-toprow, which on a VM writes the
-        # no-Chromebook file; force it again and reload so i3 re-reads the
-        # include without re-running the exec lines.
+        # An i3 restart re-runs every exec_always line; the panel and the hide
+        # watcher must not stack, and the restart is also what proves the
+        # bindings survive a reload.  It re-runs the unforced hunter-toprow too,
+        # which on a VM clears the Chromebook flag, so force it afterwards.
         shell.run("DISPLAY=:0 i3-msg restart", timeout=120)
-        time.sleep(8)
-        shell.run("DISPLAY=:0 hunter-toprow --force; DISPLAY=:0 i3-msg reload",
-                  timeout=120)
-        time.sleep(5)
-        toprow = shell.run("grep -c 'bindsym F10' ~/.config/i3/toprow.conf 2>&1",
+        time.sleep(10)
+        toprow = shell.run("DISPLAY=:0 hunter-toprow --force; "
+                           "test -f ~/.config/i3/chromebook-keys && echo FLAG-SET",
                            timeout=60)
-        check(results, "the Chromebook top row bindings are generated",
-              toprow.strip().splitlines()[-1:] == ["1"])
+        check(results, "the Chromebook top row is detected",
+              "FLAG-SET" in toprow)
         # Start from half volume: the default sink is already at 1.0, where a
         # "5%+" would be capped and look like a broken key.  The values are
         # printed with a marker because the log echoes the command itself.
@@ -539,7 +538,7 @@ def main():
         panels = re.search(r"PANELS=(\d+)", count)
         hiders = re.search(r"HIDERS=(\d+)", count)
         watchdogs = re.search(r"WATCHDOGS=(\d+)", count)
-        record(f"INFO: after reload {count.strip()[:120]}")
+        record(f"INFO: after reload {count.strip()[:300]}")
         check(results, "exactly one panel and one hide helper survive a reload",
               bool(panels and hiders and watchdogs) and
               panels.group(1) == "1" and hiders.group(1) == "1" and
