@@ -35,15 +35,19 @@ still where it was. This is i3 issue 4153 and xfce4-panel issue 308, both open
 since 2020. Under i3 the panel therefore **cannot** hide, whatever the setting
 says. 1.1 shipped the setting and no mechanism, so the panel stayed on screen.
 
-**Fix.** `hunter-panel-hide` (started with `exec_always` from the i3
-configuration) does the hiding: it unmaps the panel windows when the pointer is
-away from the bottom edge and maps them again when the pointer reaches it,
-keeping the panel on screen while the pointer is over the panel or any of its
-menus. `gaps bottom 28` is set in the i3 configuration, so the 28 px the panel
-occupies stay reserved and windows neither jump when it disappears nor end up
-underneath it. The panel is now solid black through the panel's own
-`background-style`/`background-rgba` settings - no compositor, no theme suite,
-no transparency effects.
+**Fix.** The Acer's own working setup had already solved this, and 1.2 uses the
+same mechanism: `hunter-panel-dock`, a small Python/Xlib launcher modelled on
+`~/.local/bin/acer-panel` from the Chromebook install, starts the real
+xfce4-panel and then takes only its dock-type windows away from i3 - sets
+`override_redirect` and reparents them to the root window at the position i3
+had already given them. i3 unmanages them, nobody intercepts the panel's own
+moves any more, and the "Always hide" setting starts to behave as it does under
+xfwm4 (on the Acer: hidden at y=813, revealed at y=735 on a 768 px screen).
+`hunter-panel` keeps its flock, restart loop and display check and runs the
+helper; if `python3`/`python3-xlib` are missing it falls back to a plain panel
+that appears but cannot hide, instead of no panel at all. The panel is solid
+black through the panel's own `background-style`/`background-rgba` settings -
+no compositor, no theme suite, no transparency effects.
 
 ### 0.3 The panel did not come back after logout and login
 

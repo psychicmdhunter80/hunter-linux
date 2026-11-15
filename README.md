@@ -268,9 +268,11 @@ keyboard keeps all of its F keys.
 **Why the panel needs a helper.** xfce4-panel's own auto-hide asks the window
 manager to move it off screen; i3 refuses to move dock windows (i3 issue 4153)
 and reports the panel as still visible, so the setting alone can never work here.
-`hunter-panel-hide` unmaps the panel when the pointer leaves the bottom edge and
-maps it again at the edge, and `gaps bottom 28` in the i3 configuration keeps the
-space reserved so windows neither jump nor sit under the panel.
+`hunter-panel-dock` takes only the panel's dock windows away from i3 - the same
+method the Acer Chromebook install used - and from then on the panel's own hide
+and reveal work normally: it slides off the bottom edge and comes back when the
+pointer reaches the edge. The helper needs `python3` and `python3-xlib`, both
+installed; without them the panel still starts, it just cannot hide.
 
 ---
 
@@ -389,11 +391,11 @@ system works normally without it.
   driver is never forced onto unrelated hardware. Remove
   `/etc/X11/xorg.conf.d/20-intel.conf` and restart the display manager to roll
   it back.
-* **The panel is hidden by a helper, not by its own setting.** The panel's
-  preferences show "Always hide", but under i3 that value has no effect (i3
-  issue 4153, xfce4-panel issue 308). `hunter-panel-hide` does the hiding. If
-  the panel ever stays on screen, look at `~/.cache/smd/panel-hide.log` and
-  `~/.cache/smd/panel.log`.
+* **The panel is hidden by a helper, not by its own setting alone.** The
+  preferences show "Always hide", but under i3 that value has no effect until
+  `hunter-panel-dock` detaches the panel windows (i3 issue 4153, xfce4-panel
+  issue 308). If the panel ever stays on screen, look at
+  `~/.cache/smd/panel.log` and check that `~/.cache/smd/panel-dock.pid` exists.
 * **Battery percentage is whatever UPower reports.** The 10-15 % sudden
   power-off seen on the older installation is a hardware/gauge behaviour; the
   image neither fakes the percentage nor forces a cutoff.

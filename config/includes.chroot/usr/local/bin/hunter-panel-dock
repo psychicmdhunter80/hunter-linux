@@ -54,9 +54,32 @@ def dock_windows(x_display, root, pid):
 
     for window in children:
         try:
+            # Which windows to take: those of the panel process.  _NET_WM_PID is
+            # not set by every toolkit and xfce4-panel did not set it in the
+            # image this was first tried on, so the class and the window name
+            # are checked as well - otherwise nothing is found, nothing is
+            # detached and the panel simply stays on screen.
+            ours = False
             owner = window.get_full_property(pid_atom, X.AnyPropertyType)
-            if not owner or owner.value[0] != pid:
+            if owner and owner.value and int(owner.value[0]) == pid:
+                ours = True
+            if not ours:
+                try:
+                    wm_class = window.get_wm_class() or ()
+                except Exception:
+                    wm_class = ()
+                if any("xfce4-panel" in str(part).lower() for part in wm_class):
+                    ours = True
+            if not ours:
+                try:
+                    name = window.get_wm_name()
+                except Exception:
+                    name = None
+                if isinstance(name, str) and "xfce4-panel" in name.lower():
+                    ours = True
+            if not ours:
                 continue
+
             kinds = window.get_full_property(type_atom, X.AnyPropertyType)
             names = [x_display.get_atom_name(atom) for atom in kinds.value] if kinds else []
             if names and TYPE_DOCK not in names:
