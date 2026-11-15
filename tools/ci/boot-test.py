@@ -655,6 +655,69 @@ def main():
               echunks[1].strip().endswith("smd-menu"))
         record(f"INFO: installer entries: {listing} {echunks[1].strip()}")
 
+        # --- the PCI matcher has to read lspci the way lspci prints --------
+        # Craig's line is "00:02.0 VGA compatible controller [0300]: Intel ...
+        # [8086:0f31]"; the class comes first, so the ID must be matched after
+        # "VGA".  Before that fix the service removed the file again at boot.
+        craig = ("00:02.0 VGA compatible controller [0300]: Intel Corporation "
+                 "Atom Processor Z36xxx/Z37xxx Series Graphics & Display "
+                 "[8086:0f31] (rev 0e)")
+        matcher = shell.run(
+            "printf '%s\\n' \"%s\" | grep -qi 'VGA.*8086:0f31' "
+            "&& echo MATCH=ok || echo MATCH=no" % ("%s", craig), timeout=60)
+        check(results, "the TearFree matcher reads lspci output correctly",
+              "MATCH=ok" in matcher)
+
+        # --- PipeWire quantum: the value that removed Jellyfin's delay ------
+        quantum = shell.run(
+            "test -e /etc/pipewire/pipewire.conf.d/50-hunter-quantum.conf "
+            "&& echo CONF=present || echo CONF=missing; echo ---; "
+            "grep -E 'quantum' /etc/pipewire/pipewire.conf.d/"
+            "50-hunter-quantum.conf 2>/dev/null | tr -d ' ' | sort -u; echo ---; "
+            "%s -n settings 2>/dev/null | grep -i 'clock.quantum' | head -3"
+            % ('env XDG_RUNTIME_DIR=/run/user/$(id -u) pw-metadata'), timeout=90)
+        qchunks = quantum.split("---")
+        check(results, "the PipeWire quantum configuration is installed",
+              "CONF=present" in qchunks[0])
+        check(results, "the quantum is pinned to 2048",
+              all("=2048" in line for line in qchunks[1].split())
+              and len(qchunks[1].split()) == 3)
+        record(f"INFO: quantum: {' '.join(qchunks[1].split())} | "
+               f"{' '.join(qchunks[2].split())[:120]}")
+
+        # --- the hardware mixer fix stays scoped to the max98090 codec ------
+        hw = shell.run(
+            "systemctl is-enabled hunter-audio-hw.service 2>&1; echo ---; "
+            "systemctl is-active hunter-audio-hw.service 2>&1; echo ---; "
+            "grep -rl max98090 /proc/asound/card*/codec#* 2>/dev/null "
+            "| head -2; echo ---; "
+            "ls /usr/share/alsa/ucm2/*max98090*/EnableSeq.conf.smd-backup "
+            "2>/dev/null | head -1",
+            timeout=90)
+        hchunks = hw.split("---")
+        check(results, "the audio mixer unit is enabled", "enabled" in hchunks[0])
+        check(results, "the audio mixer unit ran", "active" in hchunks[1])
+        check(results, "the mixer fix did not touch a machine without the codec",
+              not hchunks[2].strip())
+        record(f"INFO: audio hardware: {' | '.join(c.strip()[:60] for c in hchunks)}")
+
+        # --- VA-API driver and the shim's mpv settings ----------------------
+        vaapi = shell.run(
+            "dpkg -s i965-va-driver >/dev/null 2>&1 && echo DRIVER=installed "
+            "|| echo DRIVER=missing; echo ---; "
+            "grep -v '^#' ~/.config/jellyfin-mpv-shim/mpv.conf 2>/dev/null "
+            "| grep -E 'hwdec|display-resample' ; echo ---; "
+            "ls /usr/lib/x86_64-linux-gnu/dri/i965_drv_video.so 2>/dev/null",
+            timeout=90)
+        vchunks = vaapi.split("---")
+        check(results, "the VA-API driver is installed",
+              "DRIVER=installed" in vchunks[0])
+        check(results, "the Jellyfin shim asks for hardware decoding",
+              "hwdec=auto-safe" in vchunks[1])
+        check(results, "display-resample is not configured",
+              "display-resample" not in vchunks[1])
+        record(f"INFO: va-api: {vchunks[1].strip()[:80]} {vchunks[2].strip()[:80]}")
+
         # --- speaker level: the 125 % Hunter tuned on the Chromebook --------
         volume = shell.run(
             "test -x /usr/local/bin/hunter-volume && echo SCRIPT=ok || echo SCRIPT=missing; "

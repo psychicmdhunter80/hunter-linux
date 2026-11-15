@@ -8,7 +8,8 @@ set -e
 
 echo "hunter: enabling services"
 
-for unit in NetworkManager bluetooth lightdm zramswap systemd-timesyncd hunter-graphics; do
+for unit in NetworkManager bluetooth lightdm zramswap systemd-timesyncd \
+	hunter-graphics hunter-audio-hw; do
 	if systemctl enable "${unit}.service" >/dev/null 2>&1 || \
 	   systemctl enable "${unit}" >/dev/null 2>&1; then
 		echo "hunter:   enabled ${unit}"

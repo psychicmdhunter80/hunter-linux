@@ -72,6 +72,18 @@ the service state, so the owner can confirm after a reboot that the driver
 really loaded with TearFree instead of trusting the file. No compositor was
 added.
 
+There were two bugs, and both had to be fixed before the file survived a boot:
+
+1. `hunter-graphics` was committed with Windows line endings, so its shebang was
+   unreadable and the unit failed with "No such file or directory" instead of
+   running. The whole tree is now normalised to LF by
+   `tools/normalize-line-endings.py`, and the unit is active in the tests.
+2. The PCI test searched for `8086:<id>.*VGA`, but `lspci -nn` prints the class
+   first - `00:02.0 VGA compatible controller [0300]: Intel ... [8086:0f31]` -
+   so it never matched on the Chromebook and the service deleted
+   `20-intel.conf` again on every boot. It now searches `VGA.*8086:<id>`, and a
+   boot-test check feeds it a real Chromebook line to prove the match.
+
 **Not proven here:** the VM has a QEMU adapter, not Intel Bay Trail, so the test
 can only prove that TearFree is *not* forced onto unrelated graphics. Whether
 the picture is tear-free on the Chromebook needs a physical playback test.
@@ -91,10 +103,38 @@ run from `hunter-applets` at session start:
   `~/.cache/smd/volume.log`;
 * it uses `wpctl`, so PipeWire and WirePlumber stay the only sound stack.
 
-The ALSA hardware values from the original machine (Speaker raw 20, Digital raw
-15, headphone attenuation raw 18) belong to its chtmax98090 codec and are
-deliberately not applied here. The separate fifteen-seconds-of-silence
-observation is untouched and remains unexplained.
+On the Chromebook, PipeWire at 125 % was still not the whole fix: the codec's
+UCM startup left `Speaker Volume` at raw 10 (-14 dB), so the same sink level was
+quieter than the level tuned by hand at raw 20 (0 dB). `hunter-audio-hw.service`
+now handles that, scoped to hardware: it looks for a max98090 codec in
+`/proc/asound`, and only then backs up `EnableSeq.conf` to
+`EnableSeq.conf.smd-backup`, changes **only** the `Speaker Volume` line to raw
+20, and sets the running mixer with `amixer` before the sound server starts.
+Machines without that codec are left untouched, and the boot test asserts that
+no UCM file was edited on the virtual machine.
+
+**The delayed Jellyfin audio.** On the Chromebook the same playback started with
+about fifteen seconds of silence, with repeated ALSA XRUNs and PipeWire logging
+`snd_pcm_avail after recover: Broken pipe`. The default quantum was too small
+for the codec. `/etc/pipewire/pipewire.conf.d/50-hunter-quantum.conf` pins
+`default.clock.quantum`, `min-quantum` and `max-quantum` to **2048**; on the
+installed system a forced quantum of 2048 gave immediate audio across several
+browser tabs and still worked after a reboot. This is a sound-server setting,
+not a Jellyfin one, so it applies to every application.
+
+### 0.7 Jellyfin playback
+
+The Jellyfin MPV shim decoded in software, which dropped frames on Bay Trail.
+1.3 ships Debian's `i965-va-driver` and a shim `mpv.conf` with
+`hwdec=auto-safe` - auto-safe keeps the software path for machines without
+VA-API, so the same default file is safe everywhere. A short measurement on the
+Chromebook showed no dropped frames, but longer runs still dropped some, so
+hardware decoding is a clear improvement rather than a guarantee.
+`display-resample` is deliberately absent: it was tried and made dropping worse.
+
+The CPU governor was also tested on the Chromebook and made no noticeable
+difference, so 1.3 does not switch to performance mode and adds no governor
+work.
 
 ### 0.4 Resource use
 

@@ -273,7 +273,12 @@ the active port is the internal speaker and the level is still the untouched
 100 %, so headphones and any level you set yourself are left alone. It is a
 sound-card setting, not a per-application one: a change to a single Chromium
 stream would affect all browser audio too, so nothing here is specific to
-Jellyfin. The volume keys keep working normally on top of it.
+Jellyfin. The volume keys keep working normally on top of it. On the
+Chromebook the codec's quiet startup level is corrected by
+`hunter-audio-hw.service`, which only acts on max98090 hardware and backs up the
+UCM file it edits. PipeWire's quantum is pinned to 2048 in
+`/etc/pipewire/pipewire.conf.d/50-hunter-quantum.conf`, which is what removed the
+silent start in Jellyfin on that machine.
 
 **The dark theme.** The panel, the whisker menu, the task buttons, the window
 title bars, the terminal and every GTK application use Adwaita-dark, set in

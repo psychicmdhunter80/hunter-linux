@@ -33,11 +33,21 @@ Dark-theme and tidy-up release for the Acer Chromebook 11 CB3-111. Everything
   prints the graphics device, the driver module, the configuration, the
   `TearFree` lines from `/var/log/Xorg.0.log` and the service state so the
   result can be checked after a reboot. No compositor was added.
+* **Jellyfin playback.** The ISO ships Debian's `i965-va-driver` and an
+  `mpv.conf` for the Jellyfin MPV shim with `hwdec=auto-safe`, so the Chromebook
+  decodes in hardware instead of software; machines without the driver fall
+  back to software. `display-resample` is not set - it made frame dropping worse
+  in testing.
 * **Speaker volume.** `hunter-volume` reproduces the level Hunter tuned by hand
   on the Chromebook: the output goes to **125 %** once per session, and only
   while it is still the untouched 100 % and the active port is the internal
   speaker - headphones are left alone, and the volume keys keep working on top
-  of it. It is a sink-level setting, so nothing is specific to Jellyfin. The
+  of it. It is a sink-level setting, so nothing is specific to Jellyfin. On
+  the Chromebook the codec's own startup level (raw 10, -14 dB) was also raised
+  to the accepted raw 20 (0 dB) by `hunter-audio-hw.service`, which backs up the
+  UCM file first and does nothing at all on machines without that codec. The
+  delayed Jellyfin audio is addressed by pinning the PipeWire quantum to 2048,
+  the value that produced immediate audio on the installed system. The
   sound server itself also had to be fixed: `pipewire.socket` came up failed and
   took PipeWire with it, so sessions had no mixer at all. Activation is now by
   service with the sockets masked, and the session starts `pipewire`,

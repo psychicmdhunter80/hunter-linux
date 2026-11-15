@@ -13,3 +13,7 @@ wireplumber
 alsa-utils
 alsa-ucm-conf
 pavucontrol
+# Jellyfin's MPV shim decodes through VA-API when a driver is present;
+# i965 is the one for Bay Trail graphics, and mpv falls back to software
+# decoding on machines without it.
+i965-va-driver

@@ -22,7 +22,8 @@ chmod 0755 /usr/local/bin/hunter-session /usr/local/bin/hunter-power \
 	/usr/local/bin/hunter-panel /usr/local/bin/hunter-applets \
 	/usr/local/bin/hunter-volume
 chmod 0755 /usr/local/sbin/hunter-postinstall /usr/local/sbin/hunter-bootloader \
-	/usr/local/sbin/hunter-graphics /usr/local/bin/hunter-toprow \
+	/usr/local/sbin/hunter-graphics /usr/local/sbin/hunter-audio-hw \
+	/usr/local/bin/hunter-toprow \
 	/usr/local/bin/hunter-media
 chmod 0644 /usr/share/xsessions/hunter.desktop
 chmod 0644 /usr/share/applications/hunter-install.desktop \

@@ -64,7 +64,11 @@ mkdir -p /etc/X11/xorg.conf.d
 matched=""
 if command -v lspci >/dev/null 2>&1; then
 	for id in $ids; do
-		if lspci -nn 2>/dev/null | grep -qi "8086:${id}.*VGA"; then
+		# lspci prints the class first: "00:02.0 VGA compatible
+		# controller [0300]: Intel ... [8086:0f31]".  Matching the ID
+		# before "VGA" never matched, so the file was removed again on
+		# every boot.
+		if lspci -nn 2>/dev/null | grep -qi "VGA.*8086:${id}"; then
 			matched=$id
 			break
 		fi

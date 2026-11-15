@@ -1,0 +1,64 @@
+#!/bin/sh
+# SMD Linux - audio hardware matching.
+#
+# Runs before the display manager (hunter-audio-hw.service) on the live system
+# and on an installed one.  The Chromebook's chtmax98090 codec starts with its
+# speaker at raw 10 (-14 dB), which is quieter than the same machine managed at
+# 0 dB.  The difference is a mixer default, not a volume setting, so it is fixed
+# here rather than by boosting every sink.
+#
+# Only the chtmax98090 codec is touched.  Every other machine - and every other
+# codec - is left exactly as it was, because mixer raw values are specific to
+# the hardware.  The UCM file is backed up before it is changed.
+
+set -u
+
+log() { echo "hunter-audio-hw: $*"; }
+
+# Which card carries a max98090 codec, if any.
+card=""
+for codec in /proc/asound/card*/codec#*; do
+	[ -f "$codec" ] || continue
+	if grep -qi "max98090" "$codec" 2>/dev/null; then
+		card=$(echo "$codec" | sed 's|/proc/asound/card\([0-9]*\)/.*|\1|')
+		break
+	fi
+done
+
+if [ -z "$card" ]; then
+	log "no max98090 codec on this machine, leaving the mixers alone"
+	exit 0
+fi
+
+log "max98090 codec found on card ${card}"
+
+# 1. The UCM startup sequence: back it up once, then set only the speaker line.
+for ucm in $(find /usr/share/alsa/ucm2 /usr/share/alsa/ucm -name 'EnableSeq.conf' 2>/dev/null |
+		grep -i 'max98090'); do
+	[ -w "$ucm" ] || {
+		log "  ${ucm} is read-only here (live system), skipping the file"
+		continue
+	}
+	if [ ! -e "${ucm}.smd-backup" ]; then
+		if cp -p "$ucm" "${ucm}.smd-backup"; then
+			log "  backed up ${ucm} to ${ucm}.smd-backup"
+		fi
+	fi
+	# cset "name='Speaker Volume' 10"  ->  ... 20
+	if sed -i "/Speaker Volume/ s/\(Speaker Volume['\"]*[[:space:]]*\)[0-9]\+/\120/" "$ucm"; then
+		log "  ${ucm}: Speaker Volume set to raw 20 (0 dB)"
+	fi
+done
+
+# 2. The running mixer, so the level applies without a reboot.
+if command -v amixer >/dev/null 2>&1; then
+	if amixer -c "$card" cset "name=Speaker Volume" 20 >/dev/null 2>&1; then
+		log "  Speaker Volume set to raw 20 on card ${card}"
+	else
+		log "  this kernel exposes no 'Speaker Volume' control, mixer left alone"
+	fi
+	# Remember it for the next boot; harmless if it fails on a live system.
+	command -v alsactl >/dev/null 2>&1 && alsactl store >/dev/null 2>&1 || true
+fi
+
+exit 0

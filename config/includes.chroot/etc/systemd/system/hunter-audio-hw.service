@@ -1,0 +1,13 @@
+[Unit]
+Description=SMD Linux - hardware-matched audio mixer defaults
+Documentation=man:alsaucm(1)
+# The codec settings have to be in place before the sound server starts.
+Before=pipewire.service wireplumber.service pipewire-pulse.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/hunter-audio-hw
+
+[Install]
+WantedBy=multi-user.target
