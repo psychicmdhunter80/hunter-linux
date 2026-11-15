@@ -679,9 +679,13 @@ def main():
         qchunks = quantum.split("---")
         check(results, "the PipeWire quantum configuration is installed",
               "CONF=present" in qchunks[0])
+        # Only the settings lines matter: the file's comments mention the
+        # quantum too, so compare the three values themselves.
+        values = sorted(line for line in qchunks[1].split() if "=" in line)
         check(results, "the quantum is pinned to 2048",
-              all("=2048" in line for line in qchunks[1].split())
-              and len(qchunks[1].split()) == 3)
+              values == ["default.clock.max-quantum=2048",
+                         "default.clock.min-quantum=2048",
+                         "default.clock.quantum=2048"])
         record(f"INFO: quantum: {' '.join(qchunks[1].split())} | "
                f"{' '.join(qchunks[2].split())[:120]}")
 
