@@ -476,6 +476,7 @@ def main():
         # along the bottom edge moves it.  Read its real origin instead of
         # assuming one, and keep the widget positions relative to it.
         origin = (135, 50)
+        shape = (1010, 700)
         win_id = shell.run("DISPLAY=:0 xdotool search --class calamares "
                            "2>/dev/null | head -1", timeout=60).strip()
         if win_id:
@@ -485,15 +486,18 @@ def main():
             size = re.search(r"Geometry:\s*(\d+)x(\d+)", info)
             if position:
                 origin = (int(position.group(1)), int(position.group(2)))
-            record(f"INFO: installer window at {origin} "
-                   f"{size.groups() if size else ''}")
-        # Measured from a screenshot of the running wizard: Back, Next and
-        # Cancel sit in a row 38 px above the window's bottom edge, and Next is
-        # the middle one.  Clicking Cancel opens "do you really want to cancel"
-        # and the installation never starts, so this is a fixed offset from the
-        # window origin rather than a guess from OCR.
-        NEXT = (origin[0] + 875, origin[1] + 662)
-        CANCEL_NO = (origin[0] + 664, origin[1] + 362)
+            if size:
+                shape = (int(size.group(1)), int(size.group(2)))
+            record(f"INFO: installer window at {origin} size {shape}")
+        # Back, Next and Cancel are right-aligned in a row 35 px above the
+        # window's bottom edge, so they are measured from its bottom-right
+        # corner: the window is not always the same size (1024x696 here).
+        # Clicking Cancel opens "do you really want to cancel" and the
+        # installation never starts, which is what a guessed constant did.
+        right = origin[0] + shape[0]
+        bottom = origin[1] + shape[1]
+        NEXT = (right - 135, bottom - 35)
+        CANCEL_NO = ((origin[0] + right) // 2 + 159, (origin[1] + bottom) // 2 + 12)
         time.sleep(20)
         disp.shot("welcome")
 
