@@ -157,10 +157,39 @@ def find_workspace(tree, name):
 
 
 def focused_workspace(tree):
-    for node in nodes_of(tree):
-        if node.get("type") == "workspace" and node.get("focused"):
-            return node
-    return None
+    """The workspace holding the focused window.
+
+    i3 marks "focused" only on the focused container; workspaces keep a focus
+    stack instead, so the workspace has to be tracked while descending.
+    """
+
+    def walk(node, current):
+        for child in node.get("nodes", []) or []:
+            inner = child if child.get("type") == "workspace" else current
+            if child.get("focused"):
+                return inner or child
+            hit = walk(child, inner)
+            if hit:
+                return hit
+        return None
+
+    return walk(tree, None)
+
+
+def workspace_containing(tree, con_id):
+    """The workspace whose subtree holds con_id."""
+
+    def walk(node, current):
+        for child in node.get("nodes", []) or []:
+            inner = child if child.get("type") == "workspace" else current
+            if child.get("id") == con_id:
+                return inner or child
+            hit = walk(child, inner)
+            if hit:
+                return hit
+        return None
+
+    return walk(tree, None)
 
 
 def main():
@@ -327,10 +356,15 @@ def main():
             continue
         change = payload.get("change")
         if change in ("new", "close", "fullscreen_mode", "move"):
-            # A brand-new window is not in the tree yet and a closed one is
-            # already gone, so the focused workspace is the one to rebuild.
-            workspace = focused_workspace(i3.tree())
-            handle(workspace.get("name") if workspace else None)
+            # A closing window is already gone from the tree and a new one may
+            # not be in it yet, so its workspace is looked up first and the
+            # focused workspace is the fallback.
+            con_id = (payload.get("container") or {}).get("id")
+            tree = i3.tree()
+            workspace = (workspace_containing(tree, con_id) if con_id else None)                 or focused_workspace(tree)
+            name = workspace.get("name") if workspace else None
+            note("event %s on workspace %s" % (change, name))
+            handle(name)
         elif change == "empty":
             name = (payload.get("container") or {}).get("name")
             state["order"].pop(name, None)
