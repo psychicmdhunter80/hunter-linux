@@ -923,7 +923,8 @@ def main():
         def open_window(title):
             shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                       "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-            time.sleep(7)
+            # The helper settles a moment after the window appears.
+            time.sleep(13)
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree."""
