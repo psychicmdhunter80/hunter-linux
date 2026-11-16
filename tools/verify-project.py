@@ -16,6 +16,7 @@ live-build actually supports.
 import os
 import re
 import subprocess
+import tempfile
 import sys
 import xml.etree.ElementTree as ET
 
@@ -143,11 +144,16 @@ def check_shell():
         except OSError:
             continue
         if "python" in first:
-            # Python helpers are checked with Python, not with bash.
-            result = subprocess.run(
-                [sys.executable, "-m", "py_compile", path],
-                capture_output=True, text=True
-            )
+            # Python helpers are checked with Python, not with bash. The
+            # bytecode cache goes to a throwaway directory: py_compile would
+            # otherwise leave a __pycache__ next to the helper, which the
+            # compiled-Python check below then (rightly) refuses.
+            with tempfile.TemporaryDirectory() as cache:
+                env = dict(os.environ, PYTHONPYCACHEPREFIX=cache)
+                result = subprocess.run(
+                    [sys.executable, "-m", "py_compile", path],
+                    capture_output=True, text=True, env=env
+                )
         else:
             result = subprocess.run(
                 ["bash", "-n", path], capture_output=True, text=True
