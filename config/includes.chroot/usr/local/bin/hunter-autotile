@@ -116,6 +116,8 @@ class I3:
 def leaves_of(node, found=None):
     if found is None:
         found = []
+    if not isinstance(node, dict):
+        return found
     for child in node.get("nodes", []) or []:
         if child.get("window") and not str(child.get("floating", "")).startswith("user") \
                 and child.get("type") == "con" and not child.get("nodes"):
@@ -235,11 +237,14 @@ def main():
                 command("[con_id=%d] move container to workspace %s"
                         % (con_id, name))
 
-        final = find_workspace(i3.tree(), name)
-        boxes = ["%d@%d,%d+%dx%d" % (c["id"], c["rect"]["x"], c["rect"]["y"],
-                                     c["rect"]["width"], c["rect"]["height"])
-                 for c in leaves_of(final) if final]
-        note("  placed: %s" % " ".join(boxes))
+        # The layout is applied by the commands above; anything after them is
+        # diagnostics only and must never be able to stop the helper.
+        try:
+            final = find_workspace(i3.tree(), name)
+            boxes = ["%d" % c["id"] for c in leaves_of(final or {})]
+            note("  placed: %s" % " ".join(boxes))
+        except Exception as error:  # noqa: BLE001
+            note("  (no geometry report: %s)" % error)
 
     def handle(name):
         if not name or name == SCRATCH:
@@ -286,7 +291,7 @@ def main():
             for name in workspace_names():
                 handle(name)
             continue
-        if not payload:
+        if not isinstance(payload, dict):
             continue
         change = payload.get("change")
         if change in ("new", "close", "fullscreen_mode"):
