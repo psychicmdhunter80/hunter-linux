@@ -139,6 +139,14 @@ class Shell:
                              timeout=60)
             if "READY" in probe:
                 record("PASS: the X display is up")
+                # The session blanks its screen after a few idle minutes and a
+                # blanked framebuffer is a black screenshot: the wizard would
+                # look as if it had vanished. Screenshots must keep the screen
+                # lit for the whole run.
+                self.run("DISPLAY=:0 xset s off -dpms >/dev/null 2>&1; "
+                         "DISPLAY=:0 xset s noblank >/dev/null 2>&1; "
+                         "DISPLAY=:0 xset q | grep -i 'timeout\\|DPMS' | head -3",
+                         timeout=60)
                 return True
             time.sleep(10)
         record("FAIL: the X display never came up")
