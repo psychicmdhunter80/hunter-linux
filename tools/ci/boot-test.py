@@ -596,11 +596,11 @@ def main():
             time.sleep(3)
         # When i3 rejects its config, dump what it actually read and why.
         cfg = shell.run(
-            "i3 -C -c ~/.config/i3/config 2>&1 | tail -12; echo ===; "
-            "sed -n '10,20p' ~/.config/i3/config | cat -A; echo ===; "
-            "grep -c 'exec_always --no-startup-id hunter-applets' ~/.config/i3/config",
-            timeout=90)
-        record("INFO: i3 config check: " + " ".join(cfg.split())[:600])
+            "echo HOME=$HOME; ls -l ~/.config/i3/config; "
+            "wc -l ~/.config/i3/config; echo ===; "
+            "sed -n '1,4p;24,30p' ~/.config/i3/config | cat -A; echo ===; "
+            "grep -n 'set \$mod' ~/.config/i3/config | head -3", timeout=90)
+        record("INFO: i3 config file: " + " | ".join(cfg.split())[:700])
 
         audio = shell.run(
             "systemctl --user is-active pipewire pipewire-pulse wireplumber 2>&1; "
