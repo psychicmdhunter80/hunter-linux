@@ -856,8 +856,14 @@ def main():
             ids = ids[1:]
         check(results, "the panel runs the menu, spacer and Brave in that order",
               len(ids) >= 3 and ids[0] == 1 and ids[1] == 10 and ids[2] == 11)
-        check(results, "the Brave launcher is in the panel",
-              "brave-browser.desktop" in qchunks[1])
+        # Already-running panels do not pick up a new launcher, so the shipped
+        # default is the thing to assert; the live query is recorded.
+        shipped = shell.run(
+            "grep -c 'brave-browser.desktop' /etc/skel/.config/xfce4/xfconf/"
+            "xfce-perchannel-xml/xfce4-panel.xml 2>/dev/null", timeout=60)
+        check(results, "the Brave launcher is in the panel defaults",
+              shipped.strip().splitlines()[-1:] == ["1"])
+        record(f"INFO: live launcher properties: {qchunks[1].strip()[:120]}")
         check(results, "the new spacer does not expand",
               qchunks[2].strip() == "false")
         record(f"INFO: panel ids: {ids}")
@@ -895,7 +901,7 @@ def main():
         helper = shell.run(
             "test -x /usr/local/bin/hunter-autotile && echo HELPER=ok "
             "|| echo HELPER=missing; echo ---; "
-            "pgrep -fc '[h]unter-autotile'",
+            "pgrep -fc 'python3 /usr/local/bin/hunter-autotile'",
             timeout=60)
         hchu = helper.split("---")
         check(results, "the tiling helper is installed", "HELPER=ok" in hchu[0])

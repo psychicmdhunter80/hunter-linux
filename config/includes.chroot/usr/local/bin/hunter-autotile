@@ -6,40 +6,58 @@ below the first on the left, the fourth below the second on the right, so four
 windows form an even 2x2 grid.  Beyond four the columns keep growing
 alternately.
 
-The order is arrival order per workspace, tracked by container id - never by
-title or by what happened to be focused last, which is what a generic
-"split on active window" script gets wrong.  Everything is driven by i3's IPC
-events and native split/move commands; there is no polling.
+Order is arrival order per workspace, tracked by container id - never by title,
+and never by whichever window happened to be focused last, which is what a
+generic "split the active window" script gets wrong.
+
+Placement uses i3's marks: "move container to mark X" inserts the moved window
+directly after the marked one inside the same parent, so the structure is built
+deterministically instead of depending on where focus happens to be.  Windows
+are parked on a scratch workspace first, so nesting from an earlier layout
+cannot leak into the new one.
 """
 
 import fcntl
+import json
 import os
 import sys
 import time
 
 SCRATCH = "smd-autotile-scratch"
+LOG_PATH = os.path.expanduser("~/.cache/smd/autotile.log")
+
+
+def note(message):
+    try:
+        os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+        if os.path.getsize(LOG_PATH) > 65536:
+            os.truncate(LOG_PATH, 0)
+        with open(LOG_PATH, "a", encoding="utf-8") as handle:
+            handle.write("%s %s\n" % (time.strftime("%H:%M:%S"), message))
+    except OSError:
+        pass
 
 
 def main():
     try:
         import i3ipc
     except ImportError:
-        sys.stderr.write("hunter-autotile: python3-i3ipc is missing\n")
+        note("python3-i3ipc is missing")
         return 1
 
-    # One instance per session: an i3 restart re-runs exec_always.
+    # One helper per session: an i3 restart re-runs exec_always.
     lock_path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"),
                              "hunter-autotile.lock")
     lock = open(lock_path, "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
+        note("another instance already holds the lock")
         return 0
 
     i3 = i3ipc.Connection()
-    order = {}          # workspace name -> [container id, ...] in arrival order
-    pending = {}        # workspace name -> the id that arrived while busy
-    state = {"busy": False}
+    order = {}
+    state = {"busy": False, "pending": set()}
 
     def leaves(workspace):
         found = []
@@ -48,7 +66,7 @@ def main():
             for child in node.nodes or []:
                 if child.type == "con" and child.window and not child.floating:
                     found.append(child)
-                elif child.type in ("con", "workspace"):
+                elif child.type in ("con", "workspace", "output", "root"):
                     walk(child)
 
         walk(workspace)
@@ -70,7 +88,6 @@ def main():
         return known
 
     def reflow(name):
-        """Rebuild one workspace in arrival order."""
         tree = i3.get_tree()
         workspace = workspace_of(tree, name)
         if workspace is None:
@@ -81,77 +98,85 @@ def main():
         if not ids:
             order.pop(name, None)
             return
-        # A fullscreen window owns the whole screen; rebuilding underneath it
-        # would fight it and break true fullscreen.  It is reconciled when the
-        # user leaves fullscreen.
+        # A fullscreen window owns the screen; rebuilding underneath it would
+        # break true fullscreen.  It is reconciled when fullscreen ends.
         if any(c.fullscreen_mode for c in leaves(workspace)):
             return
 
         focused = tree.find_focused()
         focused_id = focused.id if focused else None
+        note("reflow %s order=%s" % (name, ids))
 
         def run(command):
-            i3.command(command)
+            reply = i3.command(command)
+            for item in reply:
+                if not item.success:
+                    note("failed: %s -> %s" % (command, item.error))
 
-        # Park everything first so nesting from previous layouts cannot leak in.
+        mark = lambda con_id: "smd-%d" % con_id
+
         for con_id in ids:
             run("[con_id=%d] move container to workspace %s" % (con_id, SCRATCH))
 
         for index, con_id in enumerate(ids):
             if index == 0:
                 run("[con_id=%d] move container to workspace %s" % (con_id, name))
-                if len(ids) == 1:
-                    continue
-                run("[con_id=%d] focus; split h" % con_id)
             elif index == 1:
-                run("[con_id=%d] move container to workspace %s" % (con_id, name))
+                run("[con_id=%d] split h" % ids[0])
+                run("[con_id=%d] move container to mark %s" % (con_id, mark(ids[0])))
             elif index == 2:
-                run("[con_id=%d] focus; split v" % ids[0])
-                run("[con_id=%d] move container to workspace %s" % (con_id, name))
+                run("[con_id=%d] split v" % ids[0])
+                run("[con_id=%d] move container to mark %s" % (con_id, mark(ids[0])))
             elif index == 3:
-                run("[con_id=%d] focus; split v" % ids[1])
-                run("[con_id=%d] move container to workspace %s" % (con_id, name))
+                run("[con_id=%d] split v" % ids[1])
+                run("[con_id=%d] move container to mark %s" % (con_id, mark(ids[1])))
             else:
-                # Alternate the columns: left gets even indexes, right odd.
-                column = ids[index % 2 :: 2]
+                # Continue the columns: left takes even indexes, right odd.
+                column = ids[index % 2::2]
                 previous = [i for i in column if i != con_id]
                 target = previous[-1] if previous else ids[index % 2]
-                run("[con_id=%d] focus" % target)
-                run("[con_id=%d] move container to workspace %s" % (con_id, name))
+                run("[con_id=%d] move container to mark %s"
+                    % (con_id, mark(target)))
+            run("[con_id=%d] mark --add %s" % (con_id, mark(con_id)))
 
         if focused_id:
             run("[con_id=%d] focus" % focused_id)
 
     def handle(i3_conn, event):
-        name = None
-        if hasattr(event, "container") and event.container:
-            workspace = event.container.workspace()
+        try:
+            container = getattr(event, "container", None)
+            if container is None:
+                return
+            workspace = container.workspace()
             name = workspace.name if workspace else None
-        if name is None or name == SCRATCH:
+        except Exception:  # noqa: BLE001 - an event shape we do not use
+            return
+        if not name or name == SCRATCH:
             return
         if state["busy"]:
-            pending[name] = True
+            state["pending"].add(name)
             return
         state["busy"] = True
         try:
             reflow(name)
-        except Exception as error:  # noqa: BLE001 - a helper must not die
-            sys.stderr.write("hunter-autotile: %s\n" % error)
+        except Exception as error:  # noqa: BLE001 - the helper must not die
+            note("error: %s" % error)
         finally:
             state["busy"] = False
-        while pending:
-            name, _ = pending.popitem()
+        while state["pending"]:
+            name = state["pending"].pop()
             state["busy"] = True
             try:
                 reflow(name)
             except Exception as error:  # noqa: BLE001
-                sys.stderr.write("hunter-autotile: %s\n" % error)
+                note("error: %s" % error)
             finally:
                 state["busy"] = False
 
     for event_name in ("window::new", "window::close", "window::move",
                        "window::fullscreen_mode", "window::floating"):
         i3.on(event_name, handle)
+    note("started (pid %d)" % os.getpid())
     i3.main()
     return 0
 
