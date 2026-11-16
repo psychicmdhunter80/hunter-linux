@@ -47,19 +47,18 @@ jobs:
       - name: Check the packed files
         run: |
           set -euo pipefail
-          iso=$(ls SMD-Linux-v1.4-amd64.iso)
-          mkdir -p /tmp/packed
-          # Pull the squashfs out of the ISO and read the files that must be LF.
-          sudo mount -o loop,ro "$iso" /mnt 2>/dev/null || \
-            bsdtar -xf "$iso" -C /tmp/packed
-          root=/mnt
-          if [ ! -f /mnt/live/filesystem.squashfs ]; then
-            root=/tmp/packed
-          fi
-          squash=$(find "$root" -name 'filesystem.squashfs' | head -1)
-          test -n "$squash"
-          sudo unsquashfs -o 4096 -d /tmp/squash "$squash" >/dev/null || \
-            unsquashfs -d /tmp/squash "$squash" >/dev/null
+          iso=SMD-Linux-v1.4-amd64.iso
+          mkdir -p /tmp/iso
+          sudo mount -o loop,ro "$iso" /tmp/iso
+          squash=/tmp/iso/live/filesystem.squashfs
+          test -f "$squash"
+          rm -rf /tmp/squash && mkdir -p /tmp/squash
+          # Only the files under test, so no device nodes are created.
+          unsquashfs -no-progress -d /tmp/squash "$squash" \
+            etc/skel/.config/i3/config \
+            usr/local/bin/hunter-applets \
+            usr/local/bin/hunter-autotile \
+            usr/local/sbin/hunter-audio-hw
           for f in etc/skel/.config/i3/config \
                    usr/local/bin/hunter-applets \
                    usr/local/bin/hunter-autotile \
@@ -70,6 +69,7 @@ jobs:
             fi
             echo "LF ok: $f"
           done
+          sudo umount /tmp/iso
 
       - name: Inspect the result
         if: always()
