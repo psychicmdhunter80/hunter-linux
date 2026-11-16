@@ -647,8 +647,13 @@ def main():
             "test -e /mnt/root/usr/local/bin/hunter-install "
             "&& echo POSTINSTALL-NOT-RUN || echo postinstall-ran ; "
             "find /mnt/root/boot/efi -maxdepth 3 -type f | sort ; "
-            "echo SERIAL-CMDLINE: ; grep -o 'console=[^ ]*' "
-            "/mnt/root/boot/grub/grub.cfg | sort -u ; "
+            # Test scaffolding only: the installed VM gets a serial console so
+            # these checks can log in. A real installation is not changed.
+            "sed -i '/^[[:space:]]*linux/ s/$/ console=ttyS0,115200/' "
+            "/mnt/root/boot/grub/grub.cfg ; "
+            "systemctl --root=/mnt/root enable serial-getty@ttyS0.service ; "
+            "echo SERIAL-CMDLINE: ; tr ' ' '\\n' "
+            "< /mnt/root/boot/grub/grub.cfg | grep -a '^console=' | sort -u ; "
             "echo GETTY-UNITS: ; ls /mnt/root/etc/systemd/system/getty.target.wants "
             "2>&1 | tr '\\n' ' ' ; echo ; "
             "umount -R /mnt/root 2>/dev/null; true'", timeout=300)
@@ -660,6 +665,9 @@ def main():
             record("PASS: the installed system has a GRUB menu")
         else:
             record("FAIL: no GRUB menu on the installed system")
+        if "serial-getty@ttyS0.service" in probe:
+            record("INFO: a serial console was enabled on the installed system "
+                   "for these checks")
         if "shimx64.efi" in probe or "BOOTX64.EFI" in probe:
             record("PASS: the EFI system partition holds the boot loader")
         else:
@@ -929,7 +937,9 @@ def main():
         with open(os.path.join(WORK, "result.txt"), "w", encoding="utf-8") as handle:
             handle.write("\n".join(results) + "\n")
         print("\n".join(results))
-    return 0
+    # A recorded FAIL has to fail the job: a green run with failures in the log
+    # is worse than a red one.
+    return 1 if any(line.startswith("FAIL") for line in results) else 0
 
 
 if __name__ == "__main__":
