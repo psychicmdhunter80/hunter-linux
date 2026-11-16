@@ -31,10 +31,15 @@ LOG_PATH = os.path.expanduser("~/.cache/smd/autotile.log")
 
 
 def note(message):
+    # getsize() on a file that does not exist yet raises, which silently threw
+    # away the first line - and with it every later one.
     try:
         os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-        if os.path.getsize(LOG_PATH) > 65536:
-            os.truncate(LOG_PATH, 0)
+        try:
+            if os.path.getsize(LOG_PATH) > 65536:
+                os.truncate(LOG_PATH, 0)
+        except OSError:
+            pass
         with open(LOG_PATH, "a", encoding="utf-8") as handle:
             handle.write("%s %s\n" % (time.strftime("%H:%M:%S"), message))
     except OSError:
@@ -185,6 +190,13 @@ def main():
             command("[con_id=%d] focus" % focused_id)
         os.unlink(handle.name)
 
+        final = workspace_of(i3.get_tree(), name)
+        boxes = []
+        for leaf in leaves(final) if final else []:
+            boxes.append("%d@%d,%d+%dx%d" % (leaf.id, leaf.rect.x, leaf.rect.y,
+                                             leaf.rect.width, leaf.rect.height))
+        note("  placed: %s" % " ".join(boxes))
+
     def handle(i3_conn, event):
         try:
             container = getattr(event, "container", None)
@@ -225,4 +237,9 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception:  # noqa: BLE001 - keep the failure where it can be read
+        import traceback
+        note("fatal: " + traceback.format_exc().replace("\n", " | "))
+        raise
