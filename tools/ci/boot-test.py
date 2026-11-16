@@ -842,8 +842,8 @@ def main():
         panel = shell.run(
             "DISPLAY=:0 xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids "
             "2>&1 | tr '\n' ' '; echo ---; "
-            "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-11/items 2>&1 "
-            "| tr '\n' ' '; echo ---; "
+            "DISPLAY=:0 xfconf-query -c xfce4-panel -lv 2>&1 "
+            "| grep -A3 'plugin-11' | tr '\n' ' '; echo ---; "
             "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-10/expand 2>&1",
             timeout=90)
         qchunks = panel.split("---")
@@ -851,6 +851,9 @@ def main():
             ids = [int(v) for v in qchunks[0].split() if v.strip().lstrip("-").isdigit()]
         except ValueError:
             ids = []
+        # xfconf-query prints the number of values before an array.
+        if ids and ids[0] == len(ids) - 1:
+            ids = ids[1:]
         check(results, "the panel runs the menu, spacer and Brave in that order",
               len(ids) >= 3 and ids[0] == 1 and ids[1] == 10 and ids[2] == 11)
         check(results, "the Brave launcher is in the panel",
@@ -898,12 +901,16 @@ def main():
         check(results, "the tiling helper is installed", "HELPER=ok" in hchu[0])
         check(results, "exactly one tiling helper is running",
               hchu[1].strip() == "1")
+        record("INFO: autotile processes: " +
+               " ".join(shell.run("pgrep -af hunter-autotile 2>&1").split())[:200])
 
-        shell.run("DISPLAY=:0 xfce4-terminal --title=smd-one & sleep 6; "
-                  "DISPLAY=:0 xfce4-terminal --title=smd-two & sleep 6; "
-                  "DISPLAY=:0 xfce4-terminal --title=smd-three & sleep 8",
-                  timeout=120)
-        time.sleep(6)
+        # Detach every terminal: a background job that inherits the session
+        # keeps the channel open and the next command times out.
+        for title, delay in (("smd-one", 6), ("smd-two", 6), ("smd-three", 8)):
+            shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
+                      "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
+            time.sleep(delay)
+        time.sleep(4)
         tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
         try:
             geometry = json.loads(tree[tree.index("{"):])
@@ -934,8 +941,7 @@ def main():
                    " ".join("%s(%d,%d %dx%d)" % (n[:8], r["x"], r["y"],
                                                  r["width"], r["height"])
                             for n, r in boxes))
-        shell.run("pkill -f 'xfce4-terminal --title=smd-' ; "
-                  "pkill -f 'smd-one|smd-two|smd-three'", timeout=60)
+        shell.run("pkill -f 'xfce4-terminal --title=smd-'", timeout=60)
 
         # --- keyboard mapping and start-up time (recorded, not asserted) ----
         shell.run("DISPLAY=:0 xmodmap -pm 2>/dev/null | grep -E 'mod1|mod4'",
