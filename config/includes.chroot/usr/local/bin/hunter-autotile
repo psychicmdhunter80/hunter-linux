@@ -272,13 +272,24 @@ def main():
         # append_layout runs through i3's command queue, so the placeholders
         # can be a moment late: ask for the tree until they are all there.
         slots = []
-        for _attempt in range(30):
+        for _attempt in range(80):
             workspace = find_workspace(i3.tree(), name) or {}
-            slots = [n for n in nodes_of(workspace) if n.get("name") == "smd-slot"]
+            slots = [n for n in nodes_of(workspace)
+                     if n.get("name") == "smd-slot"]
             if len(slots) >= count:
                 break
             time.sleep(0.1)
         slots = slots[:count]
+        # What i3 actually built, so a wrong structure is visible in the log.
+        shape = []
+        for node in nodes_of(find_workspace(i3.tree(), name) or {}):
+            if node.get("type") in ("workspace", "con") or node.get("window"):
+                rect = node.get("rect") or {}
+                shape.append("%s/%s/%s/%dx%d@%d,%d" % (
+                    node.get("id"), node.get("type"), node.get("name"),
+                    rect.get("width", 0), rect.get("height", 0),
+                    rect.get("x", 0), rect.get("y", 0)))
+        note("  tree: %s" % " ".join(shape[:14]))
         for index, node in enumerate(slots):
             i3.command('[con_id=%d] mark --add smd-slot-%d'
                        % (node["id"], index))
