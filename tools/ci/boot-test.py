@@ -947,6 +947,8 @@ def main():
                    " ".join("%s(%d,%d %dx%d)" % (n[:8], r["x"], r["y"],
                                                  r["width"], r["height"])
                             for n, r in boxes))
+        record("INFO: autotile log: " + " | ".join(
+            shell.run("tail -6 ~/.cache/smd/autotile.log 2>/dev/null").split())[:300])
         shell.run("pkill -f 'xfce4-terminal --title=smd-'", timeout=60)
 
         # --- keyboard mapping and start-up time (recorded, not asserted) ----
