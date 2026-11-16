@@ -948,6 +948,9 @@ def main():
             return " ".join("[%d,%d %dx%d]" % (b["x"], b["y"], b["width"],
                                                b["height"]) for b in boxes)
 
+        # Only the test's own windows may be in the layout: the browser from
+        # the earlier check is a normal window too and would take a slot.
+        shell.run("pkill -f brave-browser; sleep 2", timeout=60)
         open_window("smd-one")
         one = tiles()
         check(results, "one window fills the usable desktop",
@@ -979,7 +982,8 @@ def main():
 
         # Closing one window has to compress the survivors back into the
         # two-window layout, using arrival order rather than focus.
-        shell.run("pkill -f 'xfce4-terminal --title=smd-three'", timeout=60)
+        shell.run("DISPLAY=:0 xdotool search --name '^smd-three$' windowclose",
+                  timeout=60)
         time.sleep(6)
         back = tiles()
         check(results, "closing a window returns to two equal halves",
@@ -1000,7 +1004,8 @@ def main():
 
         record("INFO: autotile log: " + " | ".join(
             shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:400])
-        shell.run("pkill -f 'xfce4-terminal --title=smd-'", timeout=60)
+        shell.run("DISPLAY=:0 xdotool search --name '^smd-' windowclose; "
+                  "pkill -f xfce4-terminal", timeout=60)
 
         # --- keyboard mapping and start-up time (recorded, not asserted) ----
         shell.run("DISPLAY=:0 xmodmap -pm 2>/dev/null | grep -E 'mod1|mod4'",

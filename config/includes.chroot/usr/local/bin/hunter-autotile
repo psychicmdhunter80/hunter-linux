@@ -241,10 +241,20 @@ def main():
     def handle(i3_conn, event):
         try:
             container = getattr(event, "container", None)
-            if container is None:
-                return
-            workspace = container.workspace()
-            name = workspace.name if workspace else None
+            name = None
+            if container is not None:
+                workspace = container.workspace()
+                if workspace is not None:
+                    name = workspace.name
+                elif container.type == "workspace":
+                    name = container.name
+            if not name:
+                # A brand-new window is not attached to the tree yet, so its
+                # workspace is unknown here; the focused workspace is the one
+                # it is about to join.
+                focused = i3_conn.get_tree().find_focused()
+                workspace = focused.workspace() if focused else None
+                name = workspace.name if workspace else None
         except Exception:  # noqa: BLE001 - an event shape we do not use
             return
         if not name or name == SCRATCH:

@@ -44,6 +44,33 @@ jobs:
           sudo chown -R "$(id -u):$(id -g)" .
           test -f SMD-Linux-v1.4-amd64.iso
 
+      - name: Check the packed files
+        run: |
+          set -euo pipefail
+          iso=$(ls SMD-Linux-v1.4-amd64.iso)
+          mkdir -p /tmp/packed
+          # Pull the squashfs out of the ISO and read the files that must be LF.
+          sudo mount -o loop,ro "$iso" /mnt 2>/dev/null || \
+            bsdtar -xf "$iso" -C /tmp/packed
+          root=/mnt
+          if [ ! -f /mnt/live/filesystem.squashfs ]; then
+            root=/tmp/packed
+          fi
+          squash=$(find "$root" -name 'filesystem.squashfs' | head -1)
+          test -n "$squash"
+          sudo unsquashfs -o 4096 -d /tmp/squash "$squash" >/dev/null || \
+            unsquashfs -d /tmp/squash "$squash" >/dev/null
+          for f in etc/skel/.config/i3/config \
+                   usr/local/bin/hunter-applets \
+                   usr/local/bin/hunter-autotile \
+                   usr/local/sbin/hunter-audio-hw; do
+            if grep -q $'\r' "/tmp/squash/$f"; then
+              echo "CRLF inside the image: $f" >&2
+              exit 1
+            fi
+            echo "LF ok: $f"
+          done
+
       - name: Inspect the result
         if: always()
         run: |

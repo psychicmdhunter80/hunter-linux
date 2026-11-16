@@ -1,0 +1,10 @@
+# Everything here is consumed by Linux tools: shell shebangs, live-build hooks,
+# i3 configuration, Calamares YAML. A CRLF byte in an i3 config or a shebang
+# has broken builds twice, so editors are told to write LF everywhere.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
