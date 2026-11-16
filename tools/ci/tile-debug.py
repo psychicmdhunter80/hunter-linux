@@ -340,14 +340,19 @@ def main():
         open_window("smd-three")
         text = dump("reopen")
         found = boxes(text)
+        # Arrival order decides the slot: the window opened last is the newest
+        # arrival, so it takes the next slot after the survivors.
         reopen_ok = False
         if len(found) == 4:
             one, two, three, four = (found["smd-one"], found["smd-two"],
                                      found["smd-three"], found["smd-four"])
-            reopen_ok = (one[0] == three[0] and two[0] == four[0]
-                         and three[1] > one[1] and four[1] > two[1]
-                         and abs(one[2] - two[2]) <= 4)
-        passed &= check("reopening refills the grid in arrival order",
+            reopen_ok = (one[0] == four[0] and two[0] == three[0]
+                         and four[1] > one[1] and three[1] > two[1]
+                         and one[0] != two[0]
+                         and abs(one[2] - two[2]) <= 4
+                         and abs(one[2] - three[2]) <= 4
+                         and abs(one[2] - four[2]) <= 4)
+        passed &= check("a window opened after a close takes the next slot",
                         reopen_ok, text)
 
         record("INFO: final helper log: " + " ".join(
