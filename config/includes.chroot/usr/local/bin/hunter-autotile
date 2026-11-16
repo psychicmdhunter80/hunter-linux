@@ -219,95 +219,126 @@ def main():
                 and n.get("name") != SCRATCH]
 
     def placeholder(index):
+        """One slot of the layout, named so it can be found in the tree.
+
+        i3 layout files have no mark field, so the placeholders are marked
+        after they appear, from the tree, in layout order.
+        """
         return {"type": "con", "name": "smd-slot", "border": "none",
-                "marks": ["smd-slot-%d" % index],
-                # A criterion that cannot match: the placeholder stays until
-                # the helper kills it, so it can hold its slot open.
+                # Nothing can match this: the placeholder stays until the
+                # helper closes it, so it keeps the slot open.
                 "swallows": [{"class": "^$SMD-NEVER-MATCH$"}]}
 
+    def layout_for(count):
+        if count <= 2:
+            return {"type": "con", "layout": "splith",
+                    "nodes": [placeholder(i) for i in range(count)]}
+        left = [i for i in range(count) if i % 2 == 0]
+        right = [i for i in range(count) if i % 2 == 1]
+        return {"type": "con", "layout": "splith", "nodes": [
+            {"type": "con", "layout": "splitv", "percent": 0.5,
+             "nodes": [placeholder(i) for i in left]},
+            {"type": "con", "layout": "splitv", "percent": 0.5,
+             "nodes": [placeholder(i) for i in right]},
+        ]}
+
     def build_layout(name, count):
-        if count == 1:
-            layout = {"type": "con", "layout": "splith",
-                      "nodes": [placeholder(0)]}
-        elif count == 2:
-            layout = {"type": "con", "layout": "splith",
-                      "nodes": [placeholder(0), placeholder(1)]}
-        else:
-            left = [i for i in range(count) if i % 2 == 0]
-            right = [i for i in range(count) if i % 2 == 1]
-            layout = {"type": "con", "layout": "splith", "nodes": [
-                {"type": "con", "layout": "splitv", "percent": 0.5,
-                 "nodes": [placeholder(i) for i in left]},
-                {"type": "con", "layout": "splitv", "percent": 0.5,
-                 "nodes": [placeholder(i) for i in right]},
-            ]}
+        """Put the column structure on the workspace, one marked slot each."""
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
                                              encoding="utf-8")
-        json.dump(layout, handle)
+        json.dump(layout_for(count), handle)
         handle.close()
-        # The workspace stays focused while its windows are parked, so an
-        # empty workspace is not reaped and append_layout lands here.
         i3.command('workspace "%s"' % name)
         i3.command("append_layout %s" % handle.name)
         os.unlink(handle.name)
-        # append_layout is applied by i3's command queue, so the placeholders
+
+        # append_layout runs through i3's command queue, so the placeholders
         # can be a moment late: ask for the tree until they are all there.
         slots = []
-        for _attempt in range(20):
+        for _attempt in range(30):
             workspace = find_workspace(i3.tree(), name) or {}
-            slots = [n for n in nodes_of(workspace)
-                     if any(str(m).startswith("smd-slot-")
-                            for m in n.get("marks", []) or [])]
+            slots = [n for n in nodes_of(workspace) if n.get("name") == "smd-slot"]
             if len(slots) >= count:
                 break
-            time.sleep(0.15)
+            time.sleep(0.1)
+        slots = slots[:count]
+        for index, node in enumerate(slots):
+            i3.command('[con_id=%d] mark --add smd-slot-%d'
+                       % (node["id"], index))
         note("  placeholders: %d of %d" % (len(slots), count))
         return slots
 
+    def windows_in_tree():
+        return {n.get("id") for n in nodes_of(i3.tree()) if n.get("window")}
+
+    def where_is(con_id):
+        workspace = workspace_containing(i3.tree(), con_id)
+        return workspace.get("name") if workspace else None
+
+    def rescue(name, ids):
+        """Never leave a window parked: anything stray comes back."""
+        for con_id in ids:
+            current = where_is(con_id)
+            if current is None:
+                continue
+            if current != name:
+                i3.command("[con_id=%d] move container to workspace %s"
+                           % (con_id, name))
+                note("  rescued %d from %s" % (con_id, current))
+
     def reflow(name):
-        workspace = find_workspace(i3.tree(), name)
-        if workspace is None:
-            state["order"].pop(name, None)
-            return
-        current = [c.get("id") for c in leaves_of(workspace)]
-        order = [i for i in state["order"].get(name, []) if i in current]
-        for con_id in current:
-            if con_id not in order:
-                order.append(con_id)
+        tree = i3.tree()
+        workspace = find_workspace(tree, name)
+        live = windows_in_tree()
+        # Arrival order lives in this process, not in the tree: parked windows
+        # are off the workspace and the tree order is not arrival order.
+        order = [i for i in state["order"].get(name, []) if i in live]
+        if workspace is not None:
+            for node in leaves_of(workspace):
+                if node.get("id") not in order and node.get("id") in live:
+                    order.append(node.get("id"))
         if not order:
             state["order"].pop(name, None)
             return
         state["order"][name] = order
-        if any(c.get("fullscreen_mode") for c in leaves_of(workspace)):
+        if workspace is not None and any(c.get("fullscreen_mode")
+                                        for c in leaves_of(workspace)):
             return
 
         note("reflow %s order=%s" % (name, order))
 
         # Focus first: an emptied workspace that is not focused is reaped, and
-        # the new layout would then be built somewhere else.
+        # the layout would then be built on another one.
         i3.command('workspace "%s"' % name)
 
-        # Park every window: the workspace is then empty, so the layout below
-        # becomes its whole structure and old nesting cannot leak in.
-        for con_id in order:
-            i3.command("[con_id=%d] move container to workspace %s"
-                       % (con_id, SCRATCH))
-
-        slots = build_layout(name, len(order))
-
-        for index, con_id in enumerate(order):
-            if slots:
-                i3.command("[con_id=%d] move container to mark smd-slot-%d"
-                           % (con_id, index))
-            else:
+        if len(order) <= 2:
+            # One or two windows need no structure at all: plain moves in
+            # arrival order give a full desktop and then two equal halves.
+            for con_id in order:
                 i3.command("[con_id=%d] move container to workspace %s"
                            % (con_id, name))
-
-        # Placeholders take screen space, so they go once every window landed.
-        # Only containers still carrying a slot mark are killed: a window can
-        # pick a mark up while it is being placed, and must never be closed.
-        i3.command('[con_mark="^smd-slot-"] kill')
-        time.sleep(0.2)
+        else:
+            try:
+                # Park every window: the workspace is then empty, so the new
+                # layout becomes its whole structure.
+                for con_id in order:
+                    i3.command("[con_id=%d] move container to workspace %s"
+                               % (con_id, SCRATCH))
+                slots = build_layout(name, len(order))
+                # Moving to a slot mark puts the window inside the slot's
+                # parent, which is the column it belongs to.
+                for index, con_id in enumerate(order):
+                    if index < len(slots):
+                        i3.command("[con_id=%d] move container to mark "
+                                   "smd-slot-%d" % (con_id, index))
+                    else:
+                        i3.command("[con_id=%d] move container to workspace %s"
+                                   % (con_id, name))
+            finally:
+                # Placeholders take screen space and must never survive, and a
+                # window must never stay parked, whatever happened above.
+                i3.command('[con_mark="^smd-slot-"] kill')
+                rescue(name, order)
 
         try:
             final = find_workspace(i3.tree(), name) or {}
@@ -316,8 +347,24 @@ def main():
                                          c["rect"]["height"])
                      for c in leaves_of(final)]
             note("  placed: %s" % " ".join(boxes))
+            leftover = [n["id"] for n in nodes_of(final)
+                        if n.get("name") == "smd-slot"]
+            if leftover:
+                note("  placeholders still open: %s" % leftover)
         except Exception as error:  # noqa: BLE001 - diagnostics only
             note("  (no geometry report: %s)" % error)
+
+    def wait_for_container(con_id, timeout=2.0):
+        """A window::new event arrives before i3 has the window in the tree."""
+        if not con_id:
+            return False
+        deadline = time.time() + timeout
+        while True:
+            if con_id in windows_in_tree():
+                return True
+            if time.time() >= deadline:
+                return False
+            time.sleep(0.1)
 
     def handle(name):
         if not name or name == SCRATCH:
@@ -379,8 +426,11 @@ def main():
             # not be in it yet, so its workspace is looked up first and the
             # focused workspace is the fallback.
             con_id = (payload.get("container") or {}).get("id")
+            if change == "new" and not wait_for_container(con_id):
+                note("event new: container %s never appeared" % con_id)
             tree = i3.tree()
-            workspace = (workspace_containing(tree, con_id) if con_id else None)                 or focused_workspace(tree)
+            workspace = (workspace_containing(tree, con_id) if con_id else None) \
+                or focused_workspace(tree)
             name = workspace.get("name") if workspace else None
             note("event %s on workspace %s" % (change, name))
             handle(name)
