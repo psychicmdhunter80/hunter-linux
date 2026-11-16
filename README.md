@@ -1,4 +1,4 @@
-# SMD Linux 1.1
+# SMD Linux 1.4
 
 A small, lightweight Debian 13 desktop distribution for low-power machines:
 **Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
@@ -18,8 +18,34 @@ modifier for everything else. Details, root causes and what is still unverified
 are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.1-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.4-amd64.iso in this directory
 ```
+
+---
+
+## Release status
+
+**1.4** is the current release; 1.3 and 1.2 stay published as rollback (tags
+`v1.3`, `v1.2`).
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.4-amd64.iso` (983 MiB) |
+| SHA-256 | `c8600a2a842fa2905091751133ffb20c6d0472c76426a276fec71541d6fe37bd` |
+| Build | run `43936258721`, commit `d7b7ea2` |
+| Live boot tests | run `43938026727` - 76 checks passed, none failed, BIOS and UEFI |
+| Installation test | run `43967398035` - installs, boots the disk without the ISO, see below |
+| Source | `SMD-Linux-Build-v1.4.zip`, checksums in `SHA256SUMS` |
+
+Verified on this image: line endings inside the squashfs, i3, panel and
+applets, PipeWire and the audio helper, Brave as the default browser with its
+two extensions, VLC, locking, and the tiling layouts (one fills the desktop, two
+are halves, the third sits below the first on the left, the fourth below the
+second - an even 2x2). The installation completes and the installed disk boots
+on its own to the greeter; the desktop checks *after* login on an installed
+system were not reachable from the harness and are reported as incomplete, never
+as passed. Tearing, speaker loudness, Jellyfin audio, VA-API drops, the top-row
+keys, Wi-Fi and the battery percentage still need Craig's own machine.
 
 ---
 
@@ -99,8 +125,8 @@ The build downloads roughly 1.5 GB of Debian packages and takes 20-60 minutes
 depending on the machine and mirror. The result is:
 
 ```
-SMD-Linux-v1.1-amd64.iso          the bootable hybrid image
-SMD-Linux-v1.1-amd64.iso.sha256   its checksum
+SMD-Linux-v1.4-amd64.iso          the bootable hybrid image
+SMD-Linux-v1.4-amd64.iso.sha256   its checksum
 ```
 
 Use a different mirror without editing anything:
@@ -139,7 +165,7 @@ method (it preserves both boot paths).
 Linux:
 
 ```
-sudo dd if=SMD-Linux-v1.1-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=SMD-Linux-v1.4-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 Use the whole device (`/dev/sdX`), never a partition (`/dev/sdX1`). This
@@ -149,7 +175,7 @@ macOS:
 
 ```
 diskutil list                                  # find the disk number
-sudo dd if=SMD-Linux-v1.1-amd64.iso of=/dev/rdiskN bs=4m
+sudo dd if=SMD-Linux-v1.4-amd64.iso of=/dev/rdiskN bs=4m
 ```
 
 Windows: use [Rufus](https://rufus.ie) in **DD mode**, or balenaEtcher, and

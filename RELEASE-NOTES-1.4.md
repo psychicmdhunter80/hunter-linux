@@ -3,6 +3,22 @@
 Browser, locking and tiling release for the Acer Chromebook 11 CB3-111.
 Everything 1.3 repaired is kept; 1.3 and 1.2 stay published as rollback.
 
+## Where this release stands
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.4-amd64.iso` (983 MiB) |
+| SHA-256 | `c8600a2a842fa2905091751133ffb20c6d0472c76426a276fec71541d6fe37bd` |
+| Build | run `43936258721`, commit `d7b7ea2` |
+| Live boot | run `43938026727` - 76 passed, 0 failed, BIOS and UEFI |
+| Installation | run `43967398035` - installs and boots the disk without the ISO |
+
+The tiling helper was the part that took the longest to get right; the live
+tests record the real rectangles for one, two, three and four windows, for
+closing one, and for the layout after a reflow. See `Test-Report.md` for the
+full evidence, the installation limits and the checks that still need Craig's
+own machine.
+
 ## What changed in 1.4
 
 * **Brave is the default browser.** It comes from Brave's own signed

@@ -304,55 +304,49 @@ a window opened after one was closed is the newest arrival and takes the next
 slot. Fullscreen windows, floating windows, the panel, the installer and its
 dialogs are never touched.
 
-### Pending
+### Installation on a virtual disk (partly verified)
 
-* The installation test result is recorded in the section that follows once the
-  corrected harness has run; until then no installation result is claimed.
-* Everything that needs Craig's own hardware: tearing, real speaker loudness,
-  Jellyfin audio, VA-API playback drops, top-row keys, Wi-Fi and battery
-  percentage. None of these can be claimed from a virtual machine.
+Run `43967398035` installed this ISO to a 20 GiB disk and booted the disk again
+with the ISO removed:
 
+* the installer walked its pages, partitioned and formatted `/dev/vda`
+  (`vda1` vfat 300 MiB, `vda2` ext4 19.7 GiB), ran its finish-up step and
+  closed;
+* the installed system has a GRUB menu and a filled EFI system partition
+  (`shimx64.efi`, `grubx64.efi`, `EFI/Hunter_Linux`, `EFI/BOOT`);
+* the disk boots on its own to the LightDM greeter, showing the account the
+  installer created - so the installation is complete and bootable without the
+  ISO.
 
-**Additions in this build:** the speaker-volume policy (`hunter-volume`), the
-hardware-scoped codec fix (`hunter-audio-hw`), the pinned PipeWire quantum, the
-VA-API driver with the shim's `mpv.conf`, and the TearFree self-report
-(`hunter-graphics --report`). TearFree itself is the 1.1 implementation, now with
-a corrected `lspci` match, checks that the unit is enabled and active, that the
-Intel driver is not forced onto the VM's virtual adapter, and a check that feeds
-the matcher a real Chromebook `lspci` line.
+**Not verified: the installed desktop after login.** The installed system has
+no serial console (`console=ttyS0` and a `serial-getty@ttyS0` unit are not part
+of what the installer writes), and this harness has no other channel into a
+running installed system, so the post-login checks - panel, audio, cockpit,
+applications in the installed session - could not be run and are reported here
+as incomplete, not as passed. The same checks do run, and pass, in the live
+session with the same packages, session files and configuration.
 
-Checks run against the delivered ISO under both BIOS and UEFI; **56 passed, 0
-failed** on each:
+Two harness defects found and fixed while chasing this, both of which had made
+earlier results misleading:
 
-* the dark theme is selected *and* installed, GTK3/GTK4 settings point at it and
-  the i3 title-bar colours are set;
-* the menu holds exactly one installer entry, `hunter-install.desktop`, with the
-  SMD icon;
-* the panel is set never to hide and stays visible along the bottom edge; no
-  `hunter-panel-dock` and no `python3` process is running; exactly one panel
-  survives an i3 reload;
-* resource use recorded under the test conditions: 498 MiB used of 1967 MiB with
-  662 MiB free after the session settles;
-* PipeWire is the sound server and PipeWire, WirePlumber and `pipewire-pulse`
-  are running; `hunter-volume` is installed and logs that it left the volume
-  alone, because the virtual machine's sink has no speaker port;
-* the quantum is 2048 in `/etc/pipewire/pipewire.conf.d/50-hunter-quantum.conf`
-  (quantum, min and max) and `pw-metadata` reports `clock.quantum` 2048 at
-  runtime;
-* `hunter-audio-hw.service` is enabled and active and did **not** edit any UCM
-  file on the virtual machine, which has no max98090 codec;
-* the TearFree matcher matches a real Chromebook `lspci` line
-  (`00:02.0 VGA compatible controller [0300]: ... [8086:0f31]`), the unit is
-  enabled and active, and no `20-intel.conf` is written for the VM's QEMU
-  adapter;
-* `i965-va-driver` is installed and the shim's `mpv.conf` sets
-  `hwdec=auto-safe` without `display-resample`.
+* the job used to finish green while its own log contained `FAIL` lines; any
+  recorded failure now fails the job;
+* the live session blanks its screen after a few idle minutes, and a blanked
+  framebuffer is a black screenshot, so the installer looked as if it had
+  vanished mid-run. Blanking is now disabled in the test session only.
 
-The installer was also run end to end: it partitions, installs, writes GRUB and
-the EFI entries, reboots, and the installed system reaches the SMD greeter. The
-harness could not open a serial login on the installed system, so it logged in
-at the greeter instead and the installed desktop's own checks were not automated
-in this run.
+One limitation remains in the harness itself: the Calamares pages are driven by
+OCR and clicks, and on a slow TCG runner a page can fail to be recognised, so
+some installation runs stall before reaching the disk (runs `43944096261` and
+`43973024745`). That is a property of the driver, not of the image: the same ISO
+completed the installation in run `43967398035`.
+
+### Remaining physical-hardware checks (cannot be done in a VM)
+
+* tearing on the panel with the Intel driver's TearFree setting;
+* real speaker loudness through max98090 and audio in Jellyfin;
+* VA-API playback drops on the Braswell GPU;
+* the top-row keys, Wi-Fi association and the battery percentage on Craig.
 
 ---
 
