@@ -20,6 +20,7 @@ import json
 import os
 import socket
 import struct
+import tempfile
 import sys
 import time
 
@@ -127,6 +128,17 @@ def leaves_of(node, found=None):
     return found
 
 
+def all_nodes(node, found=None):
+    if found is None:
+        found = []
+    if not isinstance(node, dict):
+        return found
+    found.append(node)
+    for child in node.get("nodes", []) or []:
+        all_nodes(child, found)
+    return found
+
+
 def find_workspace(tree, name):
     for output in tree.get("nodes", []) or []:
         for node in output.get("nodes", []) or []:
@@ -188,6 +200,48 @@ def main():
                         names.append(child.get("name"))
         return names
 
+        def build_layout(name, count):
+            """Append a marked placeholder per slot and return their ids."""
+            if count == 1:
+                layout = {"type": "con", "name": "smd-layout",
+                          "layout": "splith", "nodes": [placeholder(0)]}
+            elif count == 2:
+                layout = {"type": "con", "name": "smd-layout",
+                          "layout": "splith",
+                          "nodes": [placeholder(0), placeholder(1)]}
+            else:
+                left = [i for i in range(count) if i % 2 == 0]
+                right = [i for i in range(count) if i % 2 == 1]
+                layout = {
+                    "type": "con", "name": "smd-layout", "layout": "splith",
+                    "nodes": [
+                        {"type": "con", "name": "smd-left", "layout": "splitv",
+                         "percent": 0.5,
+                         "nodes": [placeholder(i) for i in left]},
+                        {"type": "con", "name": "smd-right", "layout": "splitv",
+                         "percent": 0.5,
+                         "nodes": [placeholder(i) for i in right]},
+                    ],
+                }
+            handle = tempfile.NamedTemporaryFile("w", suffix=".json",
+                                                 delete=False, encoding="utf-8")
+            json.dump(layout, handle)
+            handle.close()
+            command('[workspace="%s"] focus' % name)
+            command("append_layout %s" % handle.name)
+            os.unlink(handle.name)
+
+            workspace = find_workspace(i3.tree(), name) or {}
+            slots = [n for n in all_nodes(workspace)
+                     if any(str(m).startswith("smd-slot-")
+                            for m in n.get("marks", []) or [])]
+            note("  slots: %d" % len(slots))
+            return [n["id"] for n in slots]
+
+        def placeholder(index):
+            return {"type": "con", "name": "smd-slot", "border": "none",
+                    "marks": ["smd-slot-%d" % index], "swallows": []}
+
     def reflow(name):
         tree = i3.tree()
         workspace = find_workspace(tree, name)
@@ -213,40 +267,24 @@ def main():
         def mark(con_id):
             return "smd-%d" % con_id
 
-        # Park every window first: nesting from the previous layout cannot leak
-        # into the new one, and the workspace is then rebuilt from scratch.
+        # Park every window: the workspace is then empty, so the layout below
+        # becomes its whole structure and old nesting cannot leak in.
         for con_id in ids:
             command("[con_id=%d] move container to workspace %s"
                     % (con_id, SCRATCH))
 
+        placeholder_ids = build_layout(name, len(ids))
+        if not placeholder_ids:
+            return
+
         for index, con_id in enumerate(ids):
-            if index == 0:
-                command("[con_id=%d] move container to workspace %s"
-                        % (con_id, name))
-                if len(ids) > 1:
-                    # Make the workspace horizontal before the second window.
-                    command("[con_id=%d] split h" % con_id)
-            elif index == 1:
-                # Move to the mark, not to the workspace: inserting after a
-                # marked window keeps the target's parent, so B lands beside A
-                # instead of at the root of an already split workspace.
-                command("[con_id=%d] move container to mark %s"
-                        % (con_id, mark(ids[0])))
-            elif index == 2:
-                command("[con_id=%d] split v" % ids[0])
-                command("[con_id=%d] move container to mark %s"
-                        % (con_id, mark(ids[0])))
-            elif index == 3:
-                command("[con_id=%d] split v" % ids[1])
-                command("[con_id=%d] move container to mark %s"
-                        % (con_id, mark(ids[1])))
-            else:
-                column = ids[index % 2::2]
-                previous = [i for i in column if i != con_id]
-                target = previous[-1] if previous else ids[index % 2]
-                command("[con_id=%d] move container to mark %s"
-                        % (con_id, mark(target)))
+            command("[con_id=%d] move container to mark smd-slot-%d"
+                    % (con_id, index))
             command("[con_id=%d] mark --add %s" % (con_id, mark(con_id)))
+
+        # Placeholders take screen space, so they go once every window landed.
+        for con_id in placeholder_ids:
+            command("[con_id=%d] kill" % con_id)
 
         # The layout is applied by the commands above; anything after them is
         # diagnostics only and must never be able to stop the helper.
