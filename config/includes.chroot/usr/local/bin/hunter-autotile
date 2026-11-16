@@ -19,8 +19,10 @@ not by focus.  The placeholders are removed afterwards.
 """
 
 import fcntl
+import glob
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -80,6 +82,36 @@ def build_layout(count):
     }
 
 
+def find_socket():
+    """Locate i3's IPC socket.
+
+    i3ipc's own lookup needs the environment i3 hands to its children, and the
+    helper also has to survive an i3 restart, so the socket is resolved here
+    from the environment, the runtime directory and finally i3 itself.
+    """
+    for name in ("I3SOCK", "SWAYSOCK"):
+        value = os.environ.get(name)
+        if value and os.path.exists(value):
+            return value
+
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
+    candidates = []
+    for pattern in (os.path.join(runtime, "i3", "ipc-socket.*"),
+                    "/tmp/i3-*/ipc-socket.*"):
+        candidates.extend(glob.glob(pattern))
+    if candidates:
+        candidates.sort(key=os.path.getmtime)
+        return candidates[-1]
+
+    try:
+        out = subprocess.check_output(
+            ["i3", "--get-socketpath"], stderr=subprocess.DEVNULL,
+            env=dict(os.environ, DISPLAY=os.environ.get("DISPLAY", ":0")))
+        return out.decode().strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def main():
     try:
         import i3ipc
@@ -96,7 +128,16 @@ def main():
         note("another instance already holds the lock")
         return 0
 
-    i3 = i3ipc.Connection()
+    path = find_socket()
+    if not path:
+        note("no i3 IPC socket found")
+        return 1
+    note("using socket %s" % path)
+    try:
+        i3 = i3ipc.Connection(socket_path=path, auto_reconnect=True)
+    except TypeError:
+        # older i3ipc releases name the argument differently
+        i3 = i3ipc.Connection(path)
     order = {}
     state = {"busy": False, "pending": set()}
 
