@@ -209,6 +209,12 @@ def main():
             return
 
         note("reflow %s order=%s" % (name, ids))
+
+        def mark(con_id):
+            return "smd-%d" % con_id
+
+        # Park every window first: nesting from the previous layout cannot leak
+        # into the new one, and the workspace is then rebuilt from scratch.
         for con_id in ids:
             command("[con_id=%d] move container to workspace %s"
                     % (con_id, SCRATCH))
@@ -217,25 +223,30 @@ def main():
             if index == 0:
                 command("[con_id=%d] move container to workspace %s"
                         % (con_id, name))
+                if len(ids) > 1:
+                    # Make the workspace horizontal before the second window.
+                    command("[con_id=%d] split h" % con_id)
             elif index == 1:
-                command("[con_id=%d] split h" % ids[0])
-                command("[con_id=%d] move container to workspace %s"
-                        % (con_id, name))
+                # Move to the mark, not to the workspace: inserting after a
+                # marked window keeps the target's parent, so B lands beside A
+                # instead of at the root of an already split workspace.
+                command("[con_id=%d] move container to mark %s"
+                        % (con_id, mark(ids[0])))
             elif index == 2:
                 command("[con_id=%d] split v" % ids[0])
-                command("[con_id=%d] move container to workspace %s"
-                        % (con_id, name))
+                command("[con_id=%d] move container to mark %s"
+                        % (con_id, mark(ids[0])))
             elif index == 3:
                 command("[con_id=%d] split v" % ids[1])
-                command("[con_id=%d] move container to workspace %s"
-                        % (con_id, name))
+                command("[con_id=%d] move container to mark %s"
+                        % (con_id, mark(ids[1])))
             else:
                 column = ids[index % 2::2]
                 previous = [i for i in column if i != con_id]
                 target = previous[-1] if previous else ids[index % 2]
-                command("[con_id=%d] focus" % target)
-                command("[con_id=%d] move container to workspace %s"
-                        % (con_id, name))
+                command("[con_id=%d] move container to mark %s"
+                        % (con_id, mark(target)))
+            command("[con_id=%d] mark --add %s" % (con_id, mark(con_id)))
 
         # The layout is applied by the commands above; anything after them is
         # diagnostics only and must never be able to stop the helper.
