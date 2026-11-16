@@ -657,9 +657,16 @@ def main():
             "find /mnt/root/boot/efi -maxdepth 3 -type f | sort ; "
             # Test scaffolding only: the installed VM gets a serial console so
             # these checks can log in. A real installation is not changed.
-            "sed -i '/^[[:space:]]*linux/ s/$/ console=ttyS0,115200/' "
+            "sed -i 's/console=ttyS0[^ ]*//g; s/[[:space:]]*$//' "
             "/mnt/root/boot/grub/grub.cfg ; "
-            "systemctl --root=/mnt/root enable serial-getty@ttyS0.service ; "
+            "sed -i '/^[[:space:]]*linux/ s/$/ console=tty0 "
+            "console=ttyS0,115200/' /mnt/root/boot/grub/grub.cfg ; "
+            "mkdir -p /mnt/root/etc/systemd/system/getty.target.wants ; "
+            "ln -sf /lib/systemd/system/serial-getty@ttyS0.service "
+            "/mnt/root/etc/systemd/system/getty.target.wants/"
+            "serial-getty@ttyS0.service ; "
+            "systemctl --root=/mnt/root enable serial-getty@ttyS0.service "
+            ">/dev/null 2>&1 || true ; "
             "echo SERIAL-CMDLINE: ; tr ' ' '\\n' "
             "< /mnt/root/boot/grub/grub.cfg | grep -a '^console=' | sort -u ; "
             "echo GETTY-UNITS: ; ls /mnt/root/etc/systemd/system/getty.target.wants "
@@ -680,6 +687,21 @@ def main():
             record("PASS: the EFI system partition holds the boot loader")
         else:
             record("FAIL: the EFI system partition is empty")
+
+        # The probe output above is long because the EFI partition holds GRUB's
+        # fonts and locales, so the serial setup is read back on its own.
+        readback = shell.run(
+            "sudo -n sh -c 'mkdir -p /mnt/root; mount /dev/vda2 /mnt/root; "
+            "grep -m1 \"^[[:space:]]*linux\" /mnt/root/boot/grub/grub.cfg ; "
+            "ls /mnt/root/etc/systemd/system/getty.target.wants/ ; "
+            "umount /mnt/root'", timeout=180, lines=12)
+        record("INFO: installed boot line and getty units: "
+               + " | ".join(line.strip() for line in readback.splitlines()
+                            if line.strip())[:400])
+        if "console=ttyS0" in readback and "serial-getty@ttyS0" in readback:
+            record("PASS: the installed system keeps a serial console for these checks")
+        else:
+            record("FAIL: the installed system has no serial console for the checks")
 
         if os.environ.get("DIAG") == "1":
             record("INFO: diagnostic run, stopping before the reboot")
