@@ -236,13 +236,15 @@ def main():
                   ".read());print('SYNTAX=ok')\"", timeout=120)
 
         # A clean session: the browser is a normal window and would take a slot.
-        shell.run("pkill -x brave; pkill -f /usr/local/bin/hunter-autotile; "
-                  "pkill -f /tmp/hunter-autotile; sleep 2; "
-                  ": > ~/.cache/smd/autotile.log; echo CLEANED", timeout=90)
+        # The bracket keeps pkill from matching the shell running it.
+        shell.run("pkill -x brave; pkill -f 'hunter-auto[t]ile'; sleep 3; "
+                  ": > ~/.cache/smd/autotile.log; "
+                  "pgrep -fc 'hunter-auto[t]ile' || echo NONE", timeout=90)
         shell.run("DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000 "
                   "setsid python3 /tmp/hunter-autotile </dev/null "
                   ">>/tmp/at.log 2>&1 & sleep 4; "
-                  "pgrep -f /tmp/hunter-autotile | head -2", timeout=90)
+                  "pgrep -fc 'hunter-auto[t]ile'; tail -3 ~/.cache/smd/autotile.log",
+                  timeout=90)
         shell.run("DISPLAY=:0 i3-msg 'workspace 1' >/dev/null; echo WS=1", timeout=60)
 
         def open_window(title):

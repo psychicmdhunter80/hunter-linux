@@ -300,8 +300,9 @@ def main():
             finally:
                 state["busy"] = False
 
-    i3.command("workspace %s" % SCRATCH)
-    i3.command("workspace 1")
+    # The helper never changes workspace: parking happens with "move
+    # container to workspace", which does not take the focus away from the
+    # workspace the owner is working in.
     i3.message(SUBSCRIBE, json.dumps(["window"]))
     note("subscribed to window events")
 
