@@ -250,13 +250,18 @@ def main():
         i3.command('workspace "%s"' % name)
         i3.command("append_layout %s" % handle.name)
         os.unlink(handle.name)
-        workspace = find_workspace(i3.tree(), name) or {}
+        # append_layout is applied by i3's command queue, so the placeholders
+        # can be a moment late: ask for the tree until they are all there.
         slots = []
-        for node in nodes_of(workspace):
-            for mark in node.get("marks", []) or []:
-                if str(mark).startswith("smd-slot-"):
-                    slots.append(node)
-        note("  placeholders: %d" % len(slots))
+        for _attempt in range(20):
+            workspace = find_workspace(i3.tree(), name) or {}
+            slots = [n for n in nodes_of(workspace)
+                     if any(str(m).startswith("smd-slot-")
+                            for m in n.get("marks", []) or [])]
+            if len(slots) >= count:
+                break
+            time.sleep(0.15)
+        note("  placeholders: %d of %d" % (len(slots), count))
         return slots
 
     def reflow(name):
@@ -302,6 +307,7 @@ def main():
         # Only containers still carrying a slot mark are killed: a window can
         # pick a mark up while it is being placed, and must never be closed.
         i3.command('[con_mark="^smd-slot-"] kill')
+        time.sleep(0.2)
 
         try:
             final = find_workspace(i3.tree(), name) or {}
@@ -360,6 +366,12 @@ def main():
                 handle(name)
             continue
         if not isinstance(payload, dict):
+            continue
+        container = payload.get("container") or {}
+        marks = [str(m) for m in container.get("marks", []) or []]
+        if container.get("name") == "smd-slot" or any(
+                m.startswith("smd-slot") for m in marks):
+            # Killing the placeholders raises events of their own.
             continue
         change = payload.get("change")
         if change in ("new", "close", "fullscreen_mode", "move"):

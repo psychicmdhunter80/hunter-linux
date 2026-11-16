@@ -33,8 +33,8 @@ def walk(node, depth):
     rect = node.get("rect") or {}
     marks = ",".join(node.get("marks") or [])
     print("%s%s id=%s layout=%s name=%s rect=%s,%s+%sx%s%s%s" % (
-        "  " * depth, kind, node.get("id"), node.get("layout"),
-        node.get("name"), rect.get("x"), rect.get("y"),
+        "  " * depth, "WIN" if node.get("window") else kind, node.get("id"),
+        node.get("layout"), node.get("name"), rect.get("x"), rect.get("y"),
         rect.get("width"), rect.get("height"),
         " marks=%s" % marks if marks else "",
         " window" if node.get("window") else ""))
