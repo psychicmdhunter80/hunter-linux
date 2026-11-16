@@ -245,6 +245,17 @@ run assertions.
 
 ## 6d. Version 1.3 - dark theme, installer entry, resources
 
+## SMD Linux 1.4
+
+**Additions in this build:** Brave from its signed repository with h264ify and
+Auto Quality for YouTube configured for automatic installation, VLC, the panel
+order S - spacer - Brave, `LockCommand` and lock-on-suspend for i3lock, the
+automatic balanced tiling helper, and the sound-card-id detection in the audio
+helper. The harness now fails the job when any check fails instead of returning
+zero.
+
+`<!-- V14-RESULTS -->`
+
 **Additions in this build:** the speaker-volume policy (`hunter-volume`), the
 hardware-scoped codec fix (`hunter-audio-hw`), the pinned PipeWire quantum, the
 VA-API driver with the shim's `mpv.conf`, and the TearFree self-report

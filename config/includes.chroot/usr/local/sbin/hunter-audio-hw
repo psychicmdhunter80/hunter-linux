@@ -4,26 +4,41 @@
 # Runs before the display manager (hunter-audio-hw.service) on the live system
 # and on an installed one.  The Chromebook's chtmax98090 codec starts with its
 # speaker at raw 10 (-14 dB), which is quieter than the same machine managed at
-# 0 dB.  The difference is a mixer default, not a volume setting, so it is fixed
-# here rather than by boosting every sink.
+# 0 dB.  That is a mixer default, not a volume setting, so it is corrected here
+# rather than by boosting every sink.
 #
 # Only the chtmax98090 codec is touched.  Every other machine - and every other
-# codec - is left exactly as it was, because mixer raw values are specific to
-# the hardware.  The UCM file is backed up before it is changed.
+# codec - is left exactly as it was, because raw mixer values belong to the
+# hardware.  The UCM file is backed up before it is changed.
 
 set -u
 
 log() { echo "hunter-audio-hw: $*"; }
 
-# Which card carries a max98090 codec, if any.
+# Which card carries the codec.  The sound-card id is the reliable source: on
+# Bay Trail the codec is an ASoC component, so there is no codec#N file to
+# read - the old codec-file-only check missed the Chromebook entirely.  The
+# card number comes from the directory, never from a hard-coded 0 or 1.
 card=""
-for codec in /proc/asound/card*/codec#*; do
-	[ -f "$codec" ] || continue
-	if grep -qi "max98090" "$codec" 2>/dev/null; then
-		card=$(echo "$codec" | sed 's|/proc/asound/card\([0-9]*\)/.*|\1|')
-		break
-	fi
+for dir in /proc/asound/card[0-9]*; do
+	[ -d "$dir" ] || continue
+	id=$(cat "$dir/id" 2>/dev/null || true)
+	case "$id" in
+		*max98090*) card=${dir##*/card} ;;
+	esac
+	[ -n "$card" ] && break
 done
+
+# Fallback for machines that expose the codec as a codec#N file.
+if [ -z "$card" ]; then
+	for codec in /proc/asound/card*/codec#*; do
+		[ -f "$codec" ] || continue
+		if grep -qi "max98090" "$codec" 2>/dev/null; then
+			card=$(echo "$codec" | sed 's|/proc/asound/card\([0-9]*\)/.*|\1|')
+			break
+		fi
+	done
+fi
 
 if [ -z "$card" ]; then
 	log "no max98090 codec on this machine, leaving the mixers alone"

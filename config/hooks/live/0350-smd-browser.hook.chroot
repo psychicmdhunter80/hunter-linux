@@ -1,0 +1,49 @@
+#!/bin/sh
+# SMD Linux - Brave, from Brave's own signed repository.
+#
+# Runs after 0300 (which writes the Debian sources) and before the cleanup
+# hook, because a third-party package cannot be resolved in the early package
+# stage: its archive has to be configured first.
+set -e
+
+KEYRING=/usr/share/keyrings/brave-browser-archive-keyring.gpg
+SOURCES=/etc/apt/sources.list.d/brave-browser.sources
+
+echo "hunter: adding Brave's signed repository"
+
+install -d -m 0755 /usr/share/keyrings
+if ! curl -fsSL --retry 3 -o "$KEYRING" \
+        https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg; then
+	echo "hunter: ERROR: could not download Brave's signing key" >&2
+	exit 1
+fi
+chmod 0644 "$KEYRING"
+
+cat > "$SOURCES" <<'EOF'
+Types: deb
+URIs: https://brave-browser-apt-release.s3.brave.com/
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/brave-browser-archive-keyring.gpg
+EOF
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+if ! apt-get install -y --no-install-recommends brave-browser; then
+	echo "hunter: ERROR: brave-browser could not be installed" >&2
+	exit 1
+fi
+
+# Mark it manual so the post-install autoremove pass cannot take it away.
+apt-mark manual brave-browser >/dev/null
+
+if ! command -v brave-browser >/dev/null 2>&1; then
+	echo "hunter: ERROR: brave-browser is not on PATH after installation" >&2
+	exit 1
+fi
+echo "hunter: brave-browser $(brave-browser --version 2>/dev/null || echo installed)"
+
+# Indices are not shipped (they cost ~60 MB); the first "apt update" after
+# installation fetches them.  The source and key stay so Brave keeps updating.
+rm -rf /var/lib/apt/lists/*

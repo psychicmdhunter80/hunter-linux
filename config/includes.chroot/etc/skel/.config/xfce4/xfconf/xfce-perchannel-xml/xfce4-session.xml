@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- SMD Linux - session defaults.  The power manager locks through the
+     session's LockCommand rather than spawning xflock4, which libxfce4ui
+     detects as a recursive call.  i3lock runs synchronously and reports its
+     own status, so the power manager can refuse to suspend when locking
+     failed.  -n is deliberately not used: it would make the power menu wait
+     until the user unlocked before it could continue. -->
+<channel name="xfce4-session" version="1.0">
+  <property name="general" type="empty">
+    <property name="LockCommand" type="string" value="/usr/bin/i3lock -c 1d232b"/>
+  </property>
+</channel>

@@ -29,16 +29,16 @@
       <property name="length-adjust" type="bool" value="true"/>
       <property name="mode" type="uint" value="0"/>
       <property name="nrows" type="uint" value="1"/>
-      <!-- p=10: bottom edge, centred.  autohide-behavior 2 hides the panel
-           always; it slides back up when the pointer reaches the bottom of the
-           screen.  i3 keeps the 1px strut the panel leaves behind, so windows
-           never end up on a screen that has no panel at all. -->
+      <!-- p=10: bottom edge, centred.  autohide-behavior stays 0: the panel
+           is always visible, and full-screen video covers it. -->
       <property name="position" type="string" value="p=10;x=0;y=0"/>
       <property name="position-locked" type="bool" value="true"/>
       <property name="size" type="uint" value="28"/>
       <property name="size-adjust" type="bool" value="false"/>
       <property name="plugin-ids" type="array">
         <value type="int" value="1"/>
+        <value type="int" value="10"/>
+        <value type="int" value="11"/>
         <value type="int" value="2"/>
         <value type="int" value="3"/>
         <value type="int" value="4"/>
@@ -57,6 +57,21 @@
     <property name="plugin-1" type="string" value="whiskermenu">
       <property name="button-icon" type="string" value="smd-menu"/>
       <property name="show-button-title" type="bool" value="false"/>
+    </property>
+
+    <!-- A small transparent gap between the menu button and the browser:
+         1.4 puts Brave immediately after the S menu, the same place Hunter
+         keeps it.  Nonexpanding, so nothing else moves. -->
+    <property name="plugin-10" type="string" value="separator">
+      <property name="expand" type="bool" value="false"/>
+      <property name="style" type="uint" value="0"/>
+    </property>
+
+    <!-- Brave, one click away -->
+    <property name="plugin-11" type="string" value="launcher">
+      <property name="items" type="array">
+        <value type="string" value="brave-browser.desktop"/>
+      </property>
     </property>
 
     <!-- Open windows -->

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- SMD Linux - power manager defaults.  Lock on suspend/hibernate is what
+     makes a closed lid ask for the password on resume; without it the session
+     comes back unlocked even though the manual lock works. -->
+<channel name="xfce4-power-manager" version="1.0">
+  <property name="xfce4-power-manager" type="empty">
+    <property name="lock-screen-suspend-hibernate" type="bool" value="true"/>
+  </property>
+</channel>

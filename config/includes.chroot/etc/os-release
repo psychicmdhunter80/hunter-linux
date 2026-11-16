@@ -1,7 +1,7 @@
-PRETTY_NAME="SMD Linux 1.3"
+PRETTY_NAME="SMD Linux 1.4"
 NAME="SMD Linux"
-VERSION_ID="1.3"
-VERSION="1.3 (trixie)"
+VERSION_ID="1.4"
+VERSION="1.4 (trixie)"
 VERSION_CODENAME=trixie
 ID=smd
 ID_LIKE=debian

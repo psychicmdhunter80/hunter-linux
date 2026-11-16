@@ -3,9 +3,9 @@
 
 Creates, in the directory above this project:
 
-    SMD-Linux-Build-v1.3.zip          the build sources, with file modes
-    SMD-Linux-v1.3-README.md          user documentation
-    SMD-Linux-v1.3-Test-Report.md     test status and measurements
+    SMD-Linux-Build-v1.4.zip          the build sources, with file modes
+    SMD-Linux-v1.4-README.md          user documentation
+    SMD-Linux-v1.4-Test-Report.md     test status and measurements
     SHA256SUMS                           checksums of the files above
 
 File permissions are stored in the archive (0755 for scripts), so the project
@@ -24,11 +24,11 @@ PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.dirname(PROJECT)
 PROJECT_NAME = os.path.basename(PROJECT)
 
-ZIP_NAME = "SMD-Linux-Build-v1.3.zip"
-ISO_NAME = "SMD-Linux-v1.3-amd64.iso"
+ZIP_NAME = "SMD-Linux-Build-v1.4.zip"
+ISO_NAME = "SMD-Linux-v1.4-amd64.iso"
 DOCS = {
-    "README.md": "SMD-Linux-v1.3-README.md",
-    "Test-Report.md": "SMD-Linux-v1.3-Test-Report.md",
+    "README.md": "SMD-Linux-v1.4-README.md",
+    "Test-Report.md": "SMD-Linux-v1.4-Test-Report.md",
 }
 
 SKIP_DIRS = {".git", ".tmp", "__pycache__", "binary", "chroot", "cache",
@@ -107,7 +107,7 @@ def main():
     if os.path.exists(iso_path):
         files.insert(0, iso_path)
     with open(sums_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write("# SMD Linux 1.3 checksums - verify with: sha256sum -c SHA256SUMS\n")
+        handle.write("# SMD Linux 1.4 checksums - verify with: sha256sum -c SHA256SUMS\n")
         if os.path.exists(iso_path):
             handle.write("# The first entry is the bootable ISO image.\n")
         else:

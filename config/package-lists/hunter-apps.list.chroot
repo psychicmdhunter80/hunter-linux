@@ -1,11 +1,14 @@
 # SMD Linux - applications.
 #
-# One browser with working audio/video codecs, and nothing else: the goal is
-# browsing, YouTube and Jellyfin on a 2 GB machine.  The second browser (Falkon,
-# ~230 MB of Qt WebEngine) and the standalone media, image and archive
-# applications (mpv, ristretto, xarchiver) were removed in 1.1 - the browser and
-# the file manager already cover their jobs.
-firefox-esr
+# Browsing, YouTube and Jellyfin on a 2 GB machine.  1.4 makes Brave the
+# default browser; it is installed in 0350-smd-browser.hook.chroot from Brave's
+# signed repository, because a third-party package cannot be resolved in the
+# early package stage.  libavcodec-extra supplies the codecs Brave and VLC use,
+# and VLC is the local media player (the video plugin set comes with it).
 libavcodec-extra
+vlc
+# Automatic tiling (hunter-autotile) is event driven through i3's IPC.
+python3
+python3-i3ipc
 unzip
 xz-utils

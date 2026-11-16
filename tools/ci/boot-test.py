@@ -17,6 +17,7 @@ Everything is written to the output directory: serial.log, steps.txt,
 screen-*.png and result.txt.
 """
 
+import json
 import os
 import re
 import socket
@@ -294,7 +295,7 @@ def main():
         # --- applications ----------------------------------------------------
         for name, command, proc, wait in (
             ("thunar", "thunar", "thunar", 25),
-            ("firefox", "firefox-esr 'about:blank'", "firefox", 90),
+            ("brave", "brave-browser --new-window about:blank", "brave", 120),
         ):
             shell.run(f"DISPLAY=:0 setsid {command} >/tmp/{name}.log 2>&1 &",
                       timeout=30)
@@ -371,7 +372,7 @@ def main():
                       "xfce4-panel.xml", timeout=60, lines=120)
 
         # --- idle memory -----------------------------------------------------
-        shell.run("pkill -f firefox-esr; pkill -f falkon; pkill -f calamares; "
+        shell.run("pkill -f brave-browser; pkill -f calamares; "
                   "pkill -f thunar; sleep 8; free -m", timeout=60)
 
         # --- wallpaper -------------------------------------------------------
@@ -776,7 +777,8 @@ def main():
         scope = shell.run(
             "for p in falkon mpv ristretto xarchiver; do "
             "command -v $p >/dev/null && echo present:$p || echo gone:$p; done; echo ---; "
-            "command -v firefox-esr >/dev/null && echo browser-present; "
+            "command -v brave-browser >/dev/null && echo browser-present; "
+            "command -v vlc >/dev/null && echo vlc-present; "
             "command -v xfce4-panel >/dev/null && echo panel-present",
             timeout=60)
         schunks = scope.split("---")
@@ -796,13 +798,151 @@ def main():
               launcher.strip().isdigit() and int(launcher.strip()) > 0)
         shell.run("DISPLAY=:0 xdotool key Escape", timeout=30)
 
+        # --- 1.4: Brave, its extensions and VLC -----------------------------
+        apps = shell.run(
+            "dpkg -s brave-browser >/dev/null 2>&1 && echo BRAVE=installed "
+            "|| echo BRAVE=missing; echo ---; "
+            "dpkg -s vlc >/dev/null 2>&1 && echo VLC=installed || echo VLC=missing; "
+            "echo ---; "
+            "grep -c 'brave-browser' /etc/apt/sources.list.d/brave-browser.sources "
+            "2>/dev/null; echo ---; "
+            "test -e /usr/share/keyrings/brave-browser-archive-keyring.gpg "
+            "&& echo KEY=present || echo KEY=missing",
+            timeout=120)
+        achunks = apps.split("---")
+        check(results, "Brave is installed from its signed repository",
+              "BRAVE=installed" in achunks[0] and achunks[2].strip().endswith("1")
+              and "KEY=present" in achunks[3])
+        check(results, "VLC is installed", "VLC=installed" in achunks[1])
+        record(f"INFO: apps: {' | '.join(c.strip()[:50] for c in achunks)}")
+
+        policy = shell.run(
+            "cat /etc/brave/policies/managed/10-smd-extensions.json 2>&1; echo ---; "
+            "xdg-settings get default-web-browser 2>&1; "
+            "xdg-mime query default x-scheme-handler/https 2>&1",
+            timeout=90)
+        pchunks = policy.split("---")
+        try:
+            entered = set(json.loads(pchunks[0])["ExtensionSettings"])
+        except (ValueError, KeyError):
+            entered = set()
+        check(results, "both extensions are configured for automatic install",
+              entered == {"aleakchihdccplidncghkekgioiakgal",
+                          "iaddfgegjgjelgkanamleadckkpnjpjc"})
+        check(results, "Brave is the default browser",
+              "brave-browser.desktop" in pchunks[1])
+        check(results, "https links open in Brave",
+              "brave-browser.desktop" in pchunks[2])
+        record(f"INFO: browser default: {' | '.join(c.strip() for c in pchunks[1:])}")
+
+        # --- 1.4: the panel order S -> spacer -> Brave ----------------------
+        panel = shell.run(
+            "DISPLAY=:0 xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids "
+            "2>&1 | tr '\n' ' '; echo ---; "
+            "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-11/items 2>&1 "
+            "| tr '\n' ' '; echo ---; "
+            "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-10/expand 2>&1",
+            timeout=90)
+        qchunks = panel.split("---")
+        try:
+            ids = [int(v) for v in qchunks[0].split() if v.strip().lstrip("-").isdigit()]
+        except ValueError:
+            ids = []
+        check(results, "the panel runs the menu, spacer and Brave in that order",
+              len(ids) >= 3 and ids[0] == 1 and ids[1] == 10 and ids[2] == 11)
+        check(results, "the Brave launcher is in the panel",
+              "brave-browser.desktop" in qchunks[1])
+        check(results, "the new spacer does not expand",
+              qchunks[2].strip() == "false")
+        record(f"INFO: panel ids: {ids}")
+
+        # --- 1.4: locking through the session's LockCommand -----------------
+        lock = shell.run(
+            "DISPLAY=:0 xfconf-query -c xfce4-session -p /general/LockCommand 2>&1; "
+            "echo ---; "
+            "DISPLAY=:0 xfconf-query -c xfce4-power-manager "
+            "-p /xfce4-power-manager/lock-screen-suspend-hibernate 2>&1; echo ---; "
+            "command -v i3lock >/dev/null && echo LOCKER=present || echo LOCKER=missing",
+            timeout=90)
+        lchunks = lock.split("---")
+        check(results, "the session lock command is i3lock",
+              "i3lock" in lchunks[0] and "-n" not in lchunks[0])
+        check(results, "locking on suspend is enabled",
+              lchunks[1].strip() == "true")
+        check(results, "the locker is installed", "LOCKER=present" in lchunks[2])
+        record(f"INFO: lock: {' | '.join(c.strip() for c in lchunks)}")
+
+        # --- 1.4: the audio helper reads the sound-card id ------------------
+        audiohw = shell.run(
+            "grep -Fq 'cat \"$dir/id\"' /usr/local/sbin/hunter-audio-hw "
+            "&& echo READS-ID || echo NO-ID; echo ---; "
+            "grep -Fq 'card=${dir##*/card}' /usr/local/sbin/hunter-audio-hw "
+            "&& echo CARD-FROM-DIR || echo CARD-HARDCODED",
+            timeout=60)
+        nchunks = audiohw.split("---")
+        check(results, "the audio helper reads the sound-card id",
+              "READS-ID" in nchunks[0])
+        check(results, "the audio helper derives the card number from the directory",
+              "CARD-FROM-DIR" in nchunks[1])
+
+        # --- 1.4: automatic balanced tiling --------------------------------
+        helper = shell.run(
+            "test -x /usr/local/bin/hunter-autotile && echo HELPER=ok "
+            "|| echo HELPER=missing; echo ---; "
+            "pgrep -fc '[h]unter-autotile'",
+            timeout=60)
+        hchu = helper.split("---")
+        check(results, "the tiling helper is installed", "HELPER=ok" in hchu[0])
+        check(results, "exactly one tiling helper is running",
+              hchu[1].strip() == "1")
+
+        shell.run("DISPLAY=:0 xfce4-terminal --title=smd-one & sleep 6; "
+                  "DISPLAY=:0 xfce4-terminal --title=smd-two & sleep 6; "
+                  "DISPLAY=:0 xfce4-terminal --title=smd-three & sleep 8",
+                  timeout=120)
+        time.sleep(6)
+        tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+        try:
+            geometry = json.loads(tree[tree.index("{"):])
+        except (ValueError, KeyError):
+            geometry = None
+        boxes = []
+
+        def collect(node):
+            for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                if child.get("window") and child.get("name", "").startswith("smd-") \
+                        and not child.get("floating", "").startswith("user"):
+                    boxes.append((child["name"], child["rect"]))
+                collect(child)
+
+        if geometry:
+            collect(geometry)
+        check(results, "three ordinary windows are tiled",
+              len(boxes) == 3)
+        if len(boxes) == 3:
+            xs = sorted({round(b[1]["x"]) for b in boxes})
+            left = [b for b in boxes if round(b[1]["x"]) == xs[0]]
+            right = [b for b in boxes if round(b[1]["x"]) == xs[-1]]
+            stacked = len(left) == 2 and len({round(b[1]["y"]) for b in left}) == 2
+            halves = len(xs) == 2 and abs(left[0][1]["width"] - right[0][1]["width"]) <= 4
+            check(results, "the third window sits below the first",
+                  stacked and halves)
+            record("INFO: tiling boxes: " +
+                   " ".join("%s(%d,%d %dx%d)" % (n[:8], r["x"], r["y"],
+                                                 r["width"], r["height"])
+                            for n, r in boxes))
+        shell.run("pkill -f 'xfce4-terminal --title=smd-' ; "
+                  "pkill -f 'smd-one|smd-two|smd-three'", timeout=60)
+
         # --- keyboard mapping and start-up time (recorded, not asserted) ----
         shell.run("DISPLAY=:0 xmodmap -pm 2>/dev/null | grep -E 'mod1|mod4'",
                   timeout=60)
         shell.run("systemd-analyze 2>&1; systemd-analyze blame 2>/dev/null "
                   "| head -8; systemctl --failed --no-pager | head -6", timeout=120)
         record("PASS: live session test finished")
-        return 0
+        # A failing check must fail the job: green CI with a FAIL line in the
+        # log is how several regressions were missed.
+        return 1 if any(line.startswith("FAIL:") for line in results) else 0
     finally:
         if monitor:
             try:

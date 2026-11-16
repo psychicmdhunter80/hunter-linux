@@ -1,8 +1,12 @@
 [Unit]
 Description=SMD Linux - hardware-matched audio mixer defaults
 Documentation=man:alsaucm(1)
-# The codec settings have to be in place before the sound server starts.
-Before=pipewire.service wireplumber.service pipewire-pulse.service
+# The codec settings have to be in place before the display manager starts.
+# Ordering the system units only orders system services: the user's PipeWire
+# units are started separately at login, which is why the setting is applied to
+# the running mixer here instead of relying on this directive.
+Before=lightdm.service display-manager.service
+After=systemd-udev-settle.service
 
 [Service]
 Type=oneshot

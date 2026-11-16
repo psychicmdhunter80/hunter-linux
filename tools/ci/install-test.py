@@ -814,7 +814,7 @@ def main():
             scope = shell.run(
                 "for p in falkon mpv ristretto xarchiver; do "
                 "command -v $p >/dev/null && echo present:$p || echo gone:$p; done; "
-                "echo ---; command -v firefox-esr >/dev/null && echo browser-present; "
+                "echo ---; command -v brave-browser >/dev/null && echo browser-present; "
                 "dpkg-query -W -f='${Status}' wpasupplicant 2>/dev/null "
                 "| grep -c 'install ok installed'", timeout=90)
             schunks = scope.split("---")
