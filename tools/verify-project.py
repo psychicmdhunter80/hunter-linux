@@ -133,9 +133,25 @@ def check_shell():
     for path in scripts:
         if os.path.isdir(path):
             continue
-        result = subprocess.run(
-            ["bash", "-n", path], capture_output=True, text=True
-        )
+        if path.endswith(".pyc") or "__pycache__" in path:
+            fail("%s: compiled Python left in the tree"
+                 % os.path.relpath(path, ROOT))
+            continue
+        try:
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                first = handle.readline()
+        except OSError:
+            continue
+        if "python" in first:
+            # Python helpers are checked with Python, not with bash.
+            result = subprocess.run(
+                [sys.executable, "-m", "py_compile", path],
+                capture_output=True, text=True
+            )
+        else:
+            result = subprocess.run(
+                ["bash", "-n", path], capture_output=True, text=True
+            )
         if result.returncode != 0:
             fail("%s: shell syntax error: %s"
                  % (os.path.relpath(path, ROOT), result.stderr.strip()))
