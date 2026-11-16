@@ -250,7 +250,7 @@ def main():
 
         def open_window(title):
             shell.run("DISPLAY=:0 setsid xfce4-terminal --title=%s "
-                      "</dev/null >/dev/null 2>&1 & sleep 8" % title, timeout=90)
+                      "</dev/null >/dev/null 2>&1 & sleep 13" % title, timeout=90)
 
         def dump(stage):
             text = shell.run("DISPLAY=:0 python3 /tmp/tile-dump.py", timeout=120,
@@ -258,7 +258,7 @@ def main():
             note("--- tree after %s ---\n%s" % (stage, text))
             state = shell.run(
                 "echo SLOTS=$(DISPLAY=:0 python3 /tmp/tile-dump.py | "
-                "grep -c 'name=smd-slot'); "
+                "grep -c 'name=smd-slot-'); "
                 "echo SCRATCH=$(DISPLAY=:0 python3 /tmp/tile-dump.py | "
                 "grep -c 'name=smd-autotile-scratch')", timeout=120, lines=6)
             values = dict(line.split("=", 1) for line in state.splitlines()

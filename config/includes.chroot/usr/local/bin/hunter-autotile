@@ -225,7 +225,8 @@ def main():
         i3 layout files have no mark field, so the placeholders are marked
         after they appear, from the tree, in layout order.
         """
-        return {"type": "con", "name": "smd-slot", "border": "none",
+        return {"type": "con", "name": "smd-slot-%d" % index,
+                "border": "none",
                 # Nothing can match this: the placeholder stays until the
                 # helper closes it, so it keeps the slot open.
                 "swallows": [{"class": "^$SMD-NEVER-MATCH$"}]}
@@ -248,7 +249,7 @@ def main():
         for _attempt in range(10):
             workspace = find_workspace(i3.tree(), name) or {}
             slots = [n["id"] for n in nodes_of(workspace)
-                     if n.get("name") == "smd-slot"]
+                     if str(n.get("name", "")).startswith("smd-slot-")]
             if not slots:
                 return True
             for con_id in slots:
@@ -272,14 +273,13 @@ def main():
         # append_layout runs through i3's command queue, so the placeholders
         # can be a moment late: ask for the tree until they are all there.
         slots = []
-        for _attempt in range(80):
+        for _attempt in range(30):
             workspace = find_workspace(i3.tree(), name) or {}
             slots = [n for n in nodes_of(workspace)
-                     if n.get("name") == "smd-slot"]
+                     if str(n.get("name", "")).startswith("smd-slot-")]
             if len(slots) >= count:
                 break
             time.sleep(0.1)
-        slots = slots[:count]
         # What i3 actually built, so a wrong structure is visible in the log.
         shape = []
         for node in nodes_of(find_workspace(i3.tree(), name) or {}):
@@ -290,11 +290,19 @@ def main():
                     rect.get("width", 0), rect.get("height", 0),
                     rect.get("x", 0), rect.get("y", 0)))
         note("  tree: %s" % " ".join(shape[:14]))
-        for index, node in enumerate(slots):
-            i3.command('[con_id=%d] mark --add smd-slot-%d'
+        placed = []
+        for node in slots:
+            index = node["name"].rsplit("-", 1)[-1]
+            if not index.isdigit():
+                continue
+            i3.command('[con_id=%d] mark --add smd-slot-%s'
                        % (node["id"], index))
-        note("  placeholders: %d of %d" % (len(slots), count))
-        return slots
+            placed.append((int(index), node["id"]))
+        placed.sort()
+        note("  placeholders: %d of %d" % (len(placed), count))
+        if len(placed) < count:
+            return []
+        return [con_id for _index, con_id in placed]
 
     def windows_in_tree():
         return {n.get("id") for n in nodes_of(i3.tree()) if n.get("window")}
@@ -379,7 +387,7 @@ def main():
                      for c in leaves_of(final)]
             note("  placed: %s" % " ".join(boxes))
             leftover = [n["id"] for n in nodes_of(final)
-                        if n.get("name") == "smd-slot"]
+                        if str(n.get("name", "")).startswith("smd-slot-")]
             if leftover:
                 note("  placeholders still open: %s" % leftover)
         except Exception as error:  # noqa: BLE001 - diagnostics only
