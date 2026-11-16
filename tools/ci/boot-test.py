@@ -912,48 +912,86 @@ def main():
 
         # Detach every terminal: a background job that inherits the session
         # keeps the channel open and the next command times out.
-        for title, delay in (("smd-one", 6), ("smd-two", 6), ("smd-three", 8)):
+        def open_window(title):
             shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                       "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-            time.sleep(delay)
-        time.sleep(4)
-        tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
-        try:
-            geometry = json.loads(tree[tree.index("{"):])
-        except (ValueError, KeyError):
-            geometry = None
-        boxes = []
+            time.sleep(7)
 
-        def collect(node):
-            for child in node.get("nodes", []) + node.get("floating_nodes", []):
-                if child.get("window") and child.get("name", "").startswith("smd-") \
-                        and not child.get("floating", "").startswith("user"):
-                    boxes.append((child["name"], child["rect"]))
-                collect(child)
+        def tiles():
+            """Rectangles of the test windows, via i3's own tree."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return []
+            found = []
 
-        if geometry:
-            collect(geometry)
-        check(results, "three ordinary windows are tiled",
-              len(boxes) == 3)
-        if len(boxes) == 3:
-            xs = sorted({round(b[1]["x"]) for b in boxes})
-            left = [b for b in boxes if round(b[1]["x"]) == xs[0]]
-            right = [b for b in boxes if round(b[1]["x"]) == xs[-1]]
-            stacked = len(left) == 2 and len({round(b[1]["y"]) for b in left}) == 2
-            halves = len(xs) == 2 and abs(left[0][1]["width"] - right[0][1]["width"]) <= 4
-            check(results, "the third window sits below the first",
-                  stacked and halves)
-            record("INFO: tiling boxes: " +
-                   " ".join("%s(%d,%d %dx%d)" % (n[:8], r["x"], r["y"],
-                                                 r["width"], r["height"])
-                            for n, r in boxes))
-        # A helper that dies at start-up leaves no log of its own, so run it
-        # once by hand and keep its stderr.
-        probe = shell.run("timeout 4 python3 /usr/local/bin/hunter-autotile 2>&1 "
-                          "| head -8; echo PROBE-DONE", timeout=60)
-        record("INFO: autotile probe: " + " ".join(probe.split())[:400])
+            def walk(node):
+                for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                    if child.get("window") and str(child.get("name", "")).startswith("smd-") \
+                            and not str(child.get("floating", "")).startswith("user"):
+                        found.append(child["rect"])
+                    walk(child)
+
+            walk(data)
+            return found
+
+        def describe(boxes):
+            return " ".join("[%d,%d %dx%d]" % (b["x"], b["y"], b["width"],
+                                               b["height"]) for b in boxes)
+
+        open_window("smd-one")
+        one = tiles()
+        check(results, "one window fills the usable desktop",
+              len(one) == 1 and one[0]["width"] >= 1000 and one[0]["height"] >= 700)
+        record("INFO: tiling one: " + describe(one))
+
+        open_window("smd-two")
+        two = tiles()
+        halves = (len(two) == 2 and
+                  abs(two[0]["width"] - two[1]["width"]) <= 4 and
+                  round(two[0]["y"]) == round(two[1]["y"]) and
+                  round(two[0]["x"]) != round(two[1]["x"]))
+        check(results, "two windows split the screen equally", halves)
+        record("INFO: tiling two: " + describe(two))
+
+        open_window("smd-three")
+        three = tiles()
+        ok3 = False
+        if len(three) == 3:
+            xs = sorted({round(b["x"]) for b in three})
+            if len(xs) == 2:
+                left = [b for b in three if round(b["x"]) == xs[0]]
+                right = [b for b in three if round(b["x"]) == xs[1]]
+                ok3 = (len(left) == 2 and len({round(b["y"]) for b in left}) == 2
+                       and len(right) == 1
+                       and abs(left[0]["width"] - right[0]["width"]) <= 4)
+        check(results, "the third window sits below the first", ok3)
+        record("INFO: tiling three: " + describe(three))
+
+        # Closing one window has to compress the survivors back into the
+        # two-window layout, using arrival order rather than focus.
+        shell.run("pkill -f 'xfce4-terminal --title=smd-three'", timeout=60)
+        time.sleep(6)
+        back = tiles()
+        check(results, "closing a window returns to two equal halves",
+              len(back) == 2 and abs(back[0]["width"] - back[1]["width"]) <= 4)
+        record("INFO: tiling after close: " + describe(back))
+
+        open_window("smd-three")
+        open_window("smd-four")
+        four = tiles()
+        ok4 = False
+        if len(four) == 4:
+            xs = sorted({round(b["x"]) for b in four})
+            ok4 = len(xs) == 2 and all(
+                len({round(b["y"]) for b in four if round(b["x"]) == x}) == 2
+                for x in xs)
+        check(results, "four windows form an even 2x2 grid", ok4)
+        record("INFO: tiling four: " + describe(four))
+
         record("INFO: autotile log: " + " | ".join(
-            shell.run("tail -6 ~/.cache/smd/autotile.log 2>/dev/null").split())[:300])
+            shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:400])
         shell.run("pkill -f 'xfce4-terminal --title=smd-'", timeout=60)
 
         # --- keyboard mapping and start-up time (recorded, not asserted) ----

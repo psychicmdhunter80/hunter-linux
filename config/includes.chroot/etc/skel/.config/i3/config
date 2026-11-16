@@ -39,9 +39,8 @@ hide_edge_borders smart
 # Both scripts are idempotent, so i3 reloads do not stack panels or applets.
 exec_always --no-startup-id hunter-panel
 exec_always --no-startup-id hunter-applets
-# Keep ordinary windows in the balanced 1 / 2 / 3 / 4 layout.  The helper
-# holds a per-session lock, so an i3 restart does not start a second one.
-exec_always --no-startup-id hunter-autotile
+# hunter-applets starts hunter-autotile (the balanced 1 / 2 / 3 / 4 layout); the
+# helper holds a per-session lock, so a restart cannot leave two behind.
 
 # Chromebook top row.  On a Chromebook the printed dimmer/brighter/mute/volume
 # down/volume up keys arrive as F6-F10, not as the XF86 keysyms bound further

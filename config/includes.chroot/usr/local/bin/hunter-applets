@@ -79,6 +79,15 @@ if command -v hunter-volume >/dev/null 2>&1; then
 	hunter-volume >>"$log" 2>&1 &
 fi
 
+# Balanced window layout.  Started here rather than from i3's exec_always
+# because this script is already the session's reliable entry point; the helper
+# takes its own lock, so a restart cannot leave two of them behind.
+if ! pgrep -u "$(id -u)" -f 'python3 /usr/local/bin/hunter-autotile' >/dev/null 2>&1; then
+	if command -v hunter-autotile >/dev/null 2>&1; then
+		hunter-autotile >>"$log" 2>&1 &
+	fi
+fi
+
 # Network, Bluetooth, notifications, battery and power handling.
 start nm-applet nm-applet
 start blueman-applet blueman-applet
