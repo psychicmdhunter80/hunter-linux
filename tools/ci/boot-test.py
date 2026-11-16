@@ -599,7 +599,7 @@ def main():
             "echo HOME=$HOME; ls -l ~/.config/i3/config; "
             "wc -l ~/.config/i3/config; echo ===; "
             "sed -n '1,4p;24,30p' ~/.config/i3/config | cat -A; echo ===; "
-            "grep -n 'set \$mod' ~/.config/i3/config | head -3", timeout=90)
+            "grep -n 'set [$]mod' ~/.config/i3/config | head -3", timeout=90)
         record("INFO: i3 config file: " + " | ".join(cfg.split())[:700])
 
         audio = shell.run(
