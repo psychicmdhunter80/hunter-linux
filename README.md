@@ -31,13 +31,16 @@ are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 | Kernel | Debian stable `linux-image-amd64` |
 | Display | Xorg (X11), no Wayland, no compositor |
 | Window manager | i3 (`i3-wm`), **Left Alt** modifier, no i3bar; the **Search** key alone opens the launcher |
-| Panel / taskbar | `xfce4-panel` on the **bottom edge, auto-hiding**, with whisker menu, task list, pager, systray, clock, volume, battery, power menu |
+| Panel / taskbar | `xfce4-panel` on the **bottom edge, always visible**, with the S menu, a small spacer, the Brave launcher, task list, pager, systray, clock, volume, battery and power menu |
 | File manager | Thunar (+ `udisks2`, `gvfs`) |
 | Terminal | `xfce4-terminal` |
 | Editor | `nano` (console); no graphical editor |
-| Browser | Firefox ESR, with the full audio/video codec set |
+| Browser | **Brave** from Brave's signed repository, with h264ify and Auto Quality for YouTube installed automatically, and the full audio/video codec set |
 | Network | NetworkManager + `nm-applet` + `wpasupplicant`, `iw`, `wireless-regdb`, BlueZ (audio only, no Bluetooth GUI) |
 | Audio | PipeWire + `pipewire-pulse` + WirePlumber + `pavucontrol` (no PulseAudio daemon) |
+| Media player | VLC, for local audio and video files |
+| Locking | `i3lock` through the session's `LockCommand`, with lock-on-suspend enabled |
+| Window layout | `hunter-autotile` keeps ordinary windows in 1 / 2 / 2x2 balanced slots, by i3 IPC |
 | Authentication agent | `xfce-polkit`, started with the session |
 | Installer | Calamares 3.3 |
 | Remote administration | Cockpit (`cockpit`, `cockpit-system`) on port 9090, enabled in the live session and in the installed system |
