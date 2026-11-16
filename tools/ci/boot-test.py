@@ -300,11 +300,13 @@ def main():
             shell.run(f"DISPLAY=:0 setsid {command} >/tmp/{name}.log 2>&1 &",
                       timeout=30)
             time.sleep(wait)
-            count = shell.run(f"pgrep -c -f '^[a-z]*{proc}'")
+            count = shell.run(f"pgrep -c -x {proc}")
             monitor.screenshot(f"02-{name}")
             number = re.search(r"^(\d+)$", count.strip(), re.M)
             check(results, f"{name} launched",
                   bool(number) and int(number.group(1)) > 0)
+
+        shell.run("tail -6 /tmp/brave.log 2>/dev/null")
 
         # --- cockpit ---------------------------------------------------------
         status = shell.run("systemctl is-active cockpit.socket; echo ---; "
@@ -811,14 +813,15 @@ def main():
             timeout=120)
         achunks = apps.split("---")
         check(results, "Brave is installed from its signed repository",
-              "BRAVE=installed" in achunks[0] and achunks[2].strip().endswith("1")
+              "BRAVE=installed" in achunks[0]
+              and achunks[2].strip().isdigit() and int(achunks[2].strip()) >= 1
               and "KEY=present" in achunks[3])
         check(results, "VLC is installed", "VLC=installed" in achunks[1])
         record(f"INFO: apps: {' | '.join(c.strip()[:50] for c in achunks)}")
 
         policy = shell.run(
             "cat /etc/brave/policies/managed/10-smd-extensions.json 2>&1; echo ---; "
-            "xdg-settings get default-web-browser 2>&1; "
+            "xdg-settings get default-web-browser 2>&1; echo ---; "
             "xdg-mime query default x-scheme-handler/https 2>&1",
             timeout=90)
         pchunks = policy.split("---")
