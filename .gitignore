@@ -24,3 +24,10 @@ art*/
 [a-z][0-9][0-9]/
 __pycache__/
 *.pyc
+
+# Downloaded workflow evidence (screenshots, disk images, serial logs).
+install-test-uefi/
+boot-test-uefi/
+boot-test-bios/
+tile-debug/
+iso14/
