@@ -9,19 +9,20 @@ alternately: left takes the 1st, 3rd, 5th... arrival, right the 2nd, 4th, 6th...
 Order is arrival order per workspace, tracked by container id - never by title,
 and never by whichever window happened to be focused last.
 
-The helper talks to i3's IPC socket directly: it subscribes to the window
-events, asks for the tree, and issues i3's own split/move commands.  The socket
-is found from the environment, the runtime directory or i3 itself, so it works
-from the session, after an i3 restart, and from a terminal.
+The helper speaks i3's IPC protocol itself: it subscribes to the window events,
+asks for the tree, and issues i3's own commands.  Replies and events arrive on
+the same socket, so every read demultiplexes them; treating an event as a
+command reply is what used to kill the helper after its first command.
 """
 
+import collections
 import fcntl
 import json
 import os
 import socket
 import struct
-import tempfile
 import sys
+import tempfile
 import time
 
 SCRATCH = "smd-autotile-scratch"
@@ -54,11 +55,11 @@ def find_socket():
             return value
     runtime = os.environ.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
     candidates = []
-    for base, pattern in ((os.path.join(runtime, "i3"), "ipc-socket."),
-                          ("/tmp", "i3-")):
+    for base, prefix in ((os.path.join(runtime, "i3"), "ipc-socket."),
+                         ("/tmp", "i3-")):
         try:
             for entry in os.listdir(base):
-                if entry.startswith(pattern):
+                if entry.startswith(prefix):
                     candidates.append(os.path.join(base, entry))
         except OSError:
             pass
@@ -69,10 +70,13 @@ def find_socket():
 
 
 class I3:
+    """Minimal i3 IPC client with reply/event demultiplexing."""
+
     def __init__(self, path):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(path)
         self.buffer = b""
+        self.pending = collections.deque()
 
     def _send(self, message_type, payload=""):
         data = payload.encode("utf-8")
@@ -87,80 +91,76 @@ class I3:
         data, self.buffer = self.buffer[:count], self.buffer[count:]
         return data
 
-    def message(self, message_type, payload=""):
-        self._send(message_type, payload)
+    def _read_message(self):
         header = self._read_exact(14)
         if header[:6] != b"i3-ipc":
-            raise ValueError("unexpected reply from i3")
-        length, reply_type = struct.unpack("=II", header[6:])
+            raise ValueError("unexpected bytes from i3")
+        length, message_type = struct.unpack("=II", header[6:])
         body = self._read_exact(length).decode("utf-8", "replace")
-        return reply_type, json.loads(body) if body else None
+        return message_type, (json.loads(body) if body else None)
+
+    def message(self, message_type, payload=""):
+        self._send(message_type, payload)
+        while True:
+            reply_type, body = self._read_message()
+            if reply_type & EVENT_FLAG:
+                self.pending.append(body)
+                continue
+            return reply_type, body
+
+    def event(self):
+        while not self.pending:
+            reply_type, body = self._read_message()
+            if reply_type & EVENT_FLAG:
+                self.pending.append(body)
+            else:
+                # A reply nobody is waiting for: ignore it, never parse it as
+                # an event.
+                note("unexpected reply type %d ignored" % reply_type)
+        return self.pending.popleft()
 
     def command(self, text):
         _kind, replies = self.message(RUN_COMMAND, text)
-        for reply in replies or []:
-            if not reply.get("success"):
+        failed = False
+        for reply in replies if isinstance(replies, list) else []:
+            if isinstance(reply, dict) and not reply.get("success"):
                 note("failed: %s -> %s" % (text, reply.get("error")))
+                failed = True
+        return not failed
 
     def tree(self):
-        return self.message(GET_TREE)[1]
-
-    def event(self):
-        header = self._read_exact(14)
-        if header[:6] != b"i3-ipc":
-            raise ValueError("unexpected event from i3")
-        length, event_type = struct.unpack("=II", header[6:])
-        body = self._read_exact(length).decode("utf-8", "replace")
-        return event_type, json.loads(body) if body else None
+        _kind, reply = self.message(GET_TREE)
+        return reply if isinstance(reply, dict) else {}
 
 
-def leaves_of(node, found=None):
-    if found is None:
-        found = []
-    if not isinstance(node, dict):
-        return found
-    for child in node.get("nodes", []) or []:
-        if child.get("window") and not str(child.get("floating", "")).startswith("user") \
-                and child.get("type") == "con" and not child.get("nodes"):
-            found.append(child)
-        else:
-            leaves_of(child, found)
-    return found
-
-
-def all_nodes(node, found=None):
+def nodes_of(node, found=None):
     if found is None:
         found = []
     if not isinstance(node, dict):
         return found
     found.append(node)
     for child in node.get("nodes", []) or []:
-        all_nodes(child, found)
+        nodes_of(child, found)
     return found
 
 
+def leaves_of(node):
+    return [n for n in nodes_of(node)
+            if n.get("window") and not n.get("nodes")]
+
+
 def find_workspace(tree, name):
-    for output in tree.get("nodes", []) or []:
-        for node in output.get("nodes", []) or []:
-            if node.get("type") == "workspace" and node.get("name") == name:
-                return node
-            for child in node.get("nodes", []) or []:
-                if child.get("type") == "workspace" and child.get("name") == name:
-                    return child
+    for node in nodes_of(tree):
+        if node.get("type") == "workspace" and node.get("name") == name:
+            return node
     return None
 
 
 def focused_workspace(tree):
-    def walk(node):
-        if node.get("focused") and node.get("type") == "workspace":
+    for node in nodes_of(tree):
+        if node.get("type") == "workspace" and node.get("focused"):
             return node
-        for child in node.get("nodes", []) or []:
-            hit = walk(child)
-            if hit:
-                return hit
-        return None
-
-    return walk(tree)
+    return None
 
 
 def main():
@@ -182,117 +182,99 @@ def main():
     i3 = I3(path)
     note("connected to %s" % path)
 
-    order = {}
-    state = {"busy": False, "pending": set()}
-
-    def command(text):
-        i3.command(text)
+    state = {"order": {}, "busy": False, "pending": set()}
 
     def workspace_names():
-        tree = i3.tree()
-        names = []
-        for output in tree.get("nodes", []) or []:
-            for node in output.get("nodes", []) or []:
-                if node.get("type") == "workspace":
-                    names.append(node.get("name"))
-                for child in node.get("nodes", []) or []:
-                    if child.get("type") == "workspace":
-                        names.append(child.get("name"))
-        return names
+        return [n.get("name") for n in nodes_of(i3.tree())
+                if n.get("type") == "workspace" and n.get("name")
+                and n.get("name") != SCRATCH]
 
-        def build_layout(name, count):
-            """Append a marked placeholder per slot and return their ids."""
-            if count == 1:
-                layout = {"type": "con", "name": "smd-layout",
-                          "layout": "splith", "nodes": [placeholder(0)]}
-            elif count == 2:
-                layout = {"type": "con", "name": "smd-layout",
-                          "layout": "splith",
-                          "nodes": [placeholder(0), placeholder(1)]}
-            else:
-                left = [i for i in range(count) if i % 2 == 0]
-                right = [i for i in range(count) if i % 2 == 1]
-                layout = {
-                    "type": "con", "name": "smd-layout", "layout": "splith",
-                    "nodes": [
-                        {"type": "con", "name": "smd-left", "layout": "splitv",
-                         "percent": 0.5,
-                         "nodes": [placeholder(i) for i in left]},
-                        {"type": "con", "name": "smd-right", "layout": "splitv",
-                         "percent": 0.5,
-                         "nodes": [placeholder(i) for i in right]},
-                    ],
-                }
-            handle = tempfile.NamedTemporaryFile("w", suffix=".json",
-                                                 delete=False, encoding="utf-8")
-            json.dump(layout, handle)
-            handle.close()
-            command('[workspace="%s"] focus' % name)
-            command("append_layout %s" % handle.name)
-            os.unlink(handle.name)
+    def placeholder(index):
+        return {"type": "con", "name": "smd-slot", "border": "none",
+                "marks": ["smd-slot-%d" % index],
+                # A criterion that cannot match: the placeholder stays until
+                # the helper kills it, so it can hold its slot open.
+                "swallows": [{"class": "^$SMD-NEVER-MATCH$"}]}
 
-            workspace = find_workspace(i3.tree(), name) or {}
-            slots = [n for n in all_nodes(workspace)
-                     if any(str(m).startswith("smd-slot-")
-                            for m in n.get("marks", []) or [])]
-            note("  slots: %d" % len(slots))
-            return [n["id"] for n in slots]
-
-        def placeholder(index):
-            return {"type": "con", "name": "smd-slot", "border": "none",
-                    "marks": ["smd-slot-%d" % index], "swallows": []}
+    def build_layout(name, count):
+        if count == 1:
+            layout = {"type": "con", "layout": "splith",
+                      "nodes": [placeholder(0)]}
+        elif count == 2:
+            layout = {"type": "con", "layout": "splith",
+                      "nodes": [placeholder(0), placeholder(1)]}
+        else:
+            left = [i for i in range(count) if i % 2 == 0]
+            right = [i for i in range(count) if i % 2 == 1]
+            layout = {"type": "con", "layout": "splith", "nodes": [
+                {"type": "con", "layout": "splitv", "percent": 0.5,
+                 "nodes": [placeholder(i) for i in left]},
+                {"type": "con", "layout": "splitv", "percent": 0.5,
+                 "nodes": [placeholder(i) for i in right]},
+            ]}
+        handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
+                                             encoding="utf-8")
+        json.dump(layout, handle)
+        handle.close()
+        i3.command('[workspace="%s"] focus' % name)
+        i3.command("append_layout %s" % handle.name)
+        os.unlink(handle.name)
+        workspace = find_workspace(i3.tree(), name) or {}
+        slots = []
+        for node in nodes_of(workspace):
+            for mark in node.get("marks", []) or []:
+                if str(mark).startswith("smd-slot-"):
+                    slots.append(node)
+        note("  placeholders: %d" % len(slots))
+        return slots
 
     def reflow(name):
-        tree = i3.tree()
-        workspace = find_workspace(tree, name)
+        workspace = find_workspace(i3.tree(), name)
         if workspace is None:
-            order.pop(name, None)
+            state["order"].pop(name, None)
             return
-
         current = [c.get("id") for c in leaves_of(workspace)]
-        known = [i for i in order.get(name, []) if i in current]
+        order = [i for i in state["order"].get(name, []) if i in current]
         for con_id in current:
-            if con_id not in known:
-                known.append(con_id)
-        order[name] = known
-        ids = known
-        if not ids:
-            order.pop(name, None)
+            if con_id not in order:
+                order.append(con_id)
+        if not order:
+            state["order"].pop(name, None)
             return
+        state["order"][name] = order
         if any(c.get("fullscreen_mode") for c in leaves_of(workspace)):
             return
 
-        note("reflow %s order=%s" % (name, ids))
-
-        def mark(con_id):
-            return "smd-%d" % con_id
+        note("reflow %s order=%s" % (name, order))
 
         # Park every window: the workspace is then empty, so the layout below
         # becomes its whole structure and old nesting cannot leak in.
-        for con_id in ids:
-            command("[con_id=%d] move container to workspace %s"
-                    % (con_id, SCRATCH))
+        for con_id in order:
+            i3.command("[con_id=%d] move container to workspace %s"
+                       % (con_id, SCRATCH))
 
-        placeholder_ids = build_layout(name, len(ids))
-        if not placeholder_ids:
-            return
+        slots = build_layout(name, len(order))
 
-        for index, con_id in enumerate(ids):
-            command("[con_id=%d] move container to mark smd-slot-%d"
-                    % (con_id, index))
-            command("[con_id=%d] mark --add %s" % (con_id, mark(con_id)))
+        for index, con_id in enumerate(order):
+            if slots:
+                i3.command("[con_id=%d] move container to mark smd-slot-%d"
+                           % (con_id, index))
+            else:
+                i3.command("[con_id=%d] move container to workspace %s"
+                           % (con_id, name))
 
         # Placeholders take screen space, so they go once every window landed.
-        for con_id in placeholder_ids:
-            command("[con_id=%d] kill" % con_id)
+        for slot in slots:
+            i3.command("[con_id=%d] kill" % slot["id"])
 
-        # The layout is applied by the commands above; anything after them is
-        # diagnostics only and must never be able to stop the helper.
         try:
-            final = find_workspace(i3.tree(), name)
-            boxes = ["%d" % c["id"] for c in leaves_of(final or {})]
+            final = find_workspace(i3.tree(), name) or {}
+            boxes = ["%d@%d,%d+%dx%d" % (c["id"], c["rect"]["x"],
+                                         c["rect"]["y"], c["rect"]["width"],
+                                         c["rect"]["height"])
+                     for c in leaves_of(final)]
             note("  placed: %s" % " ".join(boxes))
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - diagnostics only
             note("  (no geometry report: %s)" % error)
 
     def handle(name):
@@ -309,28 +291,28 @@ def main():
         finally:
             state["busy"] = False
         while state["pending"]:
-            pending_name = state["pending"].pop()
+            queued = state["pending"].pop()
             state["busy"] = True
             try:
-                reflow(pending_name)
+                reflow(queued)
             except Exception as error:  # noqa: BLE001
                 note("error: %s" % error)
             finally:
                 state["busy"] = False
 
-    _kind, _reply = i3.message(
-        SUBSCRIBE, json.dumps(["window"]))
+    i3.command("workspace %s" % SCRATCH)
+    i3.command("workspace 1")
+    i3.message(SUBSCRIBE, json.dumps(["window"]))
     note("subscribed to window events")
 
-    # Whatever is on screen when the helper starts gets the layout once.
     for name in workspace_names():
         handle(name)
 
     while True:
         try:
-            event_type, payload = i3.event()
-        except (ConnectionError, ValueError):
-            note("connection lost, reconnecting")
+            payload = i3.event()
+        except (ConnectionError, ValueError) as error:
+            note("connection lost (%s), reconnecting" % error)
             time.sleep(2)
             path = find_socket()
             if not path:
@@ -343,15 +325,14 @@ def main():
         if not isinstance(payload, dict):
             continue
         change = payload.get("change")
-        if change in ("new", "close", "fullscreen_mode"):
+        if change in ("new", "close", "fullscreen_mode", "move"):
             # A brand-new window is not in the tree yet and a closed one is
             # already gone, so the focused workspace is the one to rebuild.
-            tree = i3.tree()
-            workspace = focused_workspace(tree)
+            workspace = focused_workspace(i3.tree())
             handle(workspace.get("name") if workspace else None)
-        elif change == "move":
-            for name in workspace_names():
-                handle(name)
+        elif change == "empty":
+            name = (payload.get("container") or {}).get("name")
+            state["order"].pop(name, None)
 
 
 if __name__ == "__main__":

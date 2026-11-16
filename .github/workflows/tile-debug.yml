@@ -1,0 +1,48 @@
+name: tile-debug
+
+# Tests the tiling helper from this checkout inside a booted live session, so
+# the layout logic can be iterated against one ISO instead of one build per fix.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build run whose ISO provides the live environment
+        required: true
+        type: string
+
+jobs:
+  tiling:
+    name: Tiling diagnostics (uefi)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf curl imagemagick
+          ls -l /dev/kvm || echo "no /dev/kvm, using TCG"
+
+      - name: Fetch the ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
+          ls -lh iso/
+
+      - name: Run the tiling diagnostics
+        run: |
+          python3 tools/ci/tile-debug.py iso/SMD-Linux-v1.4-amd64.iso uefi out-tile
+        timeout-minutes: 50
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tile-debug
+          path: out-tile/
+          retention-days: 7
+          if-no-files-found: warn
