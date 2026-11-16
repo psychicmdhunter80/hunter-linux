@@ -28,6 +28,9 @@ jobs:
       - name: Build the build container
         run: docker build --network host -t hunter-build:1.0 .
 
+      - name: Check the sources
+        run: python3 tools/verify-project.py
+
       - name: Build the ISO
         run: |
           # Without pipefail the `| tee build.log` below hides a failed build:
