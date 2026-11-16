@@ -950,7 +950,7 @@ def main():
 
         # Only the test's own windows may be in the layout: the browser from
         # the earlier check is a normal window too and would take a slot.
-        shell.run("pkill -f brave-browser; sleep 2", timeout=60)
+        shell.run("pkill -x brave; sleep 2", timeout=60)
         open_window("smd-one")
         one = tiles()
         check(results, "one window fills the usable desktop",
