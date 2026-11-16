@@ -677,13 +677,22 @@ def main():
             record("INFO: diagnostic run, stopping before the reboot")
             return 0
 
-        # Stop booting from the ISO for the next start.
+        # Stop booting from the ISO for the next start.  The reboot is issued
+        # from the serial shell rather than by finding the wizard's button: once
+        # the installer exits, its window is gone and a screenshot is black, so
+        # clicking there waits forever for a target that cannot appear.
         monitor.hmp("eject cdrom", wait=1)
         page = disp.shot("finished-page")
         point = disp.find(page, "Done") or disp.find(page, "Restart")
         if point:
             disp.click(*point)
-        record("PASS: installation finished, rebooting into the installed system")
+        shell.run("sudo -n systemctl reboot >/tmp/reboot.log 2>&1 &", timeout=60)
+        deadline = time.time() + 180
+        while time.time() < deadline and qemu.poll() is None:
+            time.sleep(3)
+        record("PASS: installation finished, rebooting into the installed system"
+               if qemu.poll() is not None else
+               "FAIL: the live system did not reboot after the installation")
     finally:
         try:
             monitor.hmp("quit", wait=1)

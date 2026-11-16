@@ -60,7 +60,9 @@ jobs:
           "$HOME/venv/bin/python" tools/ci/install-test.py \
             iso/SMD-Linux-v1.4-amd64.iso out "${{ inputs.firmware }}"
         # A normal run takes about 30 minutes; a stall must fail quickly.
-        timeout-minutes: 60
+        # Setup takes about 40 minutes on TCG; the installed-system checks add
+        # about 25. A stall must still fail rather than sit for hours.
+        timeout-minutes: 100
 
       - name: Upload evidence
         if: always()
