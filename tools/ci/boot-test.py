@@ -947,6 +947,11 @@ def main():
                    " ".join("%s(%d,%d %dx%d)" % (n[:8], r["x"], r["y"],
                                                  r["width"], r["height"])
                             for n, r in boxes))
+        # A helper that dies at start-up leaves no log of its own, so run it
+        # once by hand and keep its stderr.
+        probe = shell.run("timeout 4 python3 /usr/local/bin/hunter-autotile 2>&1 "
+                          "| head -8; echo PROBE-DONE", timeout=60)
+        record("INFO: autotile probe: " + " ".join(probe.split())[:400])
         record("INFO: autotile log: " + " | ".join(
             shell.run("tail -6 ~/.cache/smd/autotile.log 2>/dev/null").split())[:300])
         shell.run("pkill -f 'xfce4-terminal --title=smd-'", timeout=60)
