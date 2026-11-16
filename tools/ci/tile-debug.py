@@ -256,6 +256,19 @@ def main():
             text = shell.run("DISPLAY=:0 python3 /tmp/tile-dump.py", timeout=120,
                              lines=200)
             note("--- tree after %s ---\n%s" % (stage, text))
+            state = shell.run(
+                "echo SLOTS=$(DISPLAY=:0 python3 /tmp/tile-dump.py | "
+                "grep -c 'name=smd-slot'); "
+                "echo SCRATCH=$(DISPLAY=:0 python3 /tmp/tile-dump.py | "
+                "grep -c 'name=smd-autotile-scratch')", timeout=120, lines=6)
+            values = dict(line.split("=", 1) for line in state.splitlines()
+                          if "=" in line)
+            slots = values.get("SLOTS", "?").strip() or "?"
+            parked = values.get("SCRATCH", "?").strip() or "?"
+            record("INFO: after %s: %s placeholder(s), %s parked workspace(s)"
+                   % (stage, slots, parked))
+            if slots not in ("0", "?") or parked not in ("0", "?"):
+                record("FAIL: after %s: placeholders or parked windows left behind" % stage)
             log = shell.run("tail -7 ~/.cache/smd/autotile.log 2>/dev/null", timeout=60)
             record("INFO: helper after %s: %s" % (stage, " ".join(log.split())))
             return text

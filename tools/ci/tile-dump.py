@@ -20,26 +20,28 @@ except Exception as error:  # noqa: BLE001
 lines = []
 
 
-def walk(node, depth):
+def walk(node, depth, parent=None):
     if not isinstance(node, dict):
         return
     kind = node.get("type")
     if kind == "root" or kind == "output":
         for child in node.get("nodes", []) or []:
-            walk(child, depth)
+            walk(child, depth, parent)
         return
     if kind == "floating_con":
         return
     rect = node.get("rect") or {}
     marks = ",".join(node.get("marks") or [])
-    print("%s%s id=%s layout=%s name=%s rect=%s,%s+%sx%s%s%s" % (
+    print("%s%s id=%s parent=%s layout=%s name=%s rect=%s,%s+%sx%s%s%s" % (
         "  " * depth, "WIN" if node.get("window") else kind, node.get("id"),
+        node.get("_parent"),
         node.get("layout"), node.get("name"), rect.get("x"), rect.get("y"),
         rect.get("width"), rect.get("height"),
         " marks=%s" % marks if marks else "",
         " window" if node.get("window") else ""))
     for child in node.get("nodes", []) or []:
-        walk(child, depth + 1)
+        child["_parent"] = node.get("id")
+        walk(child, depth + 1, node.get("id"))
 
 
 walk(tree, 0)
