@@ -254,7 +254,64 @@ automatic balanced tiling helper, and the sound-card-id detection in the audio
 helper. The harness now fails the job when any check fails instead of returning
 zero.
 
-`<!-- V14-RESULTS -->`
+### The delivered image
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.4-amd64.iso` |
+| Size | 1,030,750,208 bytes |
+| SHA-256 | `c8600a2a842fa2905091751133ffb20c6d0472c76426a276fec71541d6fe37bd` |
+| Build | Actions run `43936258721`, from commit `d7b7ea2` |
+| Live boot tests | Actions run `43938026727` |
+| Installation test | Actions run `43955517189` |
+
+### Verified on the delivered image
+
+**Line endings inside the image.** The build now mounts the finished ISO and
+reads the packed files out of the squashfs, so a Windows checkout cannot ship a
+CRLF script unnoticed. `etc/skel/.config/i3/config`,
+`usr/local/bin/hunter-applets`, `usr/local/bin/hunter-autotile` and
+`usr/local/sbin/hunter-audio-hw` were all read from inside the image and
+reported `LF ok`; the build fails if any of them contains a CR.
+
+**Live session, BIOS and UEFI, 76 checks passed and none failed on each**
+(runs on the delivered ISO, serial console driving the real session):
+
+* i3 starts with its configuration valid - no "Expected one of these tokens"
+  and no empty `$mod` - the panel is up, never hides and holds the plugins in
+  the order S, spacer, Brave, spacer, the rest;
+* Brave is installed from its own repository, is the default browser, and the
+  managed policy lists exactly h264ify and Auto Quality for YouTube, both
+  `normal_installed`;
+* VLC is present; PipeWire is running with the pinned quantum; the sound helper
+  finds the codec through the sound card id;
+* `LockCommand` is `i3lock -c 1d232b` and lock-on-suspend is on;
+* exactly one tiling helper is running, and the layout is exactly as asked:
+
+| Windows | Result on screen (1280x772 usable) |
+| --- | --- |
+| 1 | `[0,0 1280x772]` - fills the desktop |
+| 2 | `[0,0 640x772] [640,0 640x772]` - equal halves |
+| 3 | `[0,0 640x386] [0,386 640x386] [640,0 640x772]` - third below the first, on the left |
+| close one | back to two equal halves |
+| 4 | `[0,0 640x386] [0,386 640x386] [640,0 640x386] [640,386 640x386]` - even 2x2 |
+
+The same 1/2/3/4 sequence was first driven inside a booted live session with the
+helper fetched from the checkout (run `43918115184`), which recorded container
+ids, parent ids and rectangles for every transition and confirmed that no
+placeholder or parked window survives a reflow. Arrival order decides the slot:
+a window opened after one was closed is the newest arrival and takes the next
+slot. Fullscreen windows, floating windows, the panel, the installer and its
+dialogs are never touched.
+
+### Pending
+
+* The installation test result is recorded in the section that follows once the
+  corrected harness has run; until then no installation result is claimed.
+* Everything that needs Craig's own hardware: tearing, real speaker loudness,
+  Jellyfin audio, VA-API playback drops, top-row keys, Wi-Fi and battery
+  percentage. None of these can be claimed from a virtual machine.
+
 
 **Additions in this build:** the speaker-volume policy (`hunter-volume`), the
 hardware-scoped codec fix (`hunter-audio-hw`), the pinned PipeWire quantum, the
