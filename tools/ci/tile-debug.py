@@ -167,7 +167,7 @@ def start_qemu():
     return subprocess.Popen(args, stdout=log, stderr=log)
 
 
-RECT = re.compile(r"window name=(smd-[\w-]+).*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
+RECT = re.compile(r"name=(smd-[\w-]+) rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
 
 
 def boxes(text):

@@ -245,7 +245,9 @@ def main():
                                              encoding="utf-8")
         json.dump(layout, handle)
         handle.close()
-        i3.command('[workspace="%s"] focus' % name)
+        # The workspace stays focused while its windows are parked, so an
+        # empty workspace is not reaped and append_layout lands here.
+        i3.command('workspace "%s"' % name)
         i3.command("append_layout %s" % handle.name)
         os.unlink(handle.name)
         workspace = find_workspace(i3.tree(), name) or {}
@@ -276,6 +278,10 @@ def main():
 
         note("reflow %s order=%s" % (name, order))
 
+        # Focus first: an emptied workspace that is not focused is reaped, and
+        # the new layout would then be built somewhere else.
+        i3.command('workspace "%s"' % name)
+
         # Park every window: the workspace is then empty, so the layout below
         # becomes its whole structure and old nesting cannot leak in.
         for con_id in order:
@@ -293,8 +299,9 @@ def main():
                            % (con_id, name))
 
         # Placeholders take screen space, so they go once every window landed.
-        for slot in slots:
-            i3.command("[con_id=%d] kill" % slot["id"])
+        # Only containers still carrying a slot mark are killed: a window can
+        # pick a mark up while it is being placed, and must never be closed.
+        i3.command('[con_mark="^smd-slot-"] kill')
 
         try:
             final = find_workspace(i3.tree(), name) or {}
