@@ -26,6 +26,11 @@ import tempfile
 import time
 
 SCRATCH = "smd-autotile-scratch"
+
+# Windows that must never be rearranged: the installer and its dialogs, error
+# boxes and password prompts are transitory and a moving target breaks them.
+DENIED_CLASSES = {"calamares", "yad", "zenity", "xmessage", "gcr-prompter",
+                  "polkit-gnome-authentication-agent-1", "lxpolkit"}
 LOG_PATH = os.path.expanduser("~/.cache/smd/autotile.log")
 
 RUN_COMMAND = 0
@@ -147,6 +152,14 @@ def nodes_of(node, found=None):
 def leaves_of(node):
     return [n for n in nodes_of(node)
             if n.get("window") and not n.get("nodes")]
+
+
+def denied(node):
+    """True for the installer and dialogs: they must never be rearranged."""
+    properties = node.get("window_properties") or {}
+    title = str(properties.get("title") or node.get("name") or "")
+    return (str(properties.get("class", "")).lower() in DENIED_CLASSES
+            or title.lower().startswith(("install smd linux", "calamares")))
 
 
 def find_workspace(tree, name):
@@ -347,6 +360,10 @@ def main():
             return
         state["last"][name] = signature
         state["last_time"][name] = time.time()
+
+        if any(denied(c) for c in leaves_of(workspace or {})):
+            note("leaving %s alone: it holds an installer or dialog window" % name)
+            return
 
         note("reflow %s order=%s" % (name, order))
 

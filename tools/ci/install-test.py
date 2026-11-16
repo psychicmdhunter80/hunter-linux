@@ -447,6 +447,11 @@ def main():
         shell.run("DISPLAY=:0 setsid /usr/local/bin/hunter-install "
                   ">/tmp/calamares.log 2>&1 &", timeout=30)
         record("PASS: the installer was started from the live session")
+        record("INFO: tiling helper processes: " + shell.run(
+            "pgrep -c 'hunter-auto[t]ile' || echo 0", timeout=60).strip())
+        record("INFO: installer window class: " + shell.run(
+            "DISPLAY=:0 xdotool search --class calamares getwindowclassname "
+            "%1 2>/dev/null | head -2", timeout=60).strip())
         time.sleep(25)
         shell.run("pgrep -a calamares | head -3")
         monitor.screenshot("install-launched")
