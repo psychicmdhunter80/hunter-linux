@@ -170,6 +170,19 @@ class Shell:
         note("$ %s\n%s" % (command, text))
         return text
 
+    def xrun(self, command, timeout=180, lines=60):
+        """Run a command with the live session's display and bus.
+
+        Every command runs in its own subshell, so an `export` from an earlier
+        command is gone: without these variables xdotool cannot reach the
+        display, notify-send cannot reach the notification daemon and mpv picks
+        a console video output.  They are therefore repeated per command.
+        """
+        return self.run(
+            "export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000 "
+            "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus; " + command,
+            timeout=timeout, lines=lines)
+
     def wait_for_x(self, timeout=600):
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -246,11 +259,8 @@ def main():
         if not shell.login() or not shell.wait_for_x():
             return 1
         # The serial shell is not the desktop session: notifications and
-        # xdotool both need that session's display and bus, and without them
-        # notify-send would fail silently and the feedback could not be seen.
-        shell.run("export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000 "
-                  "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus; "
-                  "echo ENV=ready", timeout=60)
+        # xdotool both need that session's display and bus (see Shell.xrun).
+        shell.xrun("echo ENV=ready", timeout=60)
 
         # ---------------------------------------------------------- fresh user
         fresh = shell.run(
@@ -319,7 +329,7 @@ def main():
         record("INFO: receiving process %s" % pid)
 
         # ------------------------------------------------------ Alt+Z starts it
-        shell.run("xdotool key --clearmodifiers alt+z; sleep 3", timeout=90)
+        shell.xrun("xdotool key --clearmodifiers alt+z; sleep 3", timeout=90)
         # The notification is short-lived, so the screenshot is taken while it
         # is on screen rather than after the state has settled.
         shot = monitor.screenshot("voice-listening")
@@ -361,14 +371,13 @@ def main():
         # stopped state in /proc proves the key went to the program and not to
         # i3 - while dictation is listening, which is when a binding would
         # most plausibly have been in the way.
-        ctrl = shell.run(
-            "pid=$(pgrep -n -x cat); DISPLAY=:0 xdotool key --clearmodifiers ctrl+z; "
-            "sleep 2; ps -o stat= -p \\\"$pid\\\" | tr -d ' '; "
-            "kill -CONT \\\"$pid\\\" 2>/dev/null; echo resumed", timeout=120)
-        state = ctrl.splitlines()[0].strip() if ctrl.strip() else ""
+        ctrl = shell.xrun(
+            "xdotool key --clearmodifiers ctrl+z; sleep 2; "
+            "ps -eo stat=,comm= | grep -E '^T' | grep -qw cat && echo STOPPED; "
+            "pkill -CONT -x cat 2>/dev/null; echo resumed", timeout=120)
         record("INFO: process state after Ctrl+Z: %s" % ctrl.strip()[:80])
         check("Ctrl+Z still reaches the application while dictating",
-              "T" in state, state)
+              "STOPPED" in ctrl, ctrl.strip()[:80])
 
         # Ctrl+A and Ctrl+X are characters cat stores, so the file proves they
         # arrived rather than being swallowed by a binding.
@@ -383,7 +392,7 @@ def main():
               " ".join(raw.split())[-100:])
 
         # ------------------------------------------------------ Alt+Z stops it
-        shell.run("xdotool key --clearmodifiers alt+z; sleep 3", timeout=90)
+        shell.xrun("xdotool key --clearmodifiers alt+z; sleep 3", timeout=90)
         shot = monitor.screenshot("voice-stopped")
         stopped = shell.run("hunter-dictation status", timeout=60).strip()
         procs = shell.run("pgrep -c -f 'nerd-dictation be[g]in' || echo 0",
@@ -400,20 +409,20 @@ def main():
               " ".join(text.split())[:120])
 
         # ------------------------------------------------- no duplicate start
-        shell.run("DISPLAY=:0 hunter-dictation start; sleep 6; "
-                  "DISPLAY=:0 hunter-dictation start; sleep 2", timeout=120)
+        shell.xrun("hunter-dictation start; sleep 6; "
+                   "hunter-dictation start; sleep 2", timeout=120)
         procs = shell.run("pgrep -c -f 'nerd-dictation be[g]in' || echo 0",
                           timeout=60).strip()
         check("starting twice still leaves one recogniser",
               procs.splitlines()[-1:] == ["1"], procs)
-        shell.run("DISPLAY=:0 xdotool key alt+z; sleep 3; "
-                  "DISPLAY=:0 xdotool key alt+z; sleep 6; "
-                  "DISPLAY=:0 xdotool key alt+z; sleep 3", timeout=120)
+        shell.xrun("xdotool key alt+z; sleep 3; "
+                   "xdotool key alt+z; sleep 6; "
+                   "xdotool key alt+z; sleep 3", timeout=120)
         procs = shell.run("pgrep -c -f 'nerd-dictation be[g]in' || echo 0",
                           timeout=60).strip()
         check("repeated Alt+Z presses never stack recognisers",
               procs.splitlines()[-1:] == ["1"], procs)
-        shell.run("hunter-dictation stop; sleep 2", timeout=90)
+        shell.xrun("hunter-dictation stop; sleep 2", timeout=90)
 
         # ------------------------------------------------------ Jellyfin client
         entry = shell.run(
@@ -427,23 +436,26 @@ def main():
         check("the menu entry points at an installed program",
               "EXEC=ok" in (echunks[1] if len(echunks) > 1 else ""))
 
-        shell.run("DISPLAY=:0 setsid /opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim "
-                  ">/tmp/jellyfin.log 2>&1 & sleep 25", timeout=120)
+        shell.xrun("setsid /opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim "
+                   ">/tmp/jellyfin.log 2>&1 & sleep 25", timeout=120)
         alive = shell.run("pgrep -c -f 'jellyfin-mpv-shim' || echo 0",
                           timeout=60).strip()
         window = shell.run("DISPLAY=:0 xdotool search --name -i jellyfin "
                            "2>/dev/null | wc -l", timeout=60).strip()
-        log = shell.run("grep -iE 'error|traceback|libmpv|cannot' /tmp/jellyfin.log "
-                        "| head -5; echo ---; tail -3 /tmp/jellyfin.log",
-                        timeout=60)
+        # The word "libmpv" appears in a healthy log ("Using libmpv playback
+        # backend"), so only real failures are looked for.
+        log = shell.run(
+            "grep -iE 'modulenotfound|cannot open shared object|no such file|traceback' "
+            "/tmp/jellyfin.log | head -5; echo ---; tail -3 /tmp/jellyfin.log",
+            timeout=60)
         record("INFO: Jellyfin window count: %s" % window)
         record("INFO: Jellyfin log: %s" % " | ".join(log.split())[:220])
         check("the Jellyfin client starts", alive.splitlines()[-1:] != ["0"], alive)
         check("the Jellyfin client opens a window",
               window.splitlines()[-1:] != ["0"], window)
+        failures = (log.split("---")[0] if "---" in log else "").lower()
         check("the Jellyfin client starts without a missing library",
-              "libmpv" not in log.lower() and "ModuleNotFound" not in log,
-              " | ".join(log.split())[:140])
+              not failures.strip(), " | ".join(failures.split())[:140])
         monitor.screenshot("jellyfin-flat")
         shell.run("pkill -f 'jellyfin-mpv-shim'; sleep 2", timeout=60)
 
