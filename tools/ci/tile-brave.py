@@ -472,22 +472,26 @@ def main():
         opened = shell.run(
             "DISPLAY=:0 setsid zenity --info --title='SMD dialog test' "
             "--text='SMD dialog test' --no-wrap >/tmp/dialog.log 2>&1 & "
-            "sleep 5; "
-            "DISPLAY=:0 xdotool search --class zenity 2>/dev/null | head -1; "
+            "sleep 6; "
+            # GTK also creates small helper windows of the same class, so the
+            # dialog is found by its title and only when it is on screen - the
+            # first version of this check measured a 1x1 helper and called it
+            # a pass.
+            "DISPLAY=:0 xdotool search --onlyvisible --name 'SMD dialog test' "
+            "2>/dev/null | head -1; "
             "echo ---; tail -2 /tmp/dialog.log 2>/dev/null",
             timeout=120)
         ochunks = opened.split("---")
-        dialog_id = ochunks[0].strip().splitlines()[-1:] or [""]
-        dialog_id = dialog_id[0].strip()
+        dialog_id = (ochunks[0].strip().splitlines() or [""])[-1].strip()
         record("INFO: dialog window id: %s (%s)"
                % (dialog_id or "none",
                   " | ".join((ochunks[1] if len(ochunks) > 1 else "").split())[:120]))
+        kind = ""
+        geometry = ""
         if dialog_id.isdigit():
             kind = shell.run("DISPLAY=:0 xprop -id %s _NET_WM_WINDOW_TYPE"
                              % dialog_id, timeout=60)
-            record("INFO: dialog window type: %s" % kind.strip()[:120])
-        geometry = ""
-        if dialog_id.isdigit():
+            record("INFO: dialog window type: %s" % kind.strip()[:140])
             geometry = shell.run("DISPLAY=:0 xwininfo -id %s "
                                  "| grep -E 'Width:|Height:|Absolute upper-left'"
                                  % dialog_id, timeout=60)
@@ -496,10 +500,14 @@ def main():
         dims = dict(re.findall(r"(Width|Height):\s*(\d+)", geometry))
         dialog_w = int(dims.get("Width", 0))
         dialog_h = int(dims.get("Height", 0))
-        ok("an ordinary dialog appears", bool(dialog_id.isdigit()),
-           "xmessage window %s" % (dialog_id or "not found"))
-        ok("the dialog stays floating at its own size",
-           dialog_w > 0 and dialog_w < work[2] // 2 and dialog_h < work[3] // 2,
+        # A dialog is a real window with a body, not GTK's invisible helper.
+        real = dialog_id.isdigit() and dialog_w >= 100 and dialog_h >= 40
+        ok("an ordinary dialog appears", real,
+           "zenity dialog %s %dx%d" % (dialog_id or "not found", dialog_w, dialog_h))
+        ok("the dialog declares itself as a dialog",
+           "DIALOG" in kind.upper(), kind.strip()[:100])
+        ok("the dialog keeps its own size instead of a tile",
+           real and dialog_w < work[2] // 2 and dialog_h < work[3] // 2,
            "%dx%d inside %dx%d" % (dialog_w, dialog_h, work[2], work[3]))
         dialog_tree = shell.run("DISPLAY=:0 python3 /tmp/tile-dump.py",
                                 timeout=120, lines=200)
