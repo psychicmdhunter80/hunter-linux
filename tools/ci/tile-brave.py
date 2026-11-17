@@ -172,7 +172,10 @@ def start_qemu():
     return subprocess.Popen(args, stdout=log, stderr=log)
 
 
-BOX = re.compile(r"WIN id=\d+ .*?xid=(\d+) .*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
+BOX = re.compile(r"WIN id=\d+ .*?xid=(\d+) class=(\S+) .*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
+# The panel owns a real window too; it is part of the furniture, not a window
+# the layout has to arrange.
+FURNITURE = {"xfce4-panel", "Brave-browser"}.difference({"Brave-browser"})
 
 
 def layouts(text):
@@ -180,9 +183,9 @@ def layouts(text):
     found = {}
     for match in BOX.finditer(text):
         xid = int(match.group(1))
-        if not xid:
+        if not xid or match.group(2) in FURNITURE:
             continue
-        found[xid] = tuple(int(match.group(i)) for i in range(2, 6))
+        found[xid] = tuple(int(match.group(i)) for i in range(3, 7))
     return found
 
 
