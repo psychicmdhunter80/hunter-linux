@@ -1,4 +1,4 @@
-# SMD Linux 1.4
+# SMD Linux 1.4.1
 
 A small, lightweight Debian 13 desktop distribution for low-power machines:
 **Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
@@ -18,24 +18,28 @@ modifier for everything else. Details, root causes and what is still unverified
 are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.4-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.4.1-amd64.iso in this directory
 ```
 
 ---
 
 ## Release status
 
-**1.4** is the current release; 1.3 and 1.2 stay published as rollback (tags
-`v1.3`, `v1.2`).
+**1.4.1** is the current release; 1.4, 1.3 and 1.2 stay published as rollback
+(tags `v1.4`, `v1.3`, `v1.2`). 1.4.1 repairs the tiling regression and the stale
+installer version label reported on the Chromebook; what changed is in
+`RELEASE-NOTES-1.4.1.md`.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.4-amd64.iso` (983 MiB) |
-| SHA-256 | `c8600a2a842fa2905091751133ffb20c6d0472c76426a276fec71541d6fe37bd` |
-| Build | run `43936258721`, commit `d7b7ea2` |
-| Live boot tests | run `43938026727` - 76 checks passed, none failed, BIOS and UEFI |
-| Installation test | run `43967398035` - installs, boots the disk without the ISO, see below |
-| Source | `SMD-Linux-Build-v1.4.zip`, checksums in `SHA256SUMS` |
+| Image | `SMD-Linux-v1.4.1-amd64.iso` (983 MiB) |
+| SHA-256 | `e510e8f9d5fff2a09fca42f6f66480085f1ab6ca53ac13356983e16470f921c9` |
+| Build | run `44007954254` |
+| Live boot tests | run `44009147957` - 76 checks passed, none failed, BIOS and UEFI |
+| Installer version label | run `44010203302` - 12 checks passed, screenshot included |
+| Brave tiling | run `44009163402` - 20 checks passed with the helper from the image |
+| Installation test | INSTALL_ROW |
+| Source | `SMD-Linux-Build-v1.4.1.zip`, checksums in `SHA256SUMS` |
 
 Verified on this image: line endings inside the squashfs, i3, panel and
 applets, PipeWire and the audio helper, Brave as the default browser with its

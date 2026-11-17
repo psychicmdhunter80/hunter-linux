@@ -245,6 +245,131 @@ run assertions.
 
 ## 6d. Version 1.3 - dark theme, installer entry, resources
 
+## SMD Linux 1.4.1
+
+Two faults reported on the delivered 1.4 image: Brave windows that did not stay
+put, and an installer that still called itself 1.3.
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.4.1-amd64.iso` |
+| Size | 1,030,750,208 bytes |
+| SHA-256 | `e510e8f9d5fff2a09fca42f6f66480085f1ab6ca53ac13356983e16470f921c9` |
+| Build | Actions run `44007954254` |
+| Live boot tests | Actions run `44009147957` |
+| Brave tiling (helper from the image) | Actions run `44009163402` |
+| Installer version label | Actions run `44010203302` |
+| Installation test | INSTALL_ROW |
+
+### The tiling regression: what it actually was
+
+The delivered helper decided whether an event mattered by comparing a window
+name with the string `smd-slot`, while the placeholder windows it appends are
+called `smd-slot-0`, `smd-slot-1` and so on. Its own placeholders therefore
+looked like newly opened windows, every rebuild started another rebuild, and the
+three-second "same as last time" guard only ever delayed the loop. Measured on
+the 1.4 image with four Brave windows: **28 reflows in the first minute**, and
+the layout still changing after 60 seconds of not touching anything. The helper
+log shows the mechanism directly:
+
+```
+01:19:53 event new: container 94580004473952 never appeared
+01:19:53 event new on workspace 1
+01:19:55 event new: container 94580004569072 never appeared
+01:19:55 reflow 1 order=[94580004433216, 94580004439728, 94580004460720, 94580004463888]
+```
+
+Those two "containers that never appeared" are the placeholders the previous
+reflow had just created. The windows Craig saw jumping were the loop rebuilding
+the workspace over and over; the stacked pair of windows was a workspace caught
+between two of those rebuilds, for example after closing windows had left a
+column behind, which the two-window path never re-split.
+
+The fix recognises placeholders by their name prefix, rebuilds a workspace only
+when its set of windows changes, gives one and two windows the same rebuild as
+three and four, checks the resulting rectangles against the expected layout with
+one retry, and logs rather than dies on an unexpected event.
+
+### Tiling, measured with real Brave windows on this image
+
+Harness `tools/ci/tile-brave.py` with `helper=image`, so the helper under test is
+the one inside the ISO. 20 checks passed, none failed (run `44009163402`):
+
+| Windows | Rectangles from the live session (1280x772 usable) | Idle | Reflows |
+| --- | --- | --- | --- |
+| 1 | `[0,0 1280x772]` | - | 1 |
+| 2 | `[0,0 640x772] [640,0 640x772]` | 30 s, 1 layout | 2 |
+| 3 | `[0,0 640x386] [640,0 640x772] [0,386 640x386]` | 60 s, 1 layout | 3 |
+| 4 | `[0,0 640x386] [640,0 640x386] [0,386 640x386] [640,386 640x386]` | 60 s, 1 layout | 4 |
+
+* clicking, typing and changing focus changed no layout;
+* a window taken fullscreen was left alone, and leaving fullscreen restored the
+  2x2 grid;
+* closing the third window re-arranged the remaining three, and reopening one
+  settled back into the 2x2 grid, each with 20-30 seconds of idle sampling
+  afterwards showing one layout only;
+* one helper process for the whole session, and 7 reflows for the whole session
+  against 28 in the first minute before the fix.
+
+**The dialog check did not test a dialog.** The harness opens one with
+`xmessage`, which is not installed in the image, so it recorded "dialog present:
+False" and the grid was unchanged only because nothing appeared. Calamares is
+the dialog that does appear in this image, and it is covered by the installer
+label run below: the helper leaves it alone. A plain dialog still needs
+Craig's machine or a package the image does not carry.
+
+### The version label
+
+`etc/calamares/branding/hunter/branding.desc` still said 1.3: the branding had
+not been touched since 1.3, so the installer's window title, welcome text and
+about box all used 1.3. The same drift was in `/etc/issue` (1.3),
+`/etc/os-release`, `/etc/lsb-release`, the shortcuts page (1.3) and the GRUB
+menu title (1.0). The installer artwork had it worse: the sidebar header, the
+welcome picture and the desktop wallpaper are drawn by `tools/make-assets.py`,
+which had "VERSION 1.4" and "1.0" typed into those strings, so a 1.4.1 image
+would have shown "VERSION 1.4" in its sidebar and "1.0" on its wallpaper.
+
+All of them now carry the release version, and `tools/verify-project.py` fails
+if any of the labels, or the artwork generator, disagrees with the version
+`auto/config` builds. The check was verified by setting the Calamares product
+name back to 1.3, watching it fail, and setting it right again.
+
+Harness `tools/ci/installer-label.py` boots this ISO, reads the labels from the
+running live system, starts the real installer from the desktop and photographs
+what it puts on screen. 12 checks passed, none failed (run `44010203302`):
+
+```
+PASS: Calamares productName is 'SMD Linux 1.4.1' (expected 1.4.1)
+PASS: Calamares version is '1.4.1' (expected 1.4.1)
+PASS: /etc/os-release says 'SMD Linux 1.4.1|1.4.1'
+PASS: /etc/issue says 'SMD Linux 1.4.1 \n \l'
+PASS: the installer window is called 'SMD Linux 1.4.1 Installer'
+PASS: the installer on screen shows 1.4.1
+PASS: the installer on screen shows no 1.3
+```
+
+The screenshot from that run is delivered as `installer-1.4.1.png`: the title
+bar reads "SMD Linux 1.4.1 Installer", the sidebar header reads "SMD LINUX /
+VERSION 1.4.1", and the page reads "Welcome to the SMD Linux 1.4.1 installer".
+
+### Live session, BIOS and UEFI
+
+76 checks passed and none failed on each firmware (run `44009147957`), the same
+set as 1.4: i3 configuration, panel and plugin order, Brave as default browser
+with its managed extensions, VLC, PipeWire, lock settings, one tiling helper,
+and the 1/2/3/4 layout sequence.
+
+### What this build did not verify
+
+* the installed desktop after login, for the reason given under 1.4: the
+  installed system has no console this harness can reach;
+* a plain dialog window or a floating window left alone by the helper;
+* everything that needs Craig's own machine: tearing, speaker loudness, VA-API
+  drops, top-row keys, Wi-Fi association, battery, and the tiling behaviour on a
+  1366x768 screen at 2 GB of RAM.
+
+---
+
 ## SMD Linux 1.4
 
 **Additions in this build:** Brave from its signed repository with h264ify and

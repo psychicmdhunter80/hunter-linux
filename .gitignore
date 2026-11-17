@@ -31,3 +31,10 @@ boot-test-uefi/
 boot-test-bios/
 tile-debug/
 iso14/
+
+# test artefacts downloaded from CI
+lab14/
+b14/
+t14/
+iso14/
+out-*/

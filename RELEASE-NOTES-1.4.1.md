@@ -61,8 +61,9 @@ rectangles and for what still needs Craig's own machine.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.4.1-amd64.iso` |
-| Build | run `BUILD_RUN`, commit `COMMIT` |
-| Live boot | LIVE_RESULT |
-| Brave tiling | TILE_RESULT |
+| Image | `SMD-Linux-v1.4.1-amd64.iso` (1,030,750,208 bytes) |
+| SHA-256 | `e510e8f9d5fff2a09fca42f6f66480085f1ab6ca53ac13356983e16470f921c9` |
+| Build | run `44007954254` |
+| Live boot | run `44009147957` - 76 passed, 0 failed, BIOS and UEFI |
+| Brave tiling | run `44009163402` - 20 passed, helper taken from the image |
 | Installation | INSTALL_RESULT |
