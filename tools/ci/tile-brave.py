@@ -243,17 +243,39 @@ def main():
             out = shell.run("pgrep -fc 'hunter-auto[t]ile' || echo 0", timeout=60)
             return out.strip().splitlines()[-1] if out.strip() else "?"
 
+        def brave_windows():
+            out = shell.run("DISPLAY=:0 xdotool search --class Brave-browser "
+                            "2>/dev/null | sort -n | tr '\\n' ' '", timeout=60)
+            return [w for w in out.replace("\n", " ").split() if w.isdigit()]
+
         def open_brave(name, first=False):
+            """Start Brave, wait for its new window and give it a known title.
+
+            Brave's windows carry the page title, which changes as it loads, so
+            the harness names them itself: the tiling tests need a stable way
+            to say which window they mean.
+            """
+            before = set(brave_windows())
             flag = "" if first else "--new-window "
             shell.run("DISPLAY=:0 setsid brave %sabout:blank "
-                      ">/dev/null 2>&1 & sleep 12" % flag, timeout=180)
-            found = shell.run(
-                "DISPLAY=:0 xdotool search --class 'brave' 2>/dev/null | tail -1",
-                timeout=60).strip().splitlines()
-            win = found[-1].strip() if found else ""
+                      ">/dev/null 2>&1 & echo STARTED" % flag, timeout=120)
+            win = ""
+            for _attempt in range(20):
+                time.sleep(3)
+                new = brave_windows()
+                fresh = [w for w in new if w not in before]
+                if fresh:
+                    win = fresh[-1]
+                    break
+            note("brave windows now: %s" % " ".join(brave_windows()))
+            record("INFO: %s: brave processes=%s new window=%s"
+                   % (name, shell.run("pgrep -c -x brave || echo 0", timeout=60).strip(),
+                      win or "none"))
             if win:
-                shell.run("DISPLAY=:0 xdotool set_window --name %s %s"
+                shell.run("DISPLAY=:0 xdotool set_window --name %s %s; sleep 3"
                           % (name, win), timeout=60)
+            else:
+                record("FAIL: no Brave window appeared for %s" % name)
             return win
 
         def stage(label, idle=0):
