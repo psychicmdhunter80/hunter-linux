@@ -1,0 +1,54 @@
+name: tile-brave
+
+# Reproduces the tiling behaviour with real Brave windows against one ISO and
+# the helper from this checkout, so a fix can be compared with the delivered
+# helper on the same image.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build run whose ISO provides the live environment
+        required: true
+        type: string
+      mode:
+        description: Firmware
+        required: false
+        default: uefi
+        type: string
+
+jobs:
+  tiling:
+    name: Brave tiling (live session)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf curl imagemagick
+          ls -l /dev/kvm || echo "no /dev/kvm, using TCG"
+
+      - name: Fetch the ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
+          ls -lh iso/
+
+      - name: Run the Brave tiling reproduction
+        run: |
+          python3 tools/ci/tile-brave.py iso/SMD-Linux-v1.4-amd64.iso out-brave "${{ inputs.mode }}"
+        timeout-minutes: 70
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tile-brave
+          path: out-brave/
+          retention-days: 14
+          if-no-files-found: warn
