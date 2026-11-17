@@ -172,19 +172,23 @@ def start_qemu():
     return subprocess.Popen(args, stdout=log, stderr=log)
 
 
-BOX = re.compile(r"WIN id=(\d+) .*?name=(smd-[\w-]+) .*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
+BOX = re.compile(r"WIN id=\d+ .*?xid=(\d+) .*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
 
 
 def layouts(text):
-    """The window rectangles from a tree dump, as a comparable snapshot."""
+    """The window rectangles from a tree dump, keyed by X id."""
     found = {}
     for match in BOX.finditer(text):
-        found[match.group(2)] = tuple(int(match.group(i)) for i in range(3, 7))
+        xid = int(match.group(1))
+        if not xid:
+            continue
+        found[xid] = tuple(int(match.group(i)) for i in range(2, 6))
     return found
 
 
-def describe(found):
-    return " ".join("%s[%d,%d %dx%d]" % (k, v[0], v[1], v[2], v[3])
+def describe(found, labels=None):
+    labels = labels or {}
+    return " ".join("%s[%d,%d %dx%d]" % (labels.get(k, k), v[0], v[1], v[2], v[3])
                     for k, v in sorted(found.items()))
 
 
@@ -243,6 +247,11 @@ def main():
             out = shell.run("pgrep -fc 'hunter-auto[t]ile' || echo 0", timeout=60)
             return out.strip().splitlines()[-1] if out.strip() else "?"
 
+        names = {}
+
+        def labels_for(found):
+            return {xid: label for label, xid in names.items() if xid in found}
+
         def brave_windows():
             out = shell.run("DISPLAY=:0 xdotool search --class Brave-browser "
                             "2>/dev/null | sort -n | tr '\\n' ' '", timeout=60)
@@ -276,8 +285,13 @@ def main():
                    % (name, shell.run("pgrep -c -x brave || echo 0", timeout=60).strip(),
                       win or "none"))
             if win:
-                shell.run("DISPLAY=:0 xdotool set_window --name %s %s; sleep 3"
-                          % (name, win), timeout=60)
+                names[name] = int(win)
+                # A readable title is set on both properties so screenshots and
+                # logs stay legible; identification does not depend on it.
+                shell.run("DISPLAY=:0 xdotool set_window --name %s %s; "
+                          "DISPLAY=:0 xprop -id %s -f _NET_WM_NAME 8u -set "
+                          "_NET_WM_NAME %s >/dev/null 2>&1; sleep 3"
+                          % (name, win, win, name), timeout=60)
             else:
                 record("FAIL: no Brave window appeared for %s" % name)
                 log = shell.run("tail -6 /tmp/brave.log 2>/dev/null; "
@@ -288,7 +302,7 @@ def main():
         def stage(label, idle=0):
             text = tree()
             found = layouts(text)
-            record("INFO: %s: %s" % (label, describe(found)))
+            record("INFO: %s: %s" % (label, describe(found, labels_for(found))))
             record("INFO: %s: helpers=%s reflows=%s" % (label, helpers(), reflows()))
             if idle:
                 seen = set()
@@ -314,39 +328,43 @@ def main():
         one, _ = stage("one window")
         ok("one window fills the desktop",
            len(one) == 1 and list(one.values())[0][2] >= 1200,
-           describe(one))
+           describe(one, labels_for(one)))
 
         open_brave("smd-two")
         two, _ = stage("two windows", idle=15)
-        halves = (len(two) == 2
-                  and abs(two["smd-one"][2] - two["smd-two"][2]) <= 4
-                  and two["smd-one"][1] == two["smd-two"][1]
-                  and two["smd-one"][0] != two["smd-two"][0])
-        ok("two windows are equal left/right halves", halves, describe(two))
+        a, b = names.get("smd-one"), names.get("smd-two")
+        halves = (len(two) == 2 and a in two and b in two
+                  and abs(two[a][2] - two[b][2]) <= 4
+                  and two[a][1] == two[b][1]
+                  and two[a][0] != two[b][0])
+        ok("two windows are equal left/right halves", halves,
+           describe(two, labels_for(two)))
 
         open_brave("smd-three")
         three, stable3 = stage("three windows", idle=30)
+        w1, w2, w3 = names.get("smd-one"), names.get("smd-two"), names.get(
+            "smd-three")
         three_ok = False
-        if len(three) == 3:
-            a, b, c = three["smd-one"], three["smd-two"], three["smd-three"]
+        if len(three) == 3 and all(w in three for w in (w1, w2, w3)):
+            a, b, c = three[w1], three[w2], three[w3]
             three_ok = (c[0] == a[0] and c[1] > a[1]
                         and abs(c[2] - a[2]) <= 4
                         and b[0] > a[0] and abs(b[2] - a[2]) <= 4)
         ok("three windows: first top-left, third bottom-left, second full right",
-           three_ok, describe(three))
+           three_ok, describe(three, labels_for(three)))
         ok("three windows settle and stay put", stable3)
 
         open_brave("smd-four")
         four, stable4 = stage("four windows", idle=30)
+        w4 = names.get("smd-four")
         four_ok = False
-        if len(four) == 4:
-            a, b, c, d = (four["smd-one"], four["smd-two"], four["smd-three"],
-                          four["smd-four"])
+        if len(four) == 4 and all(w in four for w in (w1, w2, w3, w4)):
+            a, b, c, d = four[w1], four[w2], four[w3], four[w4]
             four_ok = (c[0] == a[0] and d[0] == b[0]
                        and c[1] > a[1] and d[1] > b[1]
                        and abs(a[2] - b[2]) <= 4 and abs(c[2] - d[2]) <= 4)
         ok("four windows form an even 2x2 with the fourth bottom-right",
-           four_ok, describe(four))
+           four_ok, describe(four, labels_for(four)))
         ok("four windows settle and stay put", stable4)
 
         # Focus, clicking and typing must not rearrange anything.
@@ -354,14 +372,15 @@ def main():
         shell.run("DISPLAY=:0 xdotool mousemove 200 200 click 1; sleep 1; "
                   "xdotool type 'hello'; xdotool key ctrl+l; xdotool type 'about:blank'; "
                   "xdotool key Return; sleep 3", timeout=120)
-        shell.run("DISPLAY=:0 i3-msg '[title=\"^smd-one$\"] focus' >/dev/null; "
-                  "sleep 3", timeout=60)
+        shell.run("DISPLAY=:0 i3-msg '[id=%s] focus' >/dev/null; sleep 3"
+                  % names.get("smd-one"), timeout=60)
         after = json.dumps(layouts(tree()), sort_keys=True)
         ok("clicking, typing and focusing change no layout", before == after)
 
         # Fullscreen has to be left alone, and coming back must restore the grid.
-        shell.run("DISPLAY=:0 i3-msg '[title=\"^smd-two$\"] focus'; sleep 1; "
-                  "DISPLAY=:0 xdotool key F11; sleep 4", timeout=120)
+        shell.run("DISPLAY=:0 i3-msg '[id=%s] focus'; sleep 1; "
+                  "DISPLAY=:0 xdotool key F11; sleep 4"
+                  % names.get("smd-two"), timeout=120)
         full = layouts(tree())
         record("INFO: fullscreen: %s" % describe(full))
         shell.run("DISPLAY=:0 xdotool key F11; sleep 4", timeout=120)
@@ -381,8 +400,8 @@ def main():
            json.dumps(after_dialog, sort_keys=True) == after, describe(after_dialog))
 
         # Close and reopen.
-        shell.run("DISPLAY=:0 xdotool search --name '^smd-three$' windowclose; "
-                  "sleep 6", timeout=90)
+        shell.run("DISPLAY=:0 xdotool windowclose %s; sleep 6"
+                  % names.get("smd-three"), timeout=90)
         closed, stable_closed = stage("after closing the third", idle=10)
         ok("closing the third leaves three windows arranged again",
            len(closed) == 3 and stable_closed, describe(closed))
@@ -398,8 +417,9 @@ def main():
                          timeout=60)
         record("INFO: helper log tail: " + " | ".join(tail.split()))
         ok("exactly one tiling helper is running", helpers() == "1", helpers())
-        shell.run("DISPLAY=:0 xdotool search --name '^smd-' windowclose; "
-                  "pkill -x brave; pkill -f /tmp/hunter-autotile", timeout=60)
+        shell.run("DISPLAY=:0 xdotool windowclose %s; "
+                  "pkill -x brave; pkill -f /tmp/hunter-autotile"
+                  % " ".join(str(w) for w in names.values()), timeout=60)
         return 0 if passed else 1
     finally:
         server.terminate()
