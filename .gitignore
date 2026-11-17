@@ -38,3 +38,6 @@ b14/
 t14/
 iso14/
 out-*/
+
+# scratch downloads, never part of the project
+.tmp/

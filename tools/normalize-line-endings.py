@@ -16,7 +16,8 @@ SKIP = {".git", "art", "dist", "iso13", "iso13f", "k11", "m12", "p12", "q12",
 def main():
     changed = []
     for path in ROOT.rglob("*"):
-        if not path.is_file() or path.suffix in {".png", ".zip", ".iso", ".pyc"}:
+        if not path.is_file() or path.suffix in {".png", ".zip", ".iso", ".pyc",
+                                                ".wav"}:
             continue
         relative = path.relative_to(ROOT)
         if any(part in SKIP for part in relative.parts):

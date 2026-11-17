@@ -784,8 +784,10 @@ def main():
         check(results, "NetworkManager is active", "active" in nchunks[2])
 
         # --- the promised software set, and nothing else ---------------------
+        # mpv is no longer one of the removed applications: 1.5 installs it as
+        # the player the Jellyfin client drives, and checks it below.
         scope = shell.run(
-            "for p in falkon mpv ristretto xarchiver; do "
+            "for p in falkon ristretto xarchiver; do "
             "command -v $p >/dev/null && echo present:$p || echo gone:$p; done; echo ---; "
             "command -v brave-browser >/dev/null && echo browser-present; "
             "command -v vlc >/dev/null && echo vlc-present; "
@@ -793,9 +795,47 @@ def main():
             timeout=60)
         schunks = scope.split("---")
         check(results, "the trimmed application set is installed",
-              "browser-present" in schunks[1] and "panel-present" in schunks[1])
+              "browser-present" in schunks[1] and "panel-present" in schunks[1]
+              and "vlc-present" in schunks[1])
         check(results, "the removed applications are really gone",
               "present:" not in schunks[0])
+
+        # --- the two clients added in 1.5 ------------------------------------
+        clients = shell.run(
+            "command -v mpv >/dev/null && echo mpv-present; "
+            "test -x /opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim "
+            "&& echo jellyfin-exe; "
+            "test -f /usr/share/applications/jellyfin-mpv-shim.desktop "
+            "&& echo jellyfin-menu; "
+            "/opt/jellyfin-mpv-shim/bin/python -c 'import jellyfin_mpv_shim' "
+            "2>/dev/null && echo jellyfin-import; "
+            "echo ---; "
+            "test -x /usr/local/bin/hunter-dictation && echo voice-toggle; "
+            "test -f /usr/share/applications/smd-dictation.desktop "
+            "&& echo voice-menu; "
+            "/opt/smd-voice/bin/python -c 'import vosk' 2>/dev/null "
+            "&& echo vosk-import; "
+            "test -d /usr/share/vosk/vosk-model-small-en-us-0.15 "
+            "&& echo model-present; "
+            "echo ---; grep -c 'bindsym \\$mod+z exec.*hunter-dictation' "
+            "~/.config/i3/config; "
+            "echo ---; ls /etc/xdg/autostart 2>/dev/null | wc -l",
+            timeout=180)
+        cchunks = clients.split("---")
+        for label, marker in (
+                ("mpv is installed for the Jellyfin client", "mpv-present"),
+                ("the Jellyfin client is installed", "jellyfin-exe"),
+                ("the Jellyfin client has a menu entry", "jellyfin-menu"),
+                ("the Jellyfin client imports", "jellyfin-import"),
+                ("Voice Typing is installed", "voice-toggle"),
+                ("Voice Typing has a menu entry", "voice-menu"),
+                ("the speech engine imports", "vosk-import"),
+                ("the offline English speech model ships", "model-present")):
+            check(results, label, marker in cchunks[0])
+        check(results, "Alt+Z is bound to Voice Typing in the session",
+              cchunks[2].strip().splitlines()[:1] == ["1"])
+        record("INFO: autostart entries: %s"
+               % (cchunks[3].strip() if len(cchunks) > 3 else "?")[:80])
 
         # --- launcher on the Search key --------------------------------------
         shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)

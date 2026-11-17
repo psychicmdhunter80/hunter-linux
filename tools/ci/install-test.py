@@ -100,6 +100,18 @@ class Shell:
         password = password or PASSWORD
         matched, _ = self.chan.expect(r"login:", timeout=timeout)
         if not matched:
+            # QEMU keeps serial output only for a connected client, so a prompt
+            # printed while this script was still taking screenshots is gone.
+            # A bare Enter makes the getty print a fresh one: that tells a
+            # missing console apart from a prompt that scrolled past.
+            for _attempt in range(6):
+                self.chan.send("\r")
+                matched, _ = self.chan.expect(r"login:", timeout=10)
+                if matched:
+                    record("INFO: the login prompt was re-requested on the "
+                           "serial console")
+                    break
+        if not matched:
             record("FAIL: no login prompt on the serial console")
             return False
         self.chan.send(user + "\r")
@@ -735,21 +747,51 @@ def main():
     # ----------------------------------------------------------------- verify
     record("PASS: phase 2 - booting the installed disk")
     qemu = start_qemu(disk, with_iso=False)
+    # Attach to the serial port before the guest boots.  QEMU only buffers
+    # output for a client that is already connected, and an installed system
+    # reaches its login prompt in seconds; connecting after the screenshots
+    # lost the prompt and made a healthy boot look like a failed login.
+    serial = Channel(SER_PORT)
     monitor = Monitor()
+    shell = Shell(serial)
     try:
         image = os.path.join(WORK, "installed")
         os.makedirs(image, exist_ok=True)
         time.sleep(40)
         monitor.screenshot("10-grub")
-        time.sleep(60)
-        monitor.screenshot("11-login")
-
-        shell = Shell(Channel(SER_PORT))
         installed_shell = shell.login(timeout=420)
+        monitor.screenshot("11-login")
         record("PASS: logged into the installed system" if installed_shell
                else "FAIL: could not log into the installed system")
 
         if installed_shell:
+            # What this shell is.  A login on the wrong machine would make
+            # every check below meaningless, so the filesystem, the absence of
+            # the live medium and the absence of a mounted ISO are proved
+            # before anything else runs.
+            identity = shell.run(
+                "findmnt -n -o SOURCE,FSTYPE / ; echo ---; "
+                "findmnt -n -o SOURCE /boot/efi 2>/dev/null; echo ---; "
+                "ls /run/live 2>/dev/null | head -3; echo ---; "
+                "lsblk -n -o NAME,TYPE | tr '\n' ' '", timeout=120)
+            ichunks = identity.split("---")
+            root = ichunks[0].strip()
+            efi = ichunks[1].strip() if len(ichunks) > 1 else ""
+            live = ichunks[2].strip() if len(ichunks) > 2 else ""
+            block = ichunks[3].strip() if len(ichunks) > 3 else ""
+            record(f"INFO: installed root {root} | efi {efi} | /run/live "\
+                   f"{live or 'empty'} | block devices {block}")
+            installed_ok = ("/dev/vda2" in root and "ext4" in root
+                            and not live and "rom" not in block)
+            record("PASS: the shell is the installed system, not a retained "
+                   "live session" if installed_ok else
+                   "FAIL: this shell is not the installed system "
+                   f"(root={root!r}, /run/live={live!r}, block={block!r})")
+            clinic = shell.run("systemctl is-system-running 2>&1", timeout=90)
+            record("PASS: the installed system finished booting"
+                   if clinic.strip() in ("running", "degraded")
+                   else f"FAIL: the installed system did not finish booting ({clinic.strip()[:60]})")
+
             # Cockpit in the installed system, from inside and from outside.
             state = shell.run("systemctl is-active cockpit.socket; echo ---; "
                               "systemctl is-enabled cockpit.socket; echo ---; "
@@ -863,16 +905,75 @@ def main():
                    if "pipewire-running" in achunks[1] and "wireplumber-running" in achunks[1]
                    else "FAIL: PipeWire or WirePlumber is not running after installation")
 
+            # mpv is no longer in the removed set: it is the player the
+            # Jellyfin client drives, and 1.5 installs it on purpose.
             scope = shell.run(
-                "for p in falkon mpv ristretto xarchiver; do "
+                "for p in falkon ristretto xarchiver; do "
                 "command -v $p >/dev/null && echo present:$p || echo gone:$p; done; "
                 "echo ---; command -v brave-browser >/dev/null && echo browser-present; "
+                "command -v mpv >/dev/null && echo mpv-present; "
                 "dpkg-query -W -f='${Status}' wpasupplicant 2>/dev/null "
                 "| grep -c 'install ok installed'", timeout=90)
             schunks = scope.split("---")
             record("PASS: the installed application set matches the trimmed image"
                    if "present:" not in schunks[0] and "browser-present" in schunks[1]
+                   and "mpv-present" in schunks[1]
                    else f"FAIL: unexpected applications in the installed system ({schunks[0].strip()[:80]})")
+
+            # The two added clients have to survive the installation the same
+            # way the rest of the image does.
+            clients = shell.run(
+                "test -x /opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim "
+                "&& echo jellyfin-exe; "
+                "test -f /usr/share/applications/jellyfin-mpv-shim.desktop "
+                "&& echo jellyfin-entry; "
+                "/opt/jellyfin-mpv-shim/bin/python -c 'import jellyfin_mpv_shim' "
+                "2>/dev/null && echo jellyfin-import; echo ---; "
+                "test -x /usr/local/bin/hunter-dictation && echo voice-toggle; "
+                "test -f /usr/share/applications/smd-dictation.desktop "
+                "&& echo voice-entry; "
+                "/opt/smd-voice/bin/python -c 'import vosk' 2>/dev/null "
+                "&& echo vosk-import; "
+                "test -d /usr/share/vosk/vosk-model-small-en-us-0.15 "
+                "&& echo model; echo ---; "
+                "cat /usr/share/doc/hunter-linux/components.txt 2>/dev/null "
+                "| head -8", timeout=240)
+            cchunks = clients.split("---")
+            missing = [word for word in ("jellyfin-exe", "jellyfin-entry",
+                                         "jellyfin-import", "voice-toggle",
+                                         "voice-entry", "vosk-import", "model")
+                       if word not in cchunks[0]]
+            record("PASS: the Jellyfin client and Voice Typing are in the "
+                   "installed system" if not missing else
+                   f"FAIL: missing from the installed system: {', '.join(missing)}")
+            record("INFO: installed component manifest: "
+                   + " | ".join(line.strip() for line in
+                                (cchunks[1] if len(cchunks) > 1 else "").splitlines()
+                                if line.strip())[:300])
+
+            # Alt+Z must work in the installed session too: start it, prove a
+            # recogniser is running, then stop it and prove it is gone.
+            voice = shell.run(
+                "export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000 "
+                "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus; "
+                "hunter-dictation start; sleep 6; "
+                "hunter-dictation status; echo ---; "
+                "pgrep -c -f 'nerd-dictation be[g]in' || echo 0; echo ---; "
+                "hunter-dictation stop; sleep 2; "
+                "hunter-dictation status", timeout=180)
+            vchunks = voice.split("---")
+            started = len(vchunks) > 1 and "listening" in vchunks[0].lower()
+            processes = vchunks[1].strip() if len(vchunks) > 1 else ""
+            stopped = voice.strip().endswith("stopped")
+            record("INFO: recogniser processes while listening: "
+                   + processes[:40])
+            record("PASS: the Voice Typing switch works in the installed "
+                   "system after the reboot" if started and stopped else
+                   f"FAIL: dictation in the installed system: {voice.strip()[:160]}")
+            record("PASS: dictation left no recogniser running after the "
+                   "reboot" if stopped else
+                   "FAIL: a recogniser is still running after dictation was "
+                   "stopped")
             record("PASS: the Wi-Fi supplicant survived the installation"
                    if schunks[1].strip().endswith("1")
                    else "FAIL: wpasupplicant is missing after installation")
@@ -912,9 +1013,13 @@ def main():
                    if auth.stdout and "200" in auth.stdout.splitlines()[0] else
                    "FAIL: authenticated Cockpit login from outside did not succeed")
         if not installed_shell:
-            # No serial login: use the greeter so the desktop can still be
-            # inspected.  The greeter shows a name field and a password field,
-            # so the name has to be typed first and Tab moves to the password.
+            # No serial login: the installed-session checks did not run.  This
+            # is recorded as incomplete rather than passed, and the greeter is
+            # still used so the desktop can be inspected in a screenshot.
+            record("WARN: INCOMPLETE: no installed-session shell, so the "
+                   "installed checks were not performed")
+            # The greeter shows a name field and a password field, so the name
+            # has to be typed first and Tab moves to the password.
             try:
                 greeter = Display()
                 # LightDM preselects the only account, so the password box

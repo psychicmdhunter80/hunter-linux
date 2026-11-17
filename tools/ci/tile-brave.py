@@ -143,8 +143,12 @@ class Shell:
 def start_qemu():
     accel = "kvm" if os.access("/dev/kvm", os.W_OK) else "tcg"
     record("accelerator: %s" % accel)
+    # Craig's Chromebook is 1366x768, so the guest is given exactly that screen
+    # through the emulated VGA's EDID instead of QEMU's 1280x800 default: a
+    # layout that only fits a larger screen would not be his behaviour.
     args = ["qemu-system-x86_64", "-m", "2048", "-smp", "2", "-accel", accel,
-            "-display", "none", "-vga", "std", "-no-reboot",
+            "-display", "none", "-no-reboot",
+            "-device", "VGA,edid=on,xres=1366,yres=768,vgamem_mb=16",
             "-monitor", "tcp:127.0.0.1:%d,server,nowait" % MON_PORT,
             "-serial", "tcp:127.0.0.1:%d,server,nowait" % SER_PORT,
             "-netdev", "user,id=n0", "-device", "virtio-net-pci,netdev=n0"]
@@ -212,6 +216,46 @@ def main():
         shell = Shell(Channel(SER_PORT))
         if not shell.login() or not shell.wait_for_x():
             return 1
+
+        def screen_now():
+            """The current mode and the area i3 leaves for windows."""
+            out = shell.run(
+                "DISPLAY=:0 xrandr --current 2>/dev/null | grep -m1 '\\*' ; "
+                "echo ---; DISPLAY=:0 xprop -root _NET_WORKAREA 2>/dev/null",
+                timeout=90)
+            chunks = out.split("---")
+            mode = re.search(r"(\d+)x(\d+)", chunks[0])
+            area = re.search(r"(\d+),\s*(\d+),\s*(\d+),\s*(\d+)",
+                             chunks[1] if len(chunks) > 1 else "")
+            if not mode:
+                return None
+            screen = (int(mode.group(1)), int(mode.group(2)))
+            if area:
+                work = tuple(int(area.group(i)) for i in range(1, 5))
+            else:
+                work = (0, 0, screen[0], screen[1] - 28)
+            return screen, work
+
+        # The emulated screen arrives at 1366x768 through EDID; if X landed on
+        # another mode anyway it is switched, so every measurement below is
+        # made at the size the owner actually has.
+        measured = screen_now()
+        if measured and measured[0] != (1366, 768):
+            record("INFO: session started at %dx%d; switching to 1366x768"
+                   % measured[0])
+            shell.run(
+                "DISPLAY=:0 xrandr --newmode '1366x768_60.00' 85.50 1366 1436 "
+                "1579 1792 768 771 774 798 +hsync +vsync 2>/dev/null; "
+                "o=$(DISPLAY=:0 xrandr --current | grep -m1 ' connected' "
+                "| cut -d' ' -f1); "
+                "DISPLAY=:0 xrandr --addmode \"$o\" 1366x768_60.00 2>/dev/null; "
+                "DISPLAY=:0 xrandr --output \"$o\" --mode 1366x768_60.00; "
+                "sleep 3", timeout=120)
+            measured = screen_now()
+        screen = measured[0] if measured else (0, 0)
+        work = measured[1] if measured else (0, 0, 0, 0)
+        record("INFO: screen %dx%d, window area %d,%d %dx%d (panel excluded)"
+               % (screen[0], screen[1], work[0], work[1], work[2], work[3]))
 
         # The helper normally comes from the checkout so a fix can be tested
         # without rebuilding the image; TILE_HELPER=image tests the one that
@@ -335,11 +379,23 @@ def main():
             passed = passed and condition
             return condition
 
+        ok("the session runs at Craig's 1366x768", screen == (1366, 768),
+           "%dx%d" % screen)
+        ok("the panel is accounted for in the window area",
+           work[2] == 1366 and work[3] < 768 and work[3] > 700,
+           "%d,%d %dx%d" % work)
+
         # 1 window, from a first run (no profile yet, so Brave shows its welcome).
         open_brave("smd-one", first=True)
         one, _ = stage("one window")
-        ok("one window fills the desktop",
-           len(one) == 1 and list(one.values())[0][2] >= 1200,
+        fills = False
+        if len(one) == 1:
+            x, y, w, h = list(one.values())[0]
+            # The whole window area and nothing else: the panel's strip stays
+            # empty and no border is left showing.
+            fills = (abs(x - work[0]) <= 2 and abs(y - work[1]) <= 2
+                     and abs(w - work[2]) <= 4 and abs(h - work[3]) <= 4)
+        ok("one window fills the desktop", fills,
            describe(one, labels_for(one)))
 
         open_brave("smd-two")
@@ -400,15 +456,50 @@ def main():
         ok("exiting fullscreen restores the 2x2 grid",
            len(back) == 4 and stable_back, describe(back))
 
-        # A dialog must stay floating and must not make the helper rebuild.
-        shell.run("DISPLAY=:0 setsid xmessage -center 'SMD dialog test' "
-                  ">/dev/null 2>&1 & sleep 4", timeout=120)
-        dialog = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=120)
-        floating = "dialog test" in dialog
-        record("INFO: dialog present: %s" % floating)
+        # A real ordinary dialog.  The earlier version of this check looked for
+        # the message text in the i3 tree and reported "present: False" while
+        # still recording a pass, so a dialog that never appeared could never
+        # fail the run.  The window is now found by name and measured: a
+        # tiled dialog would be stretched to a tile, so its own small size is
+        # the proof that it stayed floating.
+        tool = shell.run("command -v xmessage || echo MISSING", timeout=60)
+        record("INFO: dialog tool: %s" % tool.strip()[:80])
+        opened = shell.run(
+            "DISPLAY=:0 setsid xmessage -center 'SMD dialog test' "
+            ">/tmp/xmessage.log 2>&1 & sleep 4; "
+            "DISPLAY=:0 xdotool search --name 'SMD dialog test' 2>/dev/null "
+            "| head -1; echo ---; tail -2 /tmp/xmessage.log 2>/dev/null",
+            timeout=120)
+        ochunks = opened.split("---")
+        dialog_id = ochunks[0].strip().splitlines()[-1:] or [""]
+        dialog_id = dialog_id[0].strip()
+        record("INFO: dialog window id: %s (%s)"
+               % (dialog_id or "none",
+                  " | ".join((ochunks[1] if len(ochunks) > 1 else "").split())[:120]))
+        geometry = ""
+        if dialog_id.isdigit():
+            geometry = shell.run("DISPLAY=:0 xwininfo -id %s "
+                                 "| grep -E 'Width:|Height:|Absolute upper-left'"
+                                 % dialog_id, timeout=60)
+            record("INFO: dialog geometry: "
+                   + " | ".join(geometry.split())[:160])
+        dims = dict(re.findall(r"(Width|Height):\s*(\d+)", geometry))
+        dialog_w = int(dims.get("Width", 0))
+        dialog_h = int(dims.get("Height", 0))
+        ok("an ordinary dialog appears", bool(dialog_id.isdigit()),
+           "xmessage window %s" % (dialog_id or "not found"))
+        ok("the dialog stays floating at its own size",
+           dialog_w > 0 and dialog_w < work[2] // 2 and dialog_h < work[3] // 2,
+           "%dx%d inside %dx%d" % (dialog_w, dialog_h, work[2], work[3]))
+        dialog_tree = shell.run("DISPLAY=:0 python3 /tmp/tile-dump.py",
+                                timeout=120, lines=200)
+        during = layouts(dialog_tree)
+        ok("opening the dialog does not rearrange the windows",
+           json.dumps(during, sort_keys=True) == after,
+           describe(during, labels_for(during)))
         shell.run("pkill -x xmessage; sleep 3", timeout=60)
         after_dialog, _ = stage("after dialog")
-        ok("a dialog leaves the grid untouched",
+        ok("closing the dialog leaves the grid untouched",
            json.dumps(after_dialog, sort_keys=True) == after, describe(after_dialog))
 
         # Close and reopen.

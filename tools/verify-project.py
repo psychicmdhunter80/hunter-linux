@@ -63,7 +63,7 @@ def walk(directory, suffix=None):
 
 def check_line_endings():
     for path in walk(ROOT):
-        if path.endswith(".png") or path.endswith(".zip"):
+        if path.endswith((".png", ".zip", ".wav", ".pdf")):
             continue
         try:
             text = read(path)
@@ -343,6 +343,9 @@ def check_version_labels():
          r"Keyboard shortcuts &mdash; version ([0-9.]+)"),
         ("GRUB theme title", "../bootloaders/grub-pc/live-theme/theme.txt",
          r'title-text:\s+"SMD Linux ([0-9.]+)"'),
+        ("VERSION file", "../../VERSION", r"^\s*([0-9.]+)\s*$"),
+        ("README on the disc", "../../config/includes.binary/README.txt",
+         r"^SMD LINUX ([0-9.]+)"),
     ]
     for name, path, pattern in labels:
         full = os.path.normpath(os.path.join(CHROOT, path))
@@ -355,6 +358,12 @@ def check_version_labels():
         elif found.group(1) != version:
             fail("version label %s says %s but the image builds %s"
                  % (name, found.group(1), version))
+    # The disc's README also tells the reader which file to write.
+    disc = read(os.path.join(ROOT, "config", "includes.binary", "README.txt"))
+    for named in re.findall(r"SMD-Linux-v([0-9.]+)-amd64\.iso", disc):
+        if named != version:
+            fail("the README on the disc points at the %s image" % named)
+
     # The artwork is the one place a version is drawn rather than written, so
     # the generator itself must have none of its own.
     assets = read(os.path.join(ROOT, "tools", "make-assets.py"))
@@ -363,6 +372,110 @@ def check_version_labels():
         fail("make-assets.py draws a hardcoded version %s" % found)
 
     return version
+
+
+def check_voice_typing():
+    """Alt+Z must be wired end to end, and Ctrl must stay the application's.
+
+    The image once carried a dictation setup elsewhere but no code for it here,
+    and a binding is easy to add without the program it calls.  These checks
+    tie the key, the menu entry, the toggle and the engine together.
+    """
+    i3 = read(os.path.join(CHROOT, "etc", "skel", ".config", "i3", "config"))
+    if not re.search(r"^bindsym\s+\$mod\+z\s+exec\s+[^\n]*hunter-dictation\s+toggle",
+                     i3, re.M):
+        fail("i3: Alt+Z is not bound to hunter-dictation toggle")
+    # Ctrl+Z is Undo, Ctrl+X is Cut and Ctrl+A is Select All.  Binding any of
+    # them would swallow the key from the focused application.
+    for key in ("Control+z", "Control+x", "Control+a"):
+        if re.search(r"^bindsym[^\n]*\b%s\b" % re.escape(key), i3, re.M | re.I):
+            fail("i3: %s is bound, which would take Undo/Cut/Select All from "
+                 "the application" % key)
+
+    entry = os.path.join(CHROOT, "usr", "share", "applications",
+                         "smd-dictation.desktop")
+    if not os.path.exists(entry):
+        fail("missing application entry smd-dictation.desktop")
+    elif "hunter-dictation toggle" not in read(entry):
+        fail("smd-dictation.desktop does not run hunter-dictation toggle")
+
+    toggle_path = os.path.join(CHROOT, "usr", "local", "bin", "hunter-dictation")
+    if not os.path.exists(toggle_path):
+        fail("missing /usr/local/bin/hunter-dictation")
+        return
+    toggle = read(toggle_path)
+    engine = re.search(r"^NERD=(/usr/share/nerd-dictation/\S+)$", toggle, re.M)
+    if not engine:
+        fail("hunter-dictation does not name the dictation engine")
+    elif not os.path.exists(os.path.join(CHROOT, engine.group(1).lstrip("/"))):
+        fail("the dictation engine %s is not in the image" % engine.group(1))
+    model = re.search(r"^MODEL=/usr/share/vosk/(\S+)$", toggle, re.M)
+    if not model:
+        fail("hunter-dictation does not name the speech model")
+    else:
+        hook = read(os.path.join(ROOT, "config", "hooks", "live",
+                                 "0360-smd-clients.hook.chroot"))
+        if model.group(1) not in hook:
+            fail("the build hook does not install the model hunter-dictation uses")
+    if "--vosk-model-dir" not in toggle:
+        fail("hunter-dictation does not pass the model to the engine")
+    # Only what the script actually sends counts: its comments talk about
+    # Ctrl+Z on purpose.
+    if re.search(r"xdotool[^\n]*ctrl\+z", toggle, re.I):
+        fail("hunter-dictation sends Ctrl+Z, which would take Undo away")
+    if re.search(r"/home/[a-z]", toggle):
+        fail("hunter-dictation hardcodes a home directory")
+
+    sheet = read(os.path.join(CHROOT, "usr", "share", "doc", "hunter-linux",
+                              "shortcuts.html"))
+    if "<kbd>Z</kbd>" not in sheet:
+        fail("the shortcut sheet does not document Alt+Z")
+
+
+def check_jellyfin():
+    """The client, its menu entry and the absence of anyone's account.
+
+    A configuration directory for the shim once existed while the shim itself
+    was never installed, so the entry and the package are checked separately.
+    """
+    entry = os.path.join(CHROOT, "usr", "share", "applications",
+                         "jellyfin-mpv-shim.desktop")
+    if not os.path.exists(entry):
+        fail("missing application entry jellyfin-mpv-shim.desktop")
+    else:
+        exe = re.search(r"^Exec=(\S+)$", read(entry), re.M)
+        if not exe or not exe.group(1).startswith("/opt/jellyfin-mpv-shim/"):
+            fail("the Jellyfin entry does not run the client from its "
+                 "virtualenv")
+
+    hook_path = os.path.join(ROOT, "config", "hooks", "live",
+                             "0360-smd-clients.hook.chroot")
+    if not os.path.exists(hook_path):
+        fail("the hook that installs the non-Debian clients is missing")
+        return
+    hook = read(hook_path)
+    if not re.search(r'jellyfin-mpv-shim==\$\{?JELLYFIN_VERSION', hook):
+        fail("the build hook does not install the Jellyfin client at a pinned "
+             "version")
+    if "import jellyfin_mpv_shim" not in hook:
+        fail("the build hook does not prove the Jellyfin client imports")
+
+    # Late on the image, nothing may start it: the user starts the client.
+    autostart = os.path.join(CHROOT, "etc", "xdg", "autostart")
+    if os.path.isdir(autostart):
+        for name in os.listdir(autostart):
+            if "jellyfin" in name.lower():
+                fail("etc/xdg/autostart/%s starts the Jellyfin client" % name)
+
+    skel = os.path.join(CHROOT, "etc", "skel", ".config", "jellyfin-mpv-shim")
+    if os.path.isdir(skel):
+        for name in sorted(os.listdir(skel)):
+            if name != "mpv.conf":
+                fail("etc/skel/.config/jellyfin-mpv-shim/%s would ship a saved "
+                     "setting" % name)
+        settings = os.path.join(skel, "mpv.conf")
+        if os.path.exists(settings) and "hwdec=auto-safe" not in read(settings):
+            fail("the client's hardware decoding setting was changed")
 
 
 def main():
@@ -380,6 +493,8 @@ def main():
     check_bootloaders()
     options = check_autoconfig(live_build)
     check_references()
+    check_voice_typing()
+    check_jellyfin()
     version = check_version_labels()
 
     print("SMD Linux project verification")
