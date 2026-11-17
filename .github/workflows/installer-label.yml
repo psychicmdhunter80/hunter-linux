@@ -1,0 +1,53 @@
+name: installer-label
+
+# Boots one ISO, opens the real installer from the live desktop and proves the
+# version it presents is the release the file is named after.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build run whose ISO is checked
+        required: true
+        type: string
+      mode:
+        description: Firmware
+        required: false
+        default: uefi
+        type: string
+
+jobs:
+  label:
+    name: Installer version label (live session)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU and OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf imagemagick tesseract-ocr
+          ls -l /dev/kvm || echo "no /dev/kvm, using TCG"
+
+      - name: Fetch the ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
+          ls -lh iso/
+
+      - name: Check every version label
+        run: |
+          python3 tools/ci/installer-label.py iso/SMD-Linux-v1.4.1-amd64.iso out-label "${{ inputs.mode }}"
+        timeout-minutes: 50
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-label
+          path: out-label/
+          retention-days: 14
+          if-no-files-found: warn
