@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Jellyfin
+GenericName=Media Client
+Comment=Play media from your Jellyfin server
+Exec=/opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim
+TryExec=/opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim
+Icon=video-display
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=jellyfin;media;video;movies;music;
+StartupNotify=true

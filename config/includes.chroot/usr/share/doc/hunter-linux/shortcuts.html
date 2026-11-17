@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SMD Linux 1.4.1 - Keyboard Shortcuts</title>
+<title>SMD Linux 1.5.0 - Keyboard Shortcuts</title>
 <style>
   body { margin: 0; padding: 2.5em 3em; background: #1d232b; color: #e6e6e6;
          font-family: "DejaVu Sans", sans-serif; font-size: 15px; line-height: 1.5; }
@@ -24,7 +24,7 @@
 <body>
 
 <h1>SMD LINUX</h1>
-<p class="sub">Keyboard shortcuts &mdash; version 1.4.1</p>
+<p class="sub">Keyboard shortcuts &mdash; version 1.5.0</p>
 
 <p>The <kbd>Search</kbd> key (where a Caps Lock key normally sits on this
 Chromebook, and the Windows key on other keyboards) opens the application menu
@@ -40,6 +40,7 @@ for itself.</p>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>Enter</kbd></td><td>Open a terminal</td></tr>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>E</kbd></td><td>Open the file manager (Thunar)</td></tr>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>P</kbd></td><td>Display settings (second monitor, resolution)</td></tr>
+  <tr><td class="key"><kbd>Alt</kbd> + <kbd>Z</kbd></td><td>Voice typing on and off (see below)</td></tr>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>F1</kbd></td><td>This page</td></tr>
 </table>
 
@@ -61,6 +62,23 @@ for itself.</p>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> &hellip; <kbd>0</kbd></td><td>Move the focused window to that workspace</td></tr>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>Ctrl</kbd> + <kbd>&larr;</kbd>/<kbd>&rarr;</kbd></td><td>Move the focused window to the previous/next workspace</td></tr>
 </table>
+
+<h2>Voice typing and text editing</h2>
+<table>
+  <tr><td class="key"><kbd>Alt</kbd> + <kbd>Z</kbd></td><td>Start listening; press it again to stop. The words are typed into whichever text field has the cursor.</td></tr>
+  <tr><td class="key"><kbd>Ctrl</kbd> + <kbd>Z</kbd></td><td>Undo - unchanged, and still the application's own Undo while dictation is on</td></tr>
+  <tr><td class="key"><kbd>Ctrl</kbd> + <kbd>X</kbd> / <kbd>C</kbd> / <kbd>V</kbd></td><td>Cut, copy and paste</td></tr>
+  <tr><td class="key"><kbd>Ctrl</kbd> + <kbd>A</kbd></td><td>Select all</td></tr>
+</table>
+
+<p class="sub">Voice typing recognises speech on this computer with the small
+English model that ships on the image, so it works with no network connection.
+A notification says <em>listening</em> when it starts and <em>stopped</em> when it
+stops. The microphone is open only between those two presses: recording and the
+recogniser both end when it is switched off, and nothing listens in the
+background. The same switch is in the application menu as <em>Voice Typing</em>.
+Dictation needs a quiet room and a working microphone; everything else about
+typing is unchanged.</p>
 
 <h2>Sound, brightness and power</h2>
 <table>

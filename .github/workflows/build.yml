@@ -42,12 +42,12 @@ jobs:
           # The container runs as root; give the workspace back to the runner
           # user so later steps can write checksums and upload artefacts.
           sudo chown -R "$(id -u):$(id -g)" .
-          test -f SMD-Linux-v1.4.1-amd64.iso
+          test -f SMD-Linux-v1.5.0-amd64.iso
 
       - name: Check the packed files
         run: |
           set -euo pipefail
-          iso=SMD-Linux-v1.4.1-amd64.iso
+          iso=SMD-Linux-v1.5.0-amd64.iso
           mkdir -p /tmp/iso
           sudo mount -o loop,ro "$iso" /tmp/iso
           squash=/tmp/iso/live/filesystem.squashfs
@@ -69,6 +69,23 @@ jobs:
             fi
             echo "LF ok: $f"
           done
+          # The two clients added in 1.5 are not Debian packages, so their
+          # presence is proved from the image itself: a configuration
+          # directory is not the program.
+          unsquashfs -no-progress -l "$squash" > /tmp/squash-list.txt
+          for want in \
+              opt/jellyfin-mpv-shim/bin/jellyfin-mpv-shim \
+              usr/share/applications/jellyfin-mpv-shim.desktop \
+              usr/local/bin/hunter-dictation \
+              usr/share/applications/smd-dictation.desktop \
+              usr/share/nerd-dictation/nerd-dictation \
+              usr/share/vosk/vosk-model-small-en-us-0.15/conf/model.conf; do
+            if ! grep -q "$want" /tmp/squash-list.txt; then
+              echo "missing from the image: $want" >&2
+              exit 1
+            fi
+            echo "in the image: $want"
+          done
           sudo umount /tmp/iso
 
       - name: Inspect the result
@@ -76,8 +93,8 @@ jobs:
         run: |
           ls -lh *.iso || true
           if ls *.iso >/dev/null 2>&1; then
-            sha256sum *.iso > SMD-Linux-v1.4.1-amd64.iso.sha256
-            cat SMD-Linux-v1.4.1-amd64.iso.sha256
+            sha256sum *.iso > SMD-Linux-v1.5.0-amd64.iso.sha256
+            cat SMD-Linux-v1.5.0-amd64.iso.sha256
             file *.iso
           fi
 
@@ -87,8 +104,8 @@ jobs:
         with:
           name: iso
           path: |
-            SMD-Linux-v1.4.1-amd64.iso
-            SMD-Linux-v1.4.1-amd64.iso.sha256
+            SMD-Linux-v1.5.0-amd64.iso
+            SMD-Linux-v1.5.0-amd64.iso.sha256
           retention-days: 7
           compression-level: 0
 

@@ -1,4 +1,4 @@
-SMD LINUX 1.0
+SMD LINUX 1.5.0
 ===============
 
 A lightweight Debian 13 (trixie) desktop: Xorg + i3 + xfce4-panel.
@@ -28,10 +28,22 @@ User:      user
 Password:  live        (only needed if automatic login is disabled)
 sudo:      passwordless in the live session, disabled after installation
 
+What is on this image
+---------------------
+Brave (with h264ify and Auto Quality for YouTube), VLC, the Jellyfin client
+(Jellyfin MPV Shim), XFCE panel along the bottom edge, PipeWire audio,
+Cockpit web administration, and the Calamares installer. Programs are in the
+application menu on the Search key.
+
+Voice typing
+    Alt+Z starts and stops dictation: what you say is typed into the focused
+    text field. The small English speech model is on this disc, so it works
+    with no network connection. Ctrl+Z, Ctrl+X and Ctrl+A are unchanged.
+
 Writing this image to a USB device
 ----------------------------------
-Linux:   sudo dd if=SMD-Linux-v1.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
-macOS:   sudo dd if=SMD-Linux-v1.0-amd64.iso of=/dev/rdiskN bs=4m
+Linux:   sudo dd if=SMD-Linux-v1.5.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+macOS:   sudo dd if=SMD-Linux-v1.5.0-amd64.iso of=/dev/rdiskN bs=4m
 Windows: use Rufus (DD mode) or balenaEtcher and select the ISO file.
 
 The image boots on both legacy BIOS and UEFI machines.

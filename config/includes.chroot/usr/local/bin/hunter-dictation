@@ -1,0 +1,139 @@
+#!/bin/sh
+# SMD Linux - Voice Typing on Alt+Z.
+#
+# The first press starts recording and types what is heard into the focused
+# text field; the second press stops recording and releases the microphone.
+# Recognition never runs in the background: the engine starts with the press
+# that turns dictation on and is gone after the press that turns it off.
+#
+# Components:
+#   /usr/share/nerd-dictation/nerd-dictation      the dictation engine
+#   /opt/smd-voice                                virtualenv with vosk
+#   /usr/share/vosk/vosk-model-small-en-us-0.15   the small English model
+#
+# Nothing here belongs to one account: state lives in the user's own data
+# directory, the microphone is the user's own default source, and the text is
+# typed into whatever window has focus.
+#
+# Ctrl+Z, Ctrl+X and Ctrl+A are not bound anywhere in the session, so Undo,
+# Cut and Select All keep reaching the focused application while dictation is
+# on (this build never had a Ctrl+Z dictation binding).
+
+set -u
+
+NERD=/usr/share/nerd-dictation/nerd-dictation
+PYTHON=/opt/smd-voice/bin/python3
+MODEL=/usr/share/vosk/vosk-model-small-en-us-0.15
+
+data_dir=${XDG_DATA_HOME:-$HOME/.local/share}/smd-dictation
+cookie=$data_dir/nerd-dictation.cookie
+log=$data_dir/nerd-dictation.log
+
+usage() {
+	cat >&2 <<'EOF'
+usage: hunter-dictation [toggle|start|stop|status]
+
+  toggle   start listening, or stop when already listening (Alt+Z)
+  start    start listening
+  stop     stop listening and release the microphone
+  status   print "listening" or "stopped"
+EOF
+	exit 2
+}
+
+notify() {
+	# title, body, icon.  The private-synchronous hint replaces the previous
+	# Voice Typing bubble instead of stacking one per press; notify-send older
+	# than 0.7.7 rejects the hint and the notification is simply not shown, so
+	# the state file and `status` remain the authoritative feedback.
+	command -v notify-send >/dev/null 2>&1 || return 0
+	notify-send -a "Voice Typing" -i "${3:-audio-input-microphone}" \
+		-h string:x-canonical-private-synchronous:smd-dictation \
+		"$1" "$2" >/dev/null 2>&1 || true
+}
+
+running() {
+	[ -n "$(pgrep -u "$(id -u)" -f 'nerd-dictation be[g]in' 2>/dev/null)" ]
+}
+
+start() {
+	if [ ! -x "$PYTHON" ] || [ ! -e "$NERD" ] || [ ! -d "$MODEL" ]; then
+		echo "hunter-dictation: missing $PYTHON, $NERD or $MODEL" >&2
+		notify "Voice typing is not installed" \
+			"The dictation components are missing from this system." \
+			dialog-error
+		return 1
+	fi
+	# A second press must never start a second recogniser.
+	if running; then
+		notify "Voice typing is already listening" \
+			"Press Alt+Z to stop." audio-input-microphone
+		return 0
+	fi
+	mkdir -p "$data_dir" || return 1
+	rm -f "$cookie"
+	: >"$log"
+	setsid "$PYTHON" "$NERD" begin \
+		--cookie "$cookie" \
+		--vosk-model-dir "$MODEL" \
+		--input=PAREC \
+		--output=SIMULATE_INPUT \
+		--simulate-input-tool=XDOTOOL \
+		--continuous \
+		--idle-time=0.2 \
+		--numbers-as-digits \
+		--full-sentence \
+		--timeout=0 \
+		>>"$log" 2>&1 </dev/null &
+	# Report "listening" only once the engine is really there: a message with
+	# no recogniser behind it would look like a broken keyboard.
+	i=0
+	while [ "$i" -lt 50 ]; do
+		running && break
+		i=$((i + 1))
+		sleep 0.1
+	done
+	if running; then
+		notify "Voice typing: listening" \
+			"Speak now. Press Alt+Z to stop." audio-input-microphone
+		return 0
+	fi
+	notify "Voice typing could not start" "See $log" dialog-error
+	tail -3 "$log" >&2 2>/dev/null || true
+	return 1
+}
+
+stop() {
+	if [ -f "$cookie" ] && [ -x "$PYTHON" ] && [ -e "$NERD" ]; then
+		"$PYTHON" "$NERD" end --cookie "$cookie" >/dev/null 2>&1 || true
+	fi
+	i=0
+	while [ "$i" -lt 50 ] && running; do
+		i=$((i + 1))
+		sleep 0.1
+	done
+	# An end request is honoured by the running engine.  If it did not exit
+	# (a stuck capture stream, for instance) the microphone would stay open,
+	# so the process is stopped outright - that is what closes the stream.
+	if running; then
+		pkill -u "$(id -u)" -f 'nerd-dictation be[g]in' 2>/dev/null || true
+		sleep 0.3
+	fi
+	rm -f "$cookie"
+	if running; then
+		notify "Voice typing did not stop" \
+			"The microphone may still be open." dialog-error
+		return 1
+	fi
+	notify "Voice typing: stopped" "The microphone is released." \
+		microphone-sensitivity-muted
+	return 0
+}
+
+case "${1:-toggle}" in
+start) start ;;
+stop) stop ;;
+toggle) if running; then stop; else start; fi ;;
+status) if running; then echo listening; else echo stopped; fi ;;
+*) usage ;;
+esac

@@ -87,6 +87,12 @@ bindsym $mod+e exec --no-startup-id thunar
 bindsym $mod+p exec --no-startup-id xfce4-display-settings --minimal
 bindsym $mod+F1 exec --no-startup-id xdg-open /usr/share/doc/hunter-linux/shortcuts.html
 
+# Voice typing: the first press opens the microphone and types what it hears
+# into the focused field, the second press closes it again.  Only Alt+Z is
+# taken - Ctrl+Z, Ctrl+X and Ctrl+A are deliberately left to the application,
+# so Undo, Cut and Select All keep working while dictation is on.
+bindsym $mod+z exec --no-startup-id hunter-dictation toggle
+
 # ---------------------------------------------------------------------------
 # Windows
 # ---------------------------------------------------------------------------

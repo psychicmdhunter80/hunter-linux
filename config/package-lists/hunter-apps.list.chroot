@@ -12,3 +12,16 @@ vlc
 python3
 unzip
 xz-utils
+
+# The Jellyfin client is a Python package, so 0360-smd-clients.hook.chroot
+# installs it into its own virtualenv; python3-venv is what builds that
+# environment.  mpv is the player it drives, and libmpv2 is the library the
+# client loads directly - both are required for playback rather than being a
+# general media player on the image.  It is a client only: no server, no
+# account, no autostart.
+python3-venv
+libmpv2
+mpv
+
+# Voice Typing's listening/stopped feedback is a desktop notification.
+libnotify-bin

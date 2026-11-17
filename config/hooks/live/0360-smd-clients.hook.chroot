@@ -1,0 +1,113 @@
+#!/bin/sh
+# SMD Linux - the applications Debian does not package.
+#
+# Two components are distributed only as Python packages, so each is installed
+# into its own virtualenv rather than into the system interpreter: Debian marks
+# /usr/lib/python3 as externally managed, and a pip-installed library there
+# would shadow the distribution's copy for every other program on the machine.
+#
+#   jellyfin-mpv-shim 3.3.0   the Jellyfin client.  Client only: no server, no
+#                             account, no saved address, no autostart.
+#   vosk 0.3.45               the speech recogniser behind Voice Typing.
+#
+# The small English model is fetched from the Vosk project and checked against
+# the checksum below, because it is data rather than source and does not belong
+# in the source archive.  The dictation engine itself ships with this project.
+set -e
+
+JELLYFIN_VENV=/opt/jellyfin-mpv-shim
+JELLYFIN_VERSION=3.3.0
+VOICE_VENV=/opt/smd-voice
+VOSK_VERSION=0.3.45
+MODEL=vosk-model-small-en-us-0.15
+MODEL_SHA256=30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498
+MODEL_DIR=/usr/share/vosk
+MANIFEST=/usr/share/doc/hunter-linux/components.txt
+
+die() {
+	echo "hunter: ERROR: $*" >&2
+	exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Jellyfin MPV Shim - the client, and mpv for playback
+# ---------------------------------------------------------------------------
+echo "hunter: installing Jellyfin MPV Shim ${JELLYFIN_VERSION}"
+command -v mpv >/dev/null 2>&1 || die "mpv is missing; the Jellyfin client needs it"
+
+python3 -m venv "$JELLYFIN_VENV" || die "could not create $JELLYFIN_VENV"
+"$JELLYFIN_VENV/bin/pip" -q install --upgrade pip
+"$JELLYFIN_VENV/bin/pip" -q install "jellyfin-mpv-shim==${JELLYFIN_VERSION}" \
+	|| die "jellyfin-mpv-shim ${JELLYFIN_VERSION} could not be installed"
+
+"$JELLYFIN_VENV/bin/python" -c 'import jellyfin_mpv_shim' \
+	|| die "jellyfin-mpv-shim does not import"
+[ -x "$JELLYFIN_VENV/bin/jellyfin-mpv-shim" ] \
+	|| die "the jellyfin-mpv-shim command is missing"
+
+# The client must be able to open libmpv.  A wheel that imports but cannot load
+# libmpv would start and fail only when the user presses play.
+"$JELLYFIN_VENV/bin/python" - <<'PY' || die "python-mpv cannot load libmpv"
+import ctypes.util
+import mpv  # noqa: F401  (import resolves libmpv through ctypes)
+print("hunter: libmpv resolves to", ctypes.util.find_library("mpv"))
+PY
+
+# ---------------------------------------------------------------------------
+# Vosk + the small English model - offline voice typing
+# ---------------------------------------------------------------------------
+echo "hunter: installing Vosk ${VOSK_VERSION} for voice typing"
+python3 -m venv "$VOICE_VENV" || die "could not create $VOICE_VENV"
+"$VOICE_VENV/bin/pip" -q install --upgrade pip
+"$VOICE_VENV/bin/pip" -q install "vosk==${VOSK_VERSION}" \
+	|| die "vosk ${VOSK_VERSION} could not be installed"
+"$VOICE_VENV/bin/python" -c 'import vosk; print("hunter: vosk", vosk.__file__)' \
+	|| die "vosk does not import"
+
+mkdir -p "$MODEL_DIR"
+echo "hunter: fetching the speech model ${MODEL}"
+curl -fsSL --retry 3 -o /tmp/vosk-model.zip \
+	"https://alphacephei.com/vosk/models/${MODEL}.zip" \
+	|| die "the speech model could not be downloaded"
+echo "${MODEL_SHA256}  /tmp/vosk-model.zip" | sha256sum -c - \
+	|| die "the speech model does not match its recorded checksum"
+unzip -q -o /tmp/vosk-model.zip -d "$MODEL_DIR" \
+	|| die "the speech model could not be unpacked"
+rm -f /tmp/vosk-model.zip
+[ -d "${MODEL_DIR}/${MODEL}" ] || die "the model directory ${MODEL_DIR}/${MODEL} is missing"
+
+# Loading the model proves the wheel's libvosk and the model files work
+# together.  Without this the image would only fail when Alt+Z is first pressed.
+"$VOICE_VENV/bin/python" - "$MODEL_DIR/$MODEL" <<'PY' || die "vosk cannot load the model"
+import sys
+from vosk import Model, SetLogLevel
+SetLogLevel(-1)
+model = Model(sys.argv[1])
+print("hunter: vosk loaded the model")
+PY
+
+# The engine ships with the project; make sure it is executable here, because
+# a checkout on a filesystem without Unix modes loses the bit.
+chmod 0755 /usr/share/nerd-dictation/nerd-dictation 2>/dev/null || true
+[ -r /usr/share/nerd-dictation/nerd-dictation ] \
+	|| die "/usr/share/nerd-dictation/nerd-dictation is missing"
+chmod 0755 /usr/local/bin/hunter-dictation
+
+# ---------------------------------------------------------------------------
+# What went into the image, for the technical reference and the tests
+# ---------------------------------------------------------------------------
+{
+	echo "# SMD Linux component manifest - written at build time"
+	echo "jellyfin-mpv-shim=${JELLYFIN_VERSION}"
+	echo "vosk=${VOSK_VERSION}"
+	echo "vosk-model=${MODEL}"
+	echo "vosk-model-sha256=${MODEL_SHA256}"
+	echo "vosk-model-bytes=$(du -sb "$MODEL_DIR/$MODEL" | cut -f1)"
+	echo "nerd-dictation-sha256=$(sha256sum /usr/share/nerd-dictation/nerd-dictation | cut -d' ' -f1)"
+	echo "mpv=$(dpkg-query -W -f='${Version}' mpv 2>/dev/null || echo unknown)"
+} >"$MANIFEST"
+
+# Caches and pip's build trees are only build cost.
+rm -rf /root/.cache/pip /var/cache/pip
+
+echo "hunter: Jellyfin MPV Shim and Vosk are installed"

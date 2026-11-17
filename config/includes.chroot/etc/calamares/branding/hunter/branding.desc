@@ -1,14 +1,14 @@
 ---
-# SMD Linux 1.4.1 - Calamares branding component.
+# SMD Linux 1.5.0 - Calamares branding component.
 componentName: hunter
 
 strings:
-    productName:         "SMD Linux 1.4.1"
+    productName:         "SMD Linux 1.5.0"
     shortProductName:    "SMD Linux"
-    version:             "1.4.1"
-    shortVersion:        "1.4.1"
-    versionedName:       "SMD Linux 1.4.1"
-    shortVersionedName:  "SMD 1.4.1"
+    version:             "1.5.0"
+    shortVersion:        "1.5.0"
+    versionedName:       "SMD Linux 1.5.0"
+    shortVersionedName:  "SMD 1.5.0"
     bootloaderEntryName: "SMD Linux"
     productUrl:          ""
     supportUrl:          ""

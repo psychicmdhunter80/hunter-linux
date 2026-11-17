@@ -49,7 +49,7 @@ jobs:
         run: |
           gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
           ls -lh iso/
-          cd iso && sha256sum -c SMD-Linux-v1.4.1-amd64.iso.sha256
+          cd iso && sha256sum -c SMD-Linux-v1.5.0-amd64.iso.sha256
 
       - name: Install to a virtual disk and boot the result
         env:
@@ -58,7 +58,7 @@ jobs:
         run: |
           chmod +x tools/ci/install-test.py
           "$HOME/venv/bin/python" tools/ci/install-test.py \
-            iso/SMD-Linux-v1.4.1-amd64.iso out "${{ inputs.firmware }}"
+            iso/SMD-Linux-v1.5.0-amd64.iso out "${{ inputs.firmware }}"
         # A normal run takes about 30 minutes; a stall must fail quickly.
         # Setup takes about 40 minutes on TCG; the installed-system checks add
         # about 25. A stall must still fail rather than sit for hours.
