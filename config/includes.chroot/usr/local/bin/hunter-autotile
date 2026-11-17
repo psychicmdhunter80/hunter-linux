@@ -225,7 +225,7 @@ def main():
     note("connected to %s" % path)
 
     state = {"order": {}, "busy": False, "pending": set(),
-             "settled": {}, "where": {}}
+             "settled": {}, "where": {}, "slots": set()}
 
     def workspace_names():
         return [n.get("name") for n in nodes_of(i3.tree())
@@ -498,6 +498,38 @@ def main():
     for name in workspace_names():
         handle(name)
 
+    def handle_event(payload):
+        """One window event: recognise the helper's own and rebuild if needed."""
+        container = payload.get("container") or {}
+        marks = [str(m) for m in container.get("marks", []) or []]
+        if str(container.get("name", "")).startswith("smd-slot") \
+                or any(str(m).startswith("smd-slot") for m in marks) \
+                or container.get("id") in state["slots"]:
+            # The placeholders the helper appends raise events of their own.
+            return
+        change = payload.get("change")
+        if change in ("new", "close", "fullscreen_mode"):
+            # A closing window is already gone from the tree and a new one may
+            # not be in it yet, so its workspace is looked up first, then the
+            # one it was last seen on, and the focused workspace last.
+            con_id = (payload.get("container") or {}).get("id")
+            if change == "new" and not wait_for_container(con_id):
+                note("event new: container %s never appeared" % con_id)
+            tree = i3.tree()
+            workspace = (workspace_containing(tree, con_id) if con_id else None) \
+                or ({"name": state["where"][con_id]}
+                    if state["where"].get(con_id) else None) \
+                or focused_workspace(tree)
+            name = workspace.get("name") if workspace else None
+            note("event %s on workspace %s" % (change, name))
+            handle(name)
+        # A move is never a rebuild reason: the helper moves windows itself,
+        # and reacting to its own moves would loop.
+        elif change == "empty":
+            name = (payload.get("container") or {}).get("name")
+            state["order"].pop(name, None)
+            state["settled"].pop(name, None)
+
     while True:
         try:
             payload = i3.event()
@@ -514,34 +546,12 @@ def main():
             continue
         if not isinstance(payload, dict):
             continue
-        container = payload.get("container") or {}
-        marks = [str(m) for m in container.get("marks", []) or []]
-        if str(container.get("name", "")).startswith("smd-slot") \
-                or any(str(m).startswith("smd-slot") for m in marks) \
-                or container.get("id") in state["slots"]:
-            # Killing the placeholders raises events of their own.
-            continue
-        change = payload.get("change")
-        if change in ("new", "close", "fullscreen_mode"):
-            # A closing window is already gone from the tree and a new one may
-            # not be in it yet, so its workspace is looked up first and the
-            # focused workspace is the fallback.
-            con_id = (payload.get("container") or {}).get("id")
-            if change == "new" and not wait_for_container(con_id):
-                note("event new: container %s never appeared" % con_id)
-            tree = i3.tree()
-            workspace = (workspace_containing(tree, con_id) if con_id else None) \
-                or ({"name": state["where"][con_id]}
-                    if state["where"].get(con_id) else None) \
-                or focused_workspace(tree)
-            name = workspace.get("name") if workspace else None
-            note("event %s on workspace %s" % (change, name))
-            handle(name)
-        # A move is never a rebuild reason: the helper parks and restores
-        # windows itself, so reacting to its own moves would loop.
-        elif change == "empty":
-            name = (payload.get("container") or {}).get("name")
-            state["order"].pop(name, None)
+        # No single event may end the helper: the rest of the session would then
+        # lose its layout silently.
+        try:
+            handle_event(payload)
+        except Exception as error:  # noqa: BLE001
+            note("event error: %s" % error)
 
 
 if __name__ == "__main__":
