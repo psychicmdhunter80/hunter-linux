@@ -257,8 +257,12 @@ def main():
             """
             before = set(brave_windows())
             flag = "" if first else "--new-window "
-            shell.run("DISPLAY=:0 setsid brave %sabout:blank "
-                      ">/dev/null 2>&1 & echo STARTED" % flag, timeout=120)
+            started = shell.run(
+                "b=$(command -v brave || command -v brave-browser || echo NONE); "
+                "echo BIN=$b; [ \"$b\" = NONE ] && exit 0; "
+                "DISPLAY=:0 setsid \"$b\" %sabout:blank >/tmp/brave.log 2>&1 & "
+                "sleep 2; echo STARTED" % flag, timeout=120)
+            record("INFO: %s: %s" % (name, " ".join(started.split())[:200]))
             win = ""
             for _attempt in range(20):
                 time.sleep(3)
@@ -276,6 +280,9 @@ def main():
                           % (name, win), timeout=60)
             else:
                 record("FAIL: no Brave window appeared for %s" % name)
+                log = shell.run("tail -6 /tmp/brave.log 2>/dev/null; "
+                                "pgrep -a brave | head -3", timeout=60)
+                record("INFO: brave output: " + " | ".join(log.split())[:300])
             return win
 
         def stage(label, idle=0):
