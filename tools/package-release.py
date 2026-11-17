@@ -3,10 +3,13 @@
 
 Creates, in the directory above this project:
 
-    SMD-Linux-Build-v1.5.0.zip        the build sources, with file modes
-    SMD-Linux-v1.5.0-README.md          user documentation
-    SMD-Linux-v1.5.0-Test-Report.md     test status and measurements
-    SHA256SUMS                           checksums of the files above
+    SMD-Linux-Build-v1.5.0.zip                the build sources, with file modes
+    SMD-Linux-v1.5.0-README.md                user documentation
+    SMD-Linux-v1.5.0-Test-Report.md           test status and measurements
+    SMD-Linux-v1.5.0-RELEASE-NOTES.md         what changed in this release
+    SMD-Linux-v1.5.0-Technical-Reference.md   manifest, provenance, limitations
+    SMD-Linux-v1.5.0-Package-Manifest.txt     the image's installed packages
+    SHA256SUMS                                 checksums of the files above
 
 File permissions are stored in the archive (0755 for scripts), so the project
 can be unzipped and built without a chmod step.
@@ -29,6 +32,9 @@ ISO_NAME = "SMD-Linux-v1.5.0-amd64.iso"
 DOCS = {
     "README.md": "SMD-Linux-v1.5.0-README.md",
     "Test-Report.md": "SMD-Linux-v1.5.0-Test-Report.md",
+    "RELEASE-NOTES-1.5.0.md": "SMD-Linux-v1.5.0-RELEASE-NOTES.md",
+    "TECHNICAL-REFERENCE-1.5.0.md": "SMD-Linux-v1.5.0-Technical-Reference.md",
+    "PACKAGE-MANIFEST-1.5.0.txt": "SMD-Linux-v1.5.0-Package-Manifest.txt",
 }
 
 SKIP_DIRS = {".git", ".tmp", "__pycache__", "binary", "chroot", "cache",

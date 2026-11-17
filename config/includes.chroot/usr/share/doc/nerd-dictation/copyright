@@ -1,0 +1,25 @@
+nerd-dictation
+==============
+
+Offline speech-to-text engine used by SMD Linux Voice Typing (Alt+Z).
+
+Upstream:  https://github.com/ideasman42/nerd-dictation
+Commit:    41f372789c640e01bb6650339a78312661530843 (main, pinned)
+File:      nerd-dictation
+SHA-256:   9e782539337affde7c858eaf6f9b173d429a86434b6392ed11ad862de294d10d
+Size:      66628 bytes
+Licence:   GPL-2.0-or-later (SPDX-License-Identifier in the file header)
+
+The script is shipped byte-for-byte as published; it is not patched by this
+distribution.  GPL-2.0 text: /usr/share/common-licenses/GPL-2.
+
+Speech model
+------------
+vosk-model-small-en-us-0.15, from https://alphacephei.com/vosk/models
+SHA-256: 30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498
+Size:    41205931 bytes (zip), unpacked to
+         /usr/share/vosk/vosk-model-small-en-us-0.15
+Licence: Apache-2.0 (model and Vosk runtime)
+
+The model is fetched and checksum-verified by
+config/hooks/live/0360-smd-clients.hook.chroot at build time.

@@ -250,14 +250,18 @@ def main():
 
         # Without KVM the wizard takes a minute or two to draw its first page,
         # so the window itself decides when it is ready, not a fixed wait.
+        # Calamares owns more than one X window (a splash and the wizard), and
+        # which one is found first depends on how fast the run is.  Every
+        # window of the class is read, so the title that carries the branding
+        # is not missed because the splash answered first.
         title = ""
         deadline = time.time() + 300
         while time.time() < deadline:
             time.sleep(15)
             title = shell.run("DISPLAY=:0 xdotool search --class calamares "
-                              "getwindowname %1 2>/dev/null | head -2",
+                              "getwindowname %@ 2>/dev/null | head -6",
                               timeout=60).strip()
-            if title:
+            if EXPECT in title:
                 break
             record("INFO: installer still drawing: %s" % shell.run(
                 "pgrep -cf calamares || echo 0", timeout=60).strip())
@@ -285,8 +289,12 @@ def main():
                 break
             time.sleep(15)
         if png:
-            record("INFO: installer window title: %r" % title)
-            check(EXPECT in title, "the installer window is called %r" % title)
+            record("INFO: installer window titles: %r" % title)
+            # The version has to be in a window title the user can see; the
+            # names of the other windows are reported so a run that finds only
+            # the splash is diagnosable rather than mysterious.
+            check(EXPECT in title,
+                  "a title on the installer window says %s" % EXPECT)
             check(EXPECT in text, "the installer on screen shows %s" % EXPECT)
             check("1.3" not in text, "the installer on screen shows no 1.3")
             record("INFO: text read from the screen:\n" + text.strip()[:1200])
