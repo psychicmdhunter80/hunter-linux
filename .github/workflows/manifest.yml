@@ -1,0 +1,60 @@
+name: manifest
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build run whose ISO should be inventoried
+        required: true
+        type: string
+
+jobs:
+  manifest:
+    name: Package manifest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends squashfs-tools
+
+      - name: Fetch the ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
+          ls -lh iso/
+
+      - name: Read the image without booting it
+        run: |
+          set -euo pipefail
+          iso=iso/SMD-Linux-v1.5.0-amd64.iso
+          mkdir -p /tmp/iso
+          sudo mount -o loop,ro "$iso" /tmp/iso
+          squash=/tmp/iso/live/filesystem.squashfs
+          mkdir -p out
+          # Only the files that describe the image are unpacked.
+          sudo unsquashfs -no-progress -d /tmp/sq "$squash" \
+            var/lib/dpkg/status \
+            etc/os-release \
+            usr/share/doc/hunter-linux/components.txt
+          sudo cp /tmp/sq/var/lib/dpkg/status out/dpkg-status
+          sudo cp /tmp/sq/etc/os-release out/os-release
+          sudo cp /tmp/sq/usr/share/doc/hunter-linux/components.txt out/components.txt
+          sudo chown "$(id -u):$(id -g)" out/*
+          sudo umount /tmp/iso
+          python3 tools/ci/package-manifest.py out/dpkg-status out/package-manifest.txt
+          head -5 out/package-manifest.txt
+          cat out/components.txt
+
+      - name: Upload the manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest
+          path: out/
+          retention-days: 30
+          if-no-files-found: warn
