@@ -939,10 +939,13 @@ def main():
                 "cat /usr/share/doc/hunter-linux/components.txt 2>/dev/null "
                 "| head -8", timeout=240)
             cchunks = clients.split("---")
+            # The probe prints across a separator; reading only the first half
+            # made present files look missing.
+            found_clients = " ".join(cchunks[:2])
             missing = [word for word in ("jellyfin-exe", "jellyfin-entry",
                                          "jellyfin-import", "voice-toggle",
                                          "voice-entry", "vosk-import", "model")
-                       if word not in cchunks[0]]
+                       if word not in found_clients]
             record("PASS: the Jellyfin client and Voice Typing are in the "
                    "installed system" if not missing else
                    f"FAIL: missing from the installed system: {', '.join(missing)}")

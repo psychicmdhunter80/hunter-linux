@@ -462,13 +462,19 @@ def main():
         # fail the run.  The window is now found by name and measured: a
         # tiled dialog would be stretched to a tile, so its own small size is
         # the proof that it stayed floating.
-        tool = shell.run("command -v xmessage || echo MISSING", timeout=60)
+        # A GTK dialog declares _NET_WM_WINDOW_TYPE_DIALOG, which is what an
+        # ordinary dialog from a real application does; i3 is expected to float
+        # it.  xmessage was tried first and is not usable for this: its window
+        # name is "xmessage" rather than the message, and it declares no
+        # dialog type at all, so i3 tiles it like any other window.
+        tool = shell.run("command -v zenity || echo MISSING", timeout=60)
         record("INFO: dialog tool: %s" % tool.strip()[:80])
         opened = shell.run(
-            "DISPLAY=:0 setsid xmessage -center 'SMD dialog test' "
-            ">/tmp/xmessage.log 2>&1 & sleep 4; "
-            "DISPLAY=:0 xdotool search --name 'SMD dialog test' 2>/dev/null "
-            "| head -1; echo ---; tail -2 /tmp/xmessage.log 2>/dev/null",
+            "DISPLAY=:0 setsid zenity --info --title='SMD dialog test' "
+            "--text='SMD dialog test' --no-wrap >/tmp/dialog.log 2>&1 & "
+            "sleep 5; "
+            "DISPLAY=:0 xdotool search --class zenity 2>/dev/null | head -1; "
+            "echo ---; tail -2 /tmp/dialog.log 2>/dev/null",
             timeout=120)
         ochunks = opened.split("---")
         dialog_id = ochunks[0].strip().splitlines()[-1:] or [""]
@@ -476,6 +482,10 @@ def main():
         record("INFO: dialog window id: %s (%s)"
                % (dialog_id or "none",
                   " | ".join((ochunks[1] if len(ochunks) > 1 else "").split())[:120]))
+        if dialog_id.isdigit():
+            kind = shell.run("DISPLAY=:0 xprop -id %s _NET_WM_WINDOW_TYPE"
+                             % dialog_id, timeout=60)
+            record("INFO: dialog window type: %s" % kind.strip()[:120])
         geometry = ""
         if dialog_id.isdigit():
             geometry = shell.run("DISPLAY=:0 xwininfo -id %s "
@@ -497,7 +507,7 @@ def main():
         ok("opening the dialog does not rearrange the windows",
            json.dumps(during, sort_keys=True) == after,
            describe(during, labels_for(during)))
-        shell.run("pkill -x xmessage; sleep 3", timeout=60)
+        shell.run("pkill -x zenity; pkill -x xmessage; sleep 3", timeout=60)
         after_dialog, _ = stage("after dialog")
         ok("closing the dialog leaves the grid untouched",
            json.dumps(after_dialog, sort_keys=True) == after, describe(after_dialog))

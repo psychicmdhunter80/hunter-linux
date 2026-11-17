@@ -831,7 +831,12 @@ def main():
                 ("Voice Typing has a menu entry", "voice-menu"),
                 ("the speech engine imports", "vosk-import"),
                 ("the offline English speech model ships", "model-present")):
-            check(results, label, marker in cchunks[0])
+            # The probe prints its results either side of a separator, so a
+            # marker is looked for in both halves: reading only the first made
+            # four present files look missing.
+            check(results, label,
+                  marker in cchunks[0]
+                  or (len(cchunks) > 1 and marker in cchunks[1]))
         check(results, "Alt+Z is bound to Voice Typing in the session",
               cchunks[2].strip().splitlines()[:1] == ["1"])
         record("INFO: autostart entries: %s"

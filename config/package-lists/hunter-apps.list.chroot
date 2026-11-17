@@ -25,3 +25,9 @@ mpv
 
 # Voice Typing's listening/stopped feedback is a desktop notification.
 libnotify-bin
+
+# Dialogs.  zenity draws the standard GTK dialog an ordinary application puts
+# on screen, including its declared dialog window type - which is exactly what
+# the tiling test has to see floating rather than tiled.  It is also what shell
+# scripts and the installer helpers use for a question or a message.
+zenity
