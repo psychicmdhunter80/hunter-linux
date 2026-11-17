@@ -293,19 +293,17 @@ def main():
         else:
             check(False, "the installer screen could not be captured")
 
-        return 0 if passed else 1
+        return 1 if [line for line in results if line.startswith("FAIL")] else 0
     finally:
         qemu.terminate()
         try:
             qemu.wait(timeout=30)
         except subprocess.TimeoutExpired:
             qemu.kill()
+        failed = [line for line in results if line.startswith("FAIL")]
+        record("RESULT: %s" % ("failed" if failed else "passed"))
         with open(os.path.join(WORK, "result.txt"), "w", encoding="utf-8") as handle:
             handle.write("\n".join(results) + "\n")
-        for line in results:
-            if line.startswith("FAIL"):
-                passed = False
-        record("RESULT: %s" % ("passed" if passed else "failed"))
 
 
 if __name__ == "__main__":

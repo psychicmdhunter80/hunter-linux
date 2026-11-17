@@ -1,0 +1,45 @@
+started qemu as pid 3166 (accel=tcg)
+PASS: logged in on the serial console
+$ DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT
+WAIT
+$ DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT
+READY
+$ DISPLAY=:0 xset s off -dpms >/dev/null 2>&1; DISPLAY=:0 xset s noblank >/dev/null 2>&1; echo LIT
+LIT
+PASS: the live desktop is up
+$ grep -E 'productName|^ +version:|versionedName' /etc/calamares/branding/hunter/branding.desc
+productName:         "SMD Linux 1.4.1"
+    version:             "1.4.1"
+    versionedName:       "SMD Linux 1.4.1"
+PASS: Calamares productName is 'SMD Linux 1.4.1' (expected 1.4.1)
+PASS: Calamares version is '1.4.1' (expected 1.4.1)
+PASS: Calamares versionedName is 'SMD Linux 1.4.1' (expected 1.4.1)
+$ . /etc/os-release; echo "$PRETTY_NAME|$VERSION_ID"
+SMD Linux 1.4.1|1.4.1
+PASS: /etc/os-release says 'SMD Linux 1.4.1|1.4.1'
+$ head -1 /etc/issue
+SMD Linux 1.4.1 \n \l
+PASS: /etc/issue says 'SMD Linux 1.4.1 \\n \\l'
+$ . /etc/lsb-release; echo "$DISTRIB_DESCRIPTION"
+SMD Linux 1.4.1
+PASS: /etc/lsb-release says 'SMD Linux 1.4.1'
+$ DISPLAY=:0 setsid /usr/local/bin/hunter-install >/tmp/calamares.log 2>&1 &
+
+$ DISPLAY=:0 xdotool search --class calamares getwindowname %1 2>/dev/null | head -2
+
+$ pgrep -cf calamares || echo 0
+2
+INFO: installer still drawing: 2
+$ DISPLAY=:0 xdotool search --class calamares getwindowname %1 2>/dev/null | head -2
+SMD Linux 1.4.1 Installer
+PASS: the installer put a window on screen
+INFO: installer window title: 'SMD Linux 1.4.1 Installer'
+PASS: the installer window is called 'SMD Linux 1.4.1 Installer'
+PASS: the installer on screen shows 1.4.1
+PASS: the installer on screen shows no 1.3
+INFO: text read from the screen:
+Welcome to the SMD Linux 1.4.1 installer
+
+Welcome This program will ask you some questions and set up SMD Linux 1.4.1 on your computer.
+
+Fy American English
