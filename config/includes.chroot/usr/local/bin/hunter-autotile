@@ -225,7 +225,7 @@ def main():
     note("connected to %s" % path)
 
     state = {"order": {}, "busy": False, "pending": set(),
-             "settled": {}, "where": {}, "slots": set()}
+             "settled": {}, "where": {}}
 
     def workspace_names():
         return [n.get("name") for n in nodes_of(i3.tree())
@@ -304,7 +304,6 @@ def main():
                     rect.get("x", 0), rect.get("y", 0)))
         note("  tree: %s" % " ".join(shape[:14]))
         placed = []
-        state["slots"] = {node["id"] for node in slots}
         for node in slots:
             index = node["name"].rsplit("-", 1)[-1]
             if not index.isdigit():
@@ -502,9 +501,11 @@ def main():
         """One window event: recognise the helper's own and rebuild if needed."""
         container = payload.get("container") or {}
         marks = [str(m) for m in container.get("marks", []) or []]
+        # Only the name and the marks identify a placeholder: i3 reuses the
+        # container ids of the slots it destroys for windows opened later, so
+        # filtering by those ids would drop real windows.
         if str(container.get("name", "")).startswith("smd-slot") \
-                or any(str(m).startswith("smd-slot") for m in marks) \
-                or container.get("id") in state["slots"]:
+                or any(str(m).startswith("smd-slot") for m in marks):
             # The placeholders the helper appends raise events of their own.
             return
         change = payload.get("change")
