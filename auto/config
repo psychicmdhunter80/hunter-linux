@@ -17,7 +17,7 @@ lb config noauto \
 	--parent-distribution trixie \
 	--architectures amd64 \
 	--binary-images iso-hybrid \
-	--image-name SMD-Linux-v1.4 \
+	--image-name SMD-Linux-v1.4.1 \
 	--linux-flavours amd64 \
 	--linux-packages linux-image \
 	--bootloaders syslinux,grub-efi \
@@ -36,7 +36,7 @@ lb config noauto \
 	--initsystem systemd \
 	--bootappend-live "boot=live components quiet splash console=ttyS0,115200 hostname=smd username=user autologin" \
 	--bootappend-live-failsafe "boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 console=ttyS0,115200 hostname=smd username=user autologin" \
-	--iso-application "SMD Linux 1.4" \
+	--iso-application "SMD Linux 1.4.1" \
 	--iso-preparer "SMD Linux build (live-build)" \
 	--iso-publisher "SMD Linux Project" \
 	--iso-volume "SMD_LINUX_1_4" \

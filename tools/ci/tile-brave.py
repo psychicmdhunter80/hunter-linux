@@ -213,15 +213,24 @@ def main():
         if not shell.login() or not shell.wait_for_x():
             return 1
 
+        # The helper normally comes from the checkout so a fix can be tested
+        # without rebuilding the image; TILE_HELPER=image tests the one that
+        # actually ships inside the ISO instead.
+        from_image = os.environ.get("TILE_HELPER", "checkout") == "image"
+        source = ("install -m 755 /usr/local/bin/hunter-autotile /tmp/hunter-autotile"
+                  if from_image else
+                  "curl -fsS -m 30 http://10.0.2.2:%d/config/includes.chroot/usr/"
+                  "local/bin/hunter-autotile -o /tmp/hunter-autotile" % HTTP_PORT)
         fetched = shell.run(
-            "curl -fsS -m 30 http://10.0.2.2:%d/config/includes.chroot/usr/local/bin/"
-            "hunter-autotile -o /tmp/hunter-autotile && echo HELPER=ok; "
+            source + " && echo HELPER=ok; "
             "curl -fsS -m 30 http://10.0.2.2:%d/tools/ci/tile-dump.py "
-            "-o /tmp/tile-dump.py && echo DUMPER=ok" % (HTTP_PORT, HTTP_PORT),
+            "-o /tmp/tile-dump.py && echo DUMPER=ok" % HTTP_PORT,
             timeout=120)
         if "HELPER=ok" not in fetched:
-            record("FAIL: the helper could not be fetched from the checkout")
+            record("FAIL: the helper could not be provided to the image")
             return 1
+        record("INFO: helper under test: %s" % ("from the image"
+                                                if from_image else "from the checkout"))
         shell.run("chmod +x /tmp/hunter-autotile /tmp/tile-dump.py; "
                   "python3 -c \"import ast;ast.parse(open('/tmp/hunter-autotile').read())"
                   " ;print('SYNTAX=ok')\"", timeout=120)

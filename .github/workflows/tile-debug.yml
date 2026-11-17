@@ -35,7 +35,7 @@ jobs:
 
       - name: Run the tiling diagnostics
         run: |
-          python3 tools/ci/tile-debug.py iso/SMD-Linux-v1.4-amd64.iso uefi out-tile
+          python3 tools/ci/tile-debug.py iso/SMD-Linux-v1.4.1-amd64.iso uefi out-tile
         timeout-minutes: 50
 
       - name: Upload evidence

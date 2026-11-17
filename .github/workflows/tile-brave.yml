@@ -11,6 +11,10 @@ on:
         description: Build run whose ISO provides the live environment
         required: true
         type: string
+      helper:
+        description: "checkout (default) or image"
+        required: false
+        default: checkout
       mode:
         description: Firmware
         required: false
@@ -40,8 +44,10 @@ jobs:
           ls -lh iso/
 
       - name: Run the Brave tiling reproduction
+        env:
+          TILE_HELPER: ${{ inputs.helper }}
         run: |
-          python3 tools/ci/tile-brave.py iso/SMD-Linux-v1.4-amd64.iso out-brave "${{ inputs.mode }}"
+          python3 tools/ci/tile-brave.py iso/SMD-Linux-v1.4.1-amd64.iso out-brave "${{ inputs.mode }}"
         timeout-minutes: 70
 
       - name: Upload evidence
