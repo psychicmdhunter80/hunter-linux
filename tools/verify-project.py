@@ -355,6 +355,13 @@ def check_version_labels():
         elif found.group(1) != version:
             fail("version label %s says %s but the image builds %s"
                  % (name, found.group(1), version))
+    # The artwork is the one place a version is drawn rather than written, so
+    # the generator itself must have none of its own.
+    assets = read(os.path.join(ROOT, "tools", "make-assets.py"))
+    for found in re.findall(r'"(?:VERSION |version )?([0-9]+\.[0-9]+)"',
+                            assets):
+        fail("make-assets.py draws a hardcoded version %s" % found)
+
     return version
 
 

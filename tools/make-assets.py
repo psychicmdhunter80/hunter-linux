@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the SMD Linux 1.4 image assets.
+"""Generate the SMD Linux image assets.
 
 Everything visual in SMD Linux is produced by this script, so the artwork
 is reproducible from source with no drawing tools and no binary blobs:
@@ -13,12 +13,30 @@ Run from the project root:  python3 tools/make-assets.py
 """
 
 import os
+import re
 import struct
 import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROOT = os.path.join(ROOT, "config", "includes.chroot")
 BRANDING = os.path.join(CHROOT, "etc", "calamares", "branding", "hunter")
+
+
+def release_version():
+    """The release this artwork is for, taken from the build configuration.
+
+    The images are the only place a user sees a version that is not text in a
+    file, and 1.4 shipped a wallpaper and an installer picture still carrying
+    1.0 because these strings were typed in by hand.
+    """
+    with open(os.path.join(ROOT, "auto", "config"), encoding="utf-8") as handle:
+        match = re.search(r"--image-name\s+SMD-Linux-v([0-9.]+)", handle.read())
+    if not match:
+        raise SystemExit("auto/config does not name the image")
+    return match.group(1)
+
+
+VERSION = release_version()
 
 # Palette - a neutral dark theme that stays readable on cheap panels.
 BG_TOP = (20, 24, 29)
@@ -230,7 +248,7 @@ def wallpaper():
     canvas.gradient(BG_TOP, BG_BOTTOM)
     canvas.mark(1460, 520, 300, INK, 0.09)
     canvas.text(140, 830, "SMD LINUX", 8, INK, 0.92)
-    canvas.text(142, 910, "1.0", 4, ACCENT, 0.95)
+    canvas.text(142, 910, VERSION, 4, ACCENT, 0.95)
     canvas.rect(140, 960, 420, 4, ACCENT, 0.9)
     canvas.save(os.path.join(CHROOT, "usr", "share", "backgrounds", "hunter",
                              "wallpaper.png"))
@@ -252,7 +270,7 @@ def installer_logo(path):
     canvas = Canvas(480, 120, alpha=True)
     canvas.mark(52, 58, 64, INK, 1.0)
     canvas.text(112, 44, "SMD LINUX", 4, INK, 1.0)
-    canvas.text(114, 82, "VERSION 1.4", 2, MUTED, 1.0)
+    canvas.text(114, 82, "VERSION " + VERSION, 2, MUTED, 1.0)
     canvas.save(path)
 
 
@@ -268,7 +286,7 @@ def installer_welcome(path):
     canvas.fill(PANEL)
     canvas.mark(400, 108, 96, INK, 1.0)
     canvas.centered_text(196, "SMD LINUX", 5, INK, 1.0)
-    canvas.centered_text(240, "1.0", 3, MUTED, 1.0)
+    canvas.centered_text(240, VERSION, 3, MUTED, 1.0)
     canvas.save(path)
 
 
@@ -283,7 +301,7 @@ def slide(path, headline, subline):
 
 
 def main():
-    print("SMD Linux 1.4 - generating image assets")
+    print("SMD Linux %s - generating image assets" % VERSION)
     wallpaper()
     boot_splash(640, 480, os.path.join(ROOT, "config", "bootloaders", "isolinux",
                                        "splash.png"))
