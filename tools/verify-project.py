@@ -315,6 +315,49 @@ def check_references():
             fail("missing application entry %s" % name)
 
 
+def check_version_labels():
+    """Every label the image shows must carry the version auto/config builds.
+
+    The 1.4 image still called itself 1.3 in the installer because the
+    Calamares branding was never bumped; this keeps that from happening again.
+    """
+    config = read(os.path.join(ROOT, "auto", "config"))
+    match = re.search(r"--image-name\s+SMD-Linux-v([0-9.]+)", config)
+    if not match:
+        fail("auto/config does not name the image")
+        return None
+    version = match.group(1)
+
+    labels = [
+        ("Calamares productName", "etc/calamares/branding/hunter/branding.desc",
+         r'productName:\s+"SMD Linux ([0-9.]+)"'),
+        ("Calamares version", "etc/calamares/branding/hunter/branding.desc",
+         r'\bversion:\s+"([0-9.]+)"'),
+        ("Calamares versionedName", "etc/calamares/branding/hunter/branding.desc",
+         r'versionedName:\s+"SMD Linux ([0-9.]+)"'),
+        ("/etc/issue", "etc/issue", r"SMD Linux ([0-9.]+)"),
+        ("/etc/os-release", "etc/os-release", r'PRETTY_NAME="SMD Linux ([0-9.]+)"'),
+        ("/etc/lsb-release", "etc/lsb-release",
+         r'DISTRIB_DESCRIPTION="SMD Linux ([0-9.]+)"'),
+        ("shortcuts page", "usr/share/doc/hunter-linux/shortcuts.html",
+         r"Keyboard shortcuts &mdash; version ([0-9.]+)"),
+        ("GRUB theme title", "../bootloaders/grub-pc/live-theme/theme.txt",
+         r'title-text:\s+"SMD Linux ([0-9.]+)"'),
+    ]
+    for name, path, pattern in labels:
+        full = os.path.normpath(os.path.join(CHROOT, path))
+        if not os.path.exists(full):
+            fail("version label %s: %s is missing" % (name, path))
+            continue
+        found = re.search(pattern, read(full))
+        if not found:
+            fail("version label %s: no version found in %s" % (name, path))
+        elif found.group(1) != version:
+            fail("version label %s says %s but the image builds %s"
+                 % (name, found.group(1), version))
+    return version
+
+
 def main():
     live_build = None
     if "--live-build" in sys.argv:
@@ -330,6 +373,7 @@ def main():
     check_bootloaders()
     options = check_autoconfig(live_build)
     check_references()
+    version = check_version_labels()
 
     print("SMD Linux project verification")
     print("  XML files parsed:        %d" % xml_count)
@@ -339,6 +383,7 @@ def main():
     if module_count is not None:
         print("  calamares modules used:  %d" % module_count)
     print("  lb config options:       %d" % len(options))
+    print("  version labels agree:    %s" % (version or "not checked"))
     if live_build:
         print("  options checked against live-build: yes")
     print()

@@ -5,7 +5,7 @@
 desktop-image: "../splash.png"
 title-color: "#e6e6e6"
 title-font: "Unifont Regular 16"
-title-text: "SMD Linux 1.0"
+title-text: "SMD Linux 1.4.1"
 message-font: "Unifont Regular 16"
 terminal-font: "Unifont Regular 16"
 
