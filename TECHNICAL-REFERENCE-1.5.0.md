@@ -12,10 +12,11 @@ download; the files are in the delivery folder described in `README.md`.
 | --- | --- |
 | Distribution | SMD Linux 1.5.0 |
 | Base | Debian 13 "trixie", amd64 |
-| Image | `SMD-Linux-v1.5.0-amd64.iso` (hybrid live ISO, BIOS + UEFI) |
-| SHA-256 | `74017efe2828d31c34cc3dab216e62f135746db27c6d7225ee7cb47953bb5ee8` |
-| Build | Actions run `44192636526`, job "Build ISO", 7m53s |
-| Source commit | `ad8679f5834fe7f23cb52dd6ebfec9cd0c397b63` |
+| Image | `SMD-Linux-v1.5.0-amd64.iso`, 1,134,166,016 bytes (hybrid live ISO, BIOS + UEFI) |
+| Installed packages | 942 (exact list in `PACKAGE-MANIFEST-1.5.0.txt`) |
+| SHA-256 | `9820f5fab9c04bcc9d3a47c3d0e85f41873b0390d1ce597cd9aa3ccf61fa1952` |
+| Build | Actions run `44196246894`, job "Build ISO" |
+| Source commit | `065330fb0a0e72ae7135905970fe56964f4ce04f` |
 | Builder | `debian:trixie` container, `live-build` 1:20250505+deb13u1, Dockerfile in this project |
 | Build inputs | this repository at that commit (source archive `SMD-Linux-Build-v1.5.0.zip`) |
 
@@ -49,6 +50,7 @@ Brave keeps updating.
 | nerd-dictation | commit `41f3727` | shipped in `config/includes.chroot/usr/share/nerd-dictation/` | `/opt/smd-voice`, `parec` (`pulseaudio-utils`), `xdotool` |
 | Brave Browser | from Brave's repository | `0350-smd-browser.hook.chroot` | `libavcodec-extra` |
 | VLC | Debian | package list | `libavcodec-extra` |
+| zenity | 4.1.90-1 | package list | dialogs, including the one the tiling test opens |
 
 The two PyPI programs are installed into their own virtualenvs rather than into
 the system interpreter: Debian marks `/usr/lib/python3` externally managed, and

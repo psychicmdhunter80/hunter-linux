@@ -1,4 +1,4 @@
-# SMD Linux package manifest - 935 packages installed
+# SMD Linux package manifest - 942 packages installed
 # name version architecture
 accountsservice 23.13.9-7 amd64
 adduser 3.152 all
@@ -142,8 +142,10 @@ libaa1 1.4p5-51.1+b1 amd64
 libabsl20240722 20240722.0-4 amd64
 libaccountsservice0 23.13.9-7 amd64
 libacl1 2.3.2-2+b1 amd64
+libadwaita-1-0 1.7.6-1~deb13u1 amd64
 libaom3 3.12.1-1+deb13u1 amd64
 libapparmor1 4.1.0-1 amd64
+libappstream5 1.0.5-1 amd64
 libapt-pkg7.0 3.0.4 amd64
 libarchive13t64 3.7.4-4+deb13u1 amd64
 libaribb24-0t64 1.0.3-2.1+b2 amd64
@@ -626,6 +628,7 @@ libssh2-1t64 1.11.1-1+deb13u2 amd64
 libssl3t64 3.5.7-1~deb13u3 amd64
 libstartup-notification0 0.12-8 amd64
 libstdc++6 14.2.0-19 amd64
+libstemmer0d 2.2.0-4+b2 amd64
 libsvtav1enc2 2.3.0+dfsg-1 amd64
 libswresample5 7:7.1.5-0+deb13u1 amd64
 libswscale8 7:7.1.5-0+deb13u1 amd64
@@ -753,6 +756,7 @@ libxkbfile1 1:1.1.0-1+b4 amd64
 libxklavier16 5.4-5+b2 amd64
 libxml++2.6-2v5 2.42.3-2 amd64
 libxml2 2.12.7+dfsg+really2.9.14-2.1+deb13u3 amd64
+libxmlb2 0.3.22-1 amd64
 libxmu6 2:1.1.3-3+b4 amd64
 libxmuu1 2:1.1.3-3+b4 amd64
 libxpm4 1:3.5.17-1+deb13u1 amd64
@@ -773,6 +777,7 @@ libxxf86dga1 2:1.1.5-1+b3 amd64
 libxxf86vm1 1:1.1.4-1+b4 amd64
 libxxhash0 0.8.3-2 amd64
 libyajl2 2.1.0-5+b2 amd64
+libyaml-0-2 0.2.5-2 amd64
 libyaml-cpp0.8 0.8.0+dfsg-7 amd64
 libz3-4 4.13.3-1 amd64
 libzimg2 3.0.5+ds1-1+b2 amd64
@@ -933,5 +938,7 @@ xserver-xorg-video-radeon 1:22.0.0-1 amd64
 xserver-xorg-video-vesa 1:2.6.0-2 amd64
 xz-utils 5.8.1-1+deb13u2 amd64
 yudit-common 3.1.0-1 all
+zenity 4.1.90-1 amd64
+zenity-common 4.1.90-1 all
 zlib1g 1:1.3.dfsg+really1.3.1-1+deb13u1 amd64
 zram-tools 0.3.7-1 all

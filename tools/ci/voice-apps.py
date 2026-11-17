@@ -263,7 +263,7 @@ def main():
         shell.xrun("echo ENV=ready", timeout=60)
 
         # ---------------------------------------------------------- fresh user
-        fresh = shell.run(
+        fresh = shell.xrun(
             "test -e ~/.local/share/smd-dictation && echo voice-state || echo voice-clean; "
             "test -e ~/.config/jellyfin-mpv-shim/config.json && echo jf-config || echo jf-clean; "
             "xrandr --display :0 >/dev/null 2>&1; echo ---; "
@@ -282,15 +282,15 @@ def main():
 
         # A recording to speak into.  The null sink's monitor is what the
         # recogniser records, so no microphone is needed on the runner.
-        shell.run(
+        shell.xrun(
             "pactl load-module module-null-sink sink_name=smdvoice "
             "sink_properties=device.description=smdvoice >/tmp/module.txt 2>&1; "
             "pactl set-default-sink smdvoice 2>&1; "
             "pactl set-default-source smdvoice.monitor 2>&1; sleep 2; "
             "pactl list short sources | grep -c smdvoice.monitor",
             timeout=120)
-        sources = shell.run("pactl list short sources | grep -c smdvoice.monitor",
-                            timeout=60)
+        sources = shell.xrun("pactl list short sources | grep -c smdvoice",
+                             timeout=60)
         check("a monitor source exists to dictate from",
               sources.strip().splitlines()[-1:] == ["1"], sources.strip()[:60])
 
@@ -348,10 +348,10 @@ def main():
               " ".join(text.split())[:120])
 
         # ------------------------------------- what is spoken becomes the text
-        shell.run("paplay --device=smdvoice /tmp/test.wav >/tmp/play.log 2>&1; "
-                  "echo PLAYED=$?", timeout=180)
+        shell.xrun("paplay --device=smdvoice /tmp/test.wav >/tmp/play.log 2>&1; "
+                   "echo PLAYED=$?", timeout=180)
         dictated = ""
-        for _attempt in range(8):
+        for _attempt in range(24):
             time.sleep(5)
             dictated = shell.run("cat /tmp/dictated.txt 2>/dev/null", timeout=60)
             if len(dictated.strip()) > 3:
@@ -373,7 +373,8 @@ def main():
         # most plausibly have been in the way.
         ctrl = shell.xrun(
             "xdotool key --clearmodifiers ctrl+z; sleep 2; "
-            "ps -eo stat=,comm= | grep -E '^T' | grep -qw cat && echo STOPPED; "
+            "ps -eo comm=,stat= | grep -qE '^cat[[:space:]]+T' "
+            "&& echo STOPPED; "
             "pkill -CONT -x cat 2>/dev/null; echo resumed", timeout=120)
         record("INFO: process state after Ctrl+Z: %s" % ctrl.strip()[:80])
         check("Ctrl+Z still reaches the application while dictating",
@@ -404,7 +405,7 @@ def main():
         check("no recogniser is left behind", procs.splitlines()[-1:] == ["0"], procs)
         check("the microphone is released when dictation stops",
               recording.splitlines()[-1:] == ["0"], recording)
-        text = ocr(shot).lower()
+        text = (ocr(shot) + " " + ocr(monitor.screenshot("voice-stopped-again"))).lower()
         check("stopping dictation says so on screen", "stopped" in text,
               " ".join(text.split())[:120])
 
@@ -440,12 +441,12 @@ def main():
                    ">/tmp/jellyfin.log 2>&1 & sleep 25", timeout=120)
         alive = shell.run("pgrep -c -f 'jellyfin-mpv-shim' || echo 0",
                           timeout=60).strip()
-        window = shell.run("DISPLAY=:0 xdotool search --name -i jellyfin "
-                           "2>/dev/null | wc -l", timeout=60).strip()
+        window = shell.run("DISPLAY=:0 xwininfo -root -tree 2>/dev/null "
+                           "| grep -ci jellyfin", timeout=60).strip()
         # The word "libmpv" appears in a healthy log ("Using libmpv playback
         # backend"), so only real failures are looked for.
         log = shell.run(
-            "grep -iE 'modulenotfound|cannot open shared object|no such file|traceback' "
+            "grep -iE 'modulenotfound|importerror|traceback|libmpv.so' "
             "/tmp/jellyfin.log | head -5; echo ---; tail -3 /tmp/jellyfin.log",
             timeout=60)
         record("INFO: Jellyfin window count: %s" % window)

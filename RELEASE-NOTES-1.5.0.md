@@ -7,11 +7,11 @@ It keeps the repaired tiling behaviour of 1.4.1.
 | | |
 | --- | --- |
 | Image | `SMD-Linux-v1.5.0-amd64.iso` |
-| Size | 1,129,709,568 bytes (1.05 GiB) |
-| SHA-256 | `74017efe2828d31c34cc3dab216e62f135746db27c6d7225ee7cb47953bb5ee8` |
-| Build | Actions run `44192636526` |
+| Size | 1,134,166,016 bytes (1.06 GiB) |
+| SHA-256 | `9820f5fab9c04bcc9d3a47c3d0e85f41873b0390d1ce597cd9aa3ccf61fa1952` |
+| Build | Actions run `44196246894` |
 | Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
-| Installed packages | 935 |
+| Installed packages | 942 |
 
 ## Why 1.4.1 could not simply be reused
 
