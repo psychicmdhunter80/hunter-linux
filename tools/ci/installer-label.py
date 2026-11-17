@@ -113,8 +113,12 @@ class Shell:
         self.counter += 1
         begin = "LABELMARK%02dBEGIN" % self.counter
         end = "LABELMARK%02dEND" % self.counter
-        self.chan.send('%s; (%s) 2>&1 | head -%d; echo %s\r'
-                       % (begin, command, lines, end))
+        # The console echoes the command line back, so each marker is split in
+        # the input: only the shell's own output carries it whole, and the
+        # match cannot land inside the echo.
+        self.chan.send('echo "%s""%s"; (%s) 2>&1 | head -%d; echo "%s""%s"\r'
+                       % (begin[:12], begin[12:], command, lines,
+                          end[:12], end[12:]))
         match, _ = self.chan.expect(re.escape(begin) + r"(.*?)" + re.escape(end),
                                     timeout=timeout)
         if not match:
@@ -192,9 +196,15 @@ def screenshot(monitor, name):
 
 
 def ocr(path):
+    """Read the screen: the sidebar type is small, so it is scaled up first."""
     if not path or not os.path.exists(path):
         return ""
-    text = subprocess.run(["tesseract", path, "stdout"], capture_output=True,
+    big = os.path.join(WORK, "ocr.png")
+    subprocess.run(["convert", path, "-resize", "200%", "-colorspace", "Gray",
+                    big], check=False, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
+    target = big if os.path.exists(big) else path
+    text = subprocess.run(["tesseract", target, "stdout"], capture_output=True,
                           text=True, check=False)
     return text.stdout
 
@@ -237,33 +247,46 @@ def main():
         # ------------------------------------------- what the installer shows
         shell.run("DISPLAY=:0 setsid /usr/local/bin/hunter-install "
                   ">/tmp/calamares.log 2>&1 &", timeout=60)
-        time.sleep(35)
 
-        title = shell.run("DISPLAY=:0 xdotool search --class calamares "
-                          "getwindowname %1 2>/dev/null | head -2", timeout=60)
-        running = "RUNNING" in shell.run(
-            "pgrep -f 'calamares' >/dev/null && echo RUNNING || echo GONE",
-            timeout=60)
-        if not check(running, "the installer started from the live desktop"):
+        # Without KVM the wizard takes a minute or two to draw its first page,
+        # so the window itself decides when it is ready, not a fixed wait.
+        title = ""
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            time.sleep(15)
+            title = shell.run("DISPLAY=:0 xdotool search --class calamares "
+                              "getwindowname %1 2>/dev/null | head -2",
+                              timeout=60).strip()
+            if title:
+                break
+            record("INFO: installer still drawing: %s" % shell.run(
+                "pgrep -cf calamares || echo 0", timeout=60).strip())
+        if not title:
+            record("INFO: process list: " + shell.run(
+                "pgrep -af calamares | head -3 || echo none", timeout=60))
             record("INFO: installer log: " + shell.run(
-                "tail -3 /tmp/calamares.log", timeout=60))
+                "tail -5 /tmp/calamares.log 2>/dev/null || echo none", timeout=60))
+            record("INFO: windows on screen: " + shell.run(
+                "DISPLAY=:0 xdotool search --onlyvisible --name . "
+                "getwindowname %@ 2>/dev/null | head -10", timeout=60))
+        check(title != "", "the installer put a window on screen")
 
         monitor = Channel(MON_PORT)
         monitor.expect(r"\(qemu\)", timeout=60)
 
         # The sidebar carries the product name and the version on every page.
+        time.sleep(12)
         text = ""
         png = None
-        for attempt in range(6):
+        for attempt in range(8):
             png = screenshot(monitor, "installer-label-%d" % attempt)
             text = ocr(png)
             if EXPECT in text:
                 break
-            time.sleep(10)
+            time.sleep(15)
         if png:
-            record("INFO: installer window title: %r" % title.strip())
-            check(title.strip() != "" and EXPECT in title,
-                  "the installer window is called %r" % title.strip())
+            record("INFO: installer window title: %r" % title)
+            check(EXPECT in title, "the installer window is called %r" % title)
             check(EXPECT in text, "the installer on screen shows %s" % EXPECT)
             check("1.3" not in text, "the installer on screen shows no 1.3")
             record("INFO: text read from the screen:\n" + text.strip()[:1200])
