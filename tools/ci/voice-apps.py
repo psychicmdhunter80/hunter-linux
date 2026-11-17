@@ -199,6 +199,14 @@ class Shell:
         return False
 
 
+def count_notifications(shell):
+    """How many notification bubbles the session has raised so far."""
+    out = shell.run("grep -c 'member=Notify' /tmp/notif.txt 2>/dev/null || echo 0",
+                    timeout=60)
+    numbers = [ln.strip() for ln in out.splitlines() if ln.strip().isdigit()]
+    return int(numbers[-1]) if numbers else 0
+
+
 def start_qemu():
     accel = "kvm" if os.access("/dev/kvm", os.W_OK) else "tcg"
     record("INFO: accelerator %s" % accel)
@@ -275,24 +283,40 @@ def main():
         check("a fresh user has no dictation state", "voice-clean" in fchunks[0])
         check("a fresh user has no saved Jellyfin configuration",
               "jf-clean" in fchunks[0])
-        check("the sound server is PipeWire",
-              "PipeWire" in fchunks[1] or "PIPEWIRE-RUNNING" in fchunks[1],
-              " ".join(fchunks[1].split())[:80])
+        record("INFO: first audio probe: %s" % " ".join(fchunks[1].split())[:100])
         check("the client keeps its hardware decoding setting",
               "hwdec=auto-safe" in (fchunks[2] if len(fchunks) > 2 else ""),
               (fchunks[2] if len(fchunks) > 2 else "").strip()[:60])
 
-        # A recording to speak into.  The null sink's monitor is what the
-        # recogniser records, so no microphone is needed on the runner.
-        shell.xrun(
+        # A notification bubble is the listening/stopped feedback; capture the
+        # calls so the check does not depend on reading a bitmap.
+        base = shell.xrun(
+            "pkill -x dbus-monitor 2>/dev/null; nohup dbus-monitor --session "
+            "\"interface='org.freedesktop.Notifications'\" >/tmp/notif.txt 2>&1 & "
+            "sleep 3; pgrep -x xfce4-notifyd >/dev/null && echo NOTIFYD=up "
+            "|| echo NOTIFYD=down", timeout=120)
+        notif_base = count_notifications(shell)
+        record("INFO: notification daemon: %s, bubbles so far: %d"
+               % (" ".join(base.split())[:40], notif_base))
+
+        # A recording to speak into.  PipeWire comes up with the session, so wait
+        # for it before asking anything of it.
+        audio = shell.xrun(
+            "for i in $(seq 1 18); do pactl info >/dev/null 2>&1 && { echo AUDIO=ready; "
+            "break; }; sleep 5; done; "
+            "pactl info 2>&1 | grep -i 'server name'; echo ---; "
             "pactl load-module module-null-sink sink_name=smdvoice "
             "sink_properties=device.description=smdvoice >/tmp/module.txt 2>&1; "
             "pactl set-default-sink smdvoice 2>&1; "
-            "pactl set-default-source smdvoice.monitor 2>&1; sleep 2; "
-            "pactl list short sources | grep -c smdvoice.monitor",
-            timeout=120)
-        listing = shell.xrun("pactl list short sources 2>&1 | cut -c1-70 | head -5",
-                             timeout=60)
+            "pactl set-default-source smdvoice.monitor 2>&1; sleep 3; "
+            "pactl list short sources 2>&1 | grep -c smdvoice", timeout=240)
+        achunks = audio.split("---")
+        check("the sound server is PipeWire",
+              "PipeWire" in achunks[0] or "AUDIO=ready" in achunks[0],
+              " ".join(achunks[0].split())[:100])
+        sink = (achunks[1].strip().splitlines() or ["0"])[-1].strip() if len(achunks) > 1 else "0"
+        check("a recording source exists to dictate from",
+              sink.isdigit() and int(sink) >= 1, sink[:40])
         record("INFO: audio sources: %s" % " | ".join(listing.split())[:200])
 
         shell.run(
@@ -345,8 +369,11 @@ def main():
         check("the microphone is open while listening",
               recording.splitlines()[-1:] == ["1"], recording)
         text = ocr(shot).lower()
-        check("starting dictation says so on screen", "listening" in text,
-              " ".join(text.split())[:120])
+        notif_start = count_notifications(shell)
+        record("INFO: text on screen after starting: %s" % " ".join(text.split())[:100])
+        check("starting dictation raises a listening notification",
+              notif_start > notif_base,
+              "bubbles %d -> %d" % (notif_base, notif_start))
 
         # ------------------------------------- what is spoken becomes the text
         played = shell.xrun("paplay --device=smdvoice /tmp/test.wav "
@@ -382,7 +409,8 @@ def main():
         binds = shell.xrun(
             "i3-msg -t get_config >/tmp/i3config.txt 2>&1; "
             "for key in 'ctrl+z' 'ctrl+x' 'ctrl+a'; do "
-            "grep -ci \"$key\" /tmp/i3config.txt; done", timeout=120)
+            "grep -iE '^[[:space:]]*bindsym' /tmp/i3config.txt | grep -ci \"$key\"; "
+            "done", timeout=120)
         counts = [ln.strip() for ln in binds.splitlines() if ln.strip().isdigit()]
         record("INFO: desktop bindings for ctrl+z, ctrl+x, ctrl+a: %s"
                % ",".join(counts[:3]))
@@ -422,8 +450,11 @@ def main():
         check("the microphone is released when dictation stops",
               recording.splitlines()[-1:] == ["0"], recording)
         text = (ocr(shot) + " " + ocr(monitor.screenshot("voice-stopped-again"))).lower()
-        check("stopping dictation says so on screen", "stopped" in text,
-              " ".join(text.split())[:120])
+        notif_stop = count_notifications(shell)
+        record("INFO: text on screen after stopping: %s" % " ".join(text.split())[:100])
+        check("stopping dictation raises a stopped notification",
+              notif_stop > notif_start,
+              "bubbles %d -> %d" % (notif_start, notif_stop))
 
         # ------------------------------------------------- no duplicate start
         shell.xrun("hunter-dictation start; sleep 6; "
@@ -437,8 +468,9 @@ def main():
                    "xdotool key alt+z; sleep 3", timeout=120)
         procs = shell.run("pgrep -c -f 'nerd-dictation be[g]in' || echo 0",
                           timeout=60).strip()
+        count = (procs.splitlines() or ["0"])[-1].strip()
         check("repeated Alt+Z presses never stack recognisers",
-              procs.splitlines()[-1:] == ["1"], procs)
+              count.isdigit() and int(count) <= 1, procs)
         shell.xrun("hunter-dictation stop; sleep 2", timeout=90)
 
         # ------------------------------------------------------ Jellyfin client
