@@ -48,9 +48,17 @@ python3 -m venv "$JELLYFIN_VENV" || die "could not create $JELLYFIN_VENV"
 # The client must be able to open libmpv.  A wheel that imports but cannot load
 # libmpv would start and fail only when the user presses play.
 "$JELLYFIN_VENV/bin/python" - <<'PY' || die "python-mpv cannot load libmpv"
+import ctypes
 import ctypes.util
-import mpv  # noqa: F401  (import resolves libmpv through ctypes)
-print("hunter: libmpv resolves to", ctypes.util.find_library("mpv"))
+import mpv  # noqa: F401  (the client drives playback through this module)
+
+found = ctypes.util.find_library("mpv")
+if not found:
+    raise SystemExit("libmpv is not installed")
+# Loading it is the part that playback needs; find_library alone would pass on
+# a machine where the library is listed but unusable.
+ctypes.CDLL(found)
+print("hunter: libmpv loads from", found)
 PY
 
 # ---------------------------------------------------------------------------
