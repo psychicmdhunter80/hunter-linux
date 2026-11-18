@@ -288,22 +288,30 @@ def main():
               "hwdec=auto-safe" in (fchunks[2] if len(fchunks) > 2 else ""),
               (fchunks[2] if len(fchunks) > 2 else "").strip()[:60])
 
-        # A notification bubble is the listening/stopped feedback; capture the
-        # calls so the check does not depend on reading a bitmap.
+        # A notification bubble is the listening/stopped feedback.  Prove the
+        # path first with a probe bubble: if this fails the desktop has no
+        # notifier and every later bubble would silently go nowhere.
         base = shell.xrun(
-            "pkill -x dbus-monitor 2>/dev/null; nohup dbus-monitor --session "
-            "\"interface='org.freedesktop.Notifications'\" >/tmp/notif.txt 2>&1 & "
-            "sleep 3; pgrep -x xfce4-notifyd >/dev/null && echo NOTIFYD=up "
-            "|| echo NOTIFYD=down; gdbus call --session --dest org.freedesktop.DBus "
-            "--object-path /org/freedesktop/DBus --method "
-            "org.freedesktop.DBus.NameHasOwner org.freedesktop.Notifications "
-            "2>/dev/null | grep -q true && echo SERVICE=yes || echo SERVICE=no",
-            timeout=120)
+            "pkill -x dbus-monitor 2>/dev/null; "
+            "(setsid dbus-monitor --session \"interface='org.freedesktop.Notifications'\" "
+            "</dev/null >/tmp/notif.txt 2>&1 &); sleep 3; "
+            "notify-send -a 'SMD test' 'SMD test' 'feedback probe' >/dev/null 2>&1; "
+            "echo RC=$?; echo ---; "
+            "pgrep -x xfce4-notifyd >/dev/null && echo NOTIFYD=up || echo NOTIFYD=down; "
+            "echo ---; grep -c 'member=Notify' /tmp/notif.txt 2>/dev/null || echo 0; "
+            "echo ---; head -2 /tmp/notif.txt", timeout=150)
+        bchunks = base.split("---")
+        record("INFO: notification probe: %s"
+               % " ".join(" ".join(bchunks).split())[:200])
+        check("the desktop can show notifications",
+              "RC=0" in (bchunks[0] if bchunks else ""),
+              (bchunks[0] if bchunks else "").strip()[:80])
         notif_base = count_notifications(shell)
+        check("the notification capture is running", notif_base >= 1,
+              "bubbles captured: %d" % notif_base)
         record("INFO: notification daemon: %s, bubbles so far: %d"
-               % (" ".join(base.split())[:60], notif_base))
-        check("the desktop can show notifications", "SERVICE=yes" in base,
-              " ".join(base.split())[:80])
+               % (" ".join((bchunks[1] if len(bchunks) > 1 else "").split())[:40],
+                  notif_base))
 
         # A recording to speak into.  PipeWire comes up with the session, so wait
         # for it before asking anything of it.
