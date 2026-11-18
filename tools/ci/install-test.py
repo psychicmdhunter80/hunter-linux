@@ -1013,33 +1013,31 @@ def main():
                    else f"FAIL: the installed panel is not at the bottom "
                         f"({found if found else 'no window'})")
 
+            # 1.3 retired auto-hide: the panel is set to stay visible and a
+            # full-screen window simply covers it.  This check used to demand
+            # that the panel hide, which the image has not done since 1.3, so it
+            # was the only installed-session check that disagreed with the
+            # delivered behaviour.  It now matches the live-session check.
+            hide = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                             "-p /panels/panel-1/autohide-behavior 2>&1", timeout=60)
+            record("PASS: the installed panel is set never to hide"
+                   if hide.strip().endswith("0")
+                   else f"FAIL: the installed panel is set to hide ({hide.strip()[:40]})")
             window = re.search(r"(0x[0-9a-f]+)", pchunks[1]) if len(pchunks) > 1 else None
             if window:
-                shell.run("DISPLAY=:0 xdotool mousemove 300 300", timeout=30)
-                hidden = ""
-                for _ in range(7):
-                    time.sleep(3)
-                    hidden = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
-                                       "| grep 'Map State'", timeout=60)
-                    if "IsUnMapped" in hidden or "IsUnviewable" in hidden:
-                        break
-                edge = (int(screen.group(1)) - 2) if screen else 798
-                shell.run(f"DISPLAY=:0 xdotool mousemove 640 {edge}", timeout=30)
-                shown = ""
-                for _ in range(7):
-                    time.sleep(2)
-                    shown = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)} "
-                                      "| grep 'Map State'", timeout=60)
-                    if "IsViewable" in shown:
-                        break
-                record(f"INFO: installed panel away: {hidden.strip()[:70]}")
-                record(f"INFO: installed panel at the bottom: {shown.strip()[:70]}")
-                record("PASS: the installed panel auto-hides"
-                       if "IsUnMapped" in hidden or "IsUnviewable" in hidden
-                       else "FAIL: the installed panel never hides")
-                record("PASS: the installed panel appears at the bottom edge"
-                       if "IsViewable" in shown
-                       else "FAIL: the installed panel does not appear on demand")
+                info = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)}", timeout=60)
+                state = re.search(r"Map State:\s*(\S+)", info)
+                corner = re.search(r"Corners:\s*\+(-?\d+)\+(\d+)", info)
+                height = re.search(r"Height:\s*(\d+)", info)
+                y = int(corner.group(2)) if corner else None
+                tall = int(height.group(1)) if height else 0
+                screen_px = int(screen.group(1)) if screen else 0
+                record(f"INFO: installed panel: state {state.group(1) if state else '?'}, "
+                       f"y={y}, height={tall}, screen {screen_px}")
+                record("PASS: the installed panel stays visible along the bottom edge"
+                       if (state and state.group(1) == "IsViewable" and y is not None
+                           and y + tall >= screen_px - 6)
+                       else "FAIL: the installed panel is not visible at the bottom edge")
 
             audio = shell.run(
                 "pactl info 2>&1 | grep -iE 'server name|server version'; echo ---; "
