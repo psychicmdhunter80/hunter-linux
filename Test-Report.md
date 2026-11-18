@@ -263,7 +263,7 @@ reached. 1.5.0 adds the first two and repairs the third.
 | Installer version label | run `44198233045` - 12 passed, 0 failed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 passed, 0 failed, helper from the image |
 | Voice typing and Jellyfin | run `44211439574` - 38 passed, 0 failed |
-| Installation test | INSTALL_ROW |
+| Installation test | run `44213161457` - installer completes and the disk boots, but the installed session was not reached (see below) |
 
 Every result above names the same artefact: run `44196246894` built this ISO,
 and each test job fetched that run's artifact and checked the image's own
@@ -334,7 +334,29 @@ notification" while the desktop was in fact delivering them.
 
 ### The installation test
 
-See INSTALL_SECTION.
+### The installation test
+
+Run `44213161457` finally got the installer past its own pages: welcome,
+location, keyboard, partitions with "Erase disk" and a planned layout, users,
+and summary, each confirmed by the page's own content rather than by a screen
+that merely changed. The installation then wrote 295 MiB to the disposable
+disk, completed, partitioned and formatted the target, ran its finish-up step,
+left a GRUB menu and an EFI boot loader, and rebooted **into the installed disk
+with the ISO detached** - the phase the earlier runs never reached.
+
+It then failed at the door: the serial login as `hunter` was refused. The cause
+is a harness defect, not an image one, and the screenshot proves it - every
+click on the users page landed a few pixels below its field, so the full name
+and both passwords were typed into the name box and the account was created as
+`hunterhuntertesthuntertest` with an empty password. The fields are now found
+by the label above them and read back after typing, and the run was repeated.
+
+So: **the installed desktop has not yet been tested.** No run has yet logged
+into an installed system, and no installed-session check (panel, audio,
+applications, the two new clients) has been executed there. The harness says so
+explicitly rather than passing those checks silently: it records
+"INCOMPLETE: no installed-session shell" and fails the job.
+
 
 ## SMD Linux 1.4.1
 

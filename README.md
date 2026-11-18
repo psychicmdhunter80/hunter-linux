@@ -43,7 +43,7 @@ configuration and known limitations are in `TECHNICAL-REFERENCE-1.5.0.md`.
 | Installer version label | run `44198233045` - 12 checks passed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 checks passed, helper from the image |
 | Voice typing and Jellyfin | run `44211439574` - 38 checks passed, none failed |
-| Installation test | INSTALL_ROW |
+| Installation test | run `44213161457` - the installer completes and the installed disk boots, but no installed-session login was reached; see `Test-Report.md` |
 | Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
 
 Verified on this image: line endings inside the squashfs, i3, panel and applets,
