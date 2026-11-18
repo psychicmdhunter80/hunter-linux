@@ -294,10 +294,16 @@ def main():
             "pkill -x dbus-monitor 2>/dev/null; nohup dbus-monitor --session "
             "\"interface='org.freedesktop.Notifications'\" >/tmp/notif.txt 2>&1 & "
             "sleep 3; pgrep -x xfce4-notifyd >/dev/null && echo NOTIFYD=up "
-            "|| echo NOTIFYD=down", timeout=120)
+            "|| echo NOTIFYD=down; gdbus call --session --dest org.freedesktop.DBus "
+            "--object-path /org/freedesktop/DBus --method "
+            "org.freedesktop.DBus.NameHasOwner org.freedesktop.Notifications "
+            "2>/dev/null | grep -q true && echo SERVICE=yes || echo SERVICE=no",
+            timeout=120)
         notif_base = count_notifications(shell)
         record("INFO: notification daemon: %s, bubbles so far: %d"
-               % (" ".join(base.split())[:40], notif_base))
+               % (" ".join(base.split())[:60], notif_base))
+        check("the desktop can show notifications", "SERVICE=yes" in base,
+              " ".join(base.split())[:80])
 
         # A recording to speak into.  PipeWire comes up with the session, so wait
         # for it before asking anything of it.
@@ -317,7 +323,6 @@ def main():
         sink = (achunks[1].strip().splitlines() or ["0"])[-1].strip() if len(achunks) > 1 else "0"
         check("a recording source exists to dictate from",
               sink.isdigit() and int(sink) >= 1, sink[:40])
-        record("INFO: audio sources: %s" % " | ".join(listing.split())[:200])
 
         shell.run(
             "curl -fsS -m 60 http://10.0.2.2:%d/tools/ci/audio/vosk-test.wav "
