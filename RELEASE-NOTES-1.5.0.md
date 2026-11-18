@@ -97,6 +97,11 @@ suspend and lid behaviour, and the battery percentage. Dictation accuracy in a
 real room, and playback from his own Jellyfin server, are likewise his to
 confirm.
 
+One known rough edge: the MPV Shim runs in its own virtual environment and
+logs `No module named 'gi'` at start-up, so its tray icon and its own
+notifications stay inactive. Playback and the window are unaffected. The
+fix is `python3-gi` inside that environment, deferred rather than hidden.
+
 ## Upgrading and rollback
 
 1.4.1, 1.4, 1.3 and 1.2 remain as they were; their tags (`v1.4`, `v1.3`,

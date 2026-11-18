@@ -236,8 +236,18 @@ reported as incomplete, never as a pass.
   carry its configuration, not to play a specific file from Craig's server.
 * **1366x768** is emulated through the virtual VGA's EDID. It matches his panel
   geometry and panel height, but it is not his panel.
-* The dialog check uses `xmessage` from `x11-utils`; it is a real window but a
-  plain one, not a file chooser from a specific application.
+* **The dialog check uses `zenity`**, an ordinary GTK dialog that the image
+  ships. Measured on the delivered image: the window is 310x233 at 528,254
+  inside a 1366x740 work area, the four tiled windows keep their exact
+  geometry while it is open, and they are unchanged when it closes. GTK
+  labels a parentless dialog `_NET_WM_WINDOW_TYPE_NORMAL`; i3 floats it
+  anyway, so the type is recorded rather than asserted.
+* **The Jellyfin client logs a missing PyGObject** (`No module named 'gi'`)
+  at start-up: it runs in its own virtual environment, which does not
+  contain `python3-gi`. Playback, the window and the mpv child process are
+  unaffected, but the client's own tray icon and desktop notifications stay
+  inactive. Adding `python3-gi` to the virtual environment is the fix for a
+  later build; it is recorded here rather than silently accepted.
 
 ## 14. Rebuilding and reusing
 
