@@ -901,6 +901,42 @@ def main():
             record("PASS: the installed system finished booting"
                    if clinic.strip() in ("running", "degraded")
                    else f"FAIL: the installed system did not finish booting ({clinic.strip()[:60]})")
+            # The installed system shows the greeter, so somebody has to log in
+            # before there is a desktop to check.  Without this every check
+            # below ran against a machine with no graphical session at all: no
+            # panel, no wallpaper, no PipeWire and no launcher.
+            greeter = Display()
+            logged_in = False
+            deadline = time.time() + 240
+            while time.time() < deadline:
+                shot = greeter.shot("greeter")
+                text = greeter.text(shot).lower()
+                if "password" in text or "log in" in text:
+                    greeter.type(PASSWORD)
+                    greeter.press("return")
+                    time.sleep(20)
+                    after = greeter.shot("desktop-after-login")
+                    if greeter.find(after, "Log In"):
+                        # The greeter asked for the name first.
+                        greeter.type(LOGIN)
+                        greeter.press("tab")
+                        greeter.type(PASSWORD)
+                        greeter.press("return")
+                        time.sleep(20)
+                    logged_in = True
+                    break
+                time.sleep(10)
+            record("PASS: logged in at the greeter of the installed system"
+                   if logged_in else
+                   "FAIL: the greeter of the installed system was not reached")
+            # The session needs a moment to bring up the panel and the audio.
+            for _attempt in range(15):
+                if "panel-running" in shell.run(
+                        "pgrep -x xfce4-panel >/dev/null && echo panel-running "
+                        "|| echo panel-missing", timeout=60):
+                    break
+                time.sleep(10)
+
 
             # Cockpit in the installed system, from inside and from outside.
             state = shell.run("systemctl is-active cockpit.socket; echo ---; "
