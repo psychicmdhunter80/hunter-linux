@@ -263,7 +263,7 @@ reached. 1.5.0 adds the first two and repairs the third.
 | Installer version label | run `44198233045` - 12 passed, 0 failed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 passed, 0 failed, helper from the image |
 | Voice typing and Jellyfin | run `44211439574` - 38 passed, 0 failed |
-| Installation test | run `44230051498` - installed, booted without the ISO, logged into the installed desktop and checked it there |
+| Installation test | run `44234076502` - 92 checks, 0 failures: installed, booted without the ISO, logged into the installed desktop and checked it there |
 
 Every result above names the same artefact: run `44196246894` built this ISO,
 and each test job fetched that run's artifact and checked the image's own
@@ -345,8 +345,8 @@ notification" while the desktop was in fact delivering them.
 
 ### The installation test
 
-Run `44230051498` did the whole journey: install to a disposable disk, detach the
-ISO, boot that disk, log in at its greeter, and run the checks inside the
+Run `44234076502` did the whole journey - 92 checks passed, none failed: install
+to a disposable disk, detach the ISO, boot that disk, log in at its greeter, and run the checks inside the
 installed session. The shell proves it is the installed system - root is
 `/dev/vda2` (ext4), `/run/live` is absent and no squashfs is mounted - and every
 desktop check below ran there, not in a retained live session:
@@ -365,12 +365,13 @@ desktop check below ran there, not in a retained live session:
 | Cockpit active, enabled, answers inside and from outside as the user | pass |
 | The system shuts down cleanly | pass |
 
-One check failed and it was the harness's fault, not the image's: it demanded
-that the panel auto-hide, which the image retired in 1.3 and which the live-boot
-test correctly asserts as "stays visible". That check now matches the product
-and the run was repeated. The unprivileged power request is refused from a
-serial session (it is not an active seat), so the shutdown used the account's
-own privilege tool; the desktop power menu itself is not verified here.
+An earlier pass at this failed one check, and that was the harness's fault, not
+the image's: it demanded that the panel auto-hide, which the image retired in
+1.3 and which the live-boot test correctly asserts as "stays visible". The
+check now matches the product and the repeated run above is clean. The
+unprivileged power request is refused from a serial session (it is not an
+active seat), so the shutdown used the account's own privilege tool; the
+desktop power menu itself is not verified here.
 
 Getting this far took six runs; each fixed a real harness defect rather than
 relaxing a check: the wizard's page-advance test treated a moved mouse pointer
