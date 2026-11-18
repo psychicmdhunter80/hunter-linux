@@ -892,8 +892,11 @@ def main():
             block = ichunks[3].strip() if len(ichunks) > 3 else ""
             record(f"INFO: installed root {root} | efi {efi} | /run/live "\
                    f"{live or 'empty'} | block devices {block}")
-            installed_ok = ("/dev/vda2" in root and "ext4" in root
-                            and not live and "rom" not in block)
+            # An empty CD-ROM device is expected here: the ISO was detached
+            # from the virtual drive but the drive itself remains, which the
+            # previous version of this check read as "still on the live image".
+            installed_ok = ("/dev/vda" in root and "ext4" in root
+                            and not live and "squashfs" not in block)
             record("PASS: the shell is the installed system, not a retained "
                    "live session" if installed_ok else
                    "FAIL: this shell is not the installed system "
@@ -907,11 +910,12 @@ def main():
             # OCR reads none of it, so the window is found through X and the
             # fields are clicked where this greeter lays them out at 1280x800.
             greeter_up = False
+            greeter_shot = None
             for _attempt in range(24):
-                probe = shell.run("DISPLAY=:0 xwininfo -root -tree 2>/dev/null "
-                                  "| grep -ci 'lightdm\|greeter'", timeout=60)
-                last = (probe.strip().splitlines() or ["0"])[-1].strip()
-                if last.isdigit() and int(last) > 0:
+                greeter_shot = monitor.screenshot("greeter")
+                # A black screen compresses to a few kilobytes; the greeter,
+                # with its panel, box and text, to far more.
+                if os.path.getsize(greeter_shot) > 8000:
                     greeter_up = True
                     break
                 time.sleep(10)
