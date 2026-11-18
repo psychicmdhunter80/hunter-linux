@@ -301,6 +301,17 @@ back into the 2x2, fullscreen takes `0,0 1366x768` and restores the grid
 exactly, clicking and typing change no layout, and every stage stays put while
 idle. One tiling helper runs, taken from the image itself.
 
+### Hardware confirmation
+
+Hunter tested this candidate on Craig: **the tiling behaves correctly, including
+four Brave windows settling into the intended 2x2 grid.** That is his
+observation on the real machine, not an automated result - what the harness
+measured at 1366x768 is above, and the two agree on the layout.
+
+Still open on real hardware: speakers and headphones, playback and tearing,
+the printed top-row keys, Wi-Fi against real access points, suspend and lid
+behaviour, and the battery percentage.
+
 ### The dialog check
 
 The earlier check called `xmessage`, which cannot open a usable window on this

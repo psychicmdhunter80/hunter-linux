@@ -46,6 +46,12 @@ configuration and known limitations are in `TECHNICAL-REFERENCE-1.5.0.md`.
 | Installation test | run `44213161457` - the installer completes and the installed disk boots, but no installed-session login was reached; see `Test-Report.md` |
 | Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
 
+**Hardware confirmation (Hunter, on Craig):** the tiling behaves as intended,
+including four Brave windows settling into the intended 2x2 grid. The rest
+of the hardware list - speakers and headphones, tearing, the printed top-row
+keys, Wi-Fi, suspend and locking, the battery percentage - is still open.
+Requests for the next release are collected in `NEXT-RELEASE.md`.
+
 Verified on this image: line endings inside the squashfs, i3, panel and applets,
 PipeWire and the audio helper, Brave as the default browser with its two
 extensions, VLC, locking, the Jellyfin menu entry and window, the Alt+Z toggle

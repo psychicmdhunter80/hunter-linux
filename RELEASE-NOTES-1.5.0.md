@@ -102,6 +102,12 @@ logs `No module named 'gi'` at start-up, so its tray icon and its own
 notifications stay inactive. Playback and the window are unaffected. The
 fix is `python3-gi` inside that environment, deferred rather than hidden.
 
+Hunter has run this candidate on Craig: the tiling behaves correctly,
+including four Brave windows settling into the intended 2x2 grid. Everything
+else on the hardware list is still his to check, and the next-release requests
+raised during this work are collected in `NEXT-RELEASE.md` rather than being
+folded into 1.5.0.
+
 ## Upgrading and rollback
 
 1.4.1, 1.4, 1.3 and 1.2 remain as they were; their tags (`v1.4`, `v1.3`,
