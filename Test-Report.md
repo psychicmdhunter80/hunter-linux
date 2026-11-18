@@ -262,7 +262,7 @@ reached. 1.5.0 adds the first two and repairs the third.
 | Live boot tests | run `44198224595` - BIOS and UEFI, 85 passed and 0 failed on each |
 | Installer version label | run `44198233045` - 12 passed, 0 failed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 passed, 0 failed, helper from the image |
-| Voice typing and Jellyfin | VOICE_ROW |
+| Voice typing and Jellyfin | run `44211439574` - 38 passed, 0 failed |
 | Installation test | INSTALL_ROW |
 
 Every result above names the same artefact: run `44196246894` built this ISO,
@@ -310,6 +310,27 @@ it: 310x233 at 528,254 inside the 1366x740 work area, the four tiled windows kee
 their exact geometry while it is open, and they are unchanged after it closes.
 GTK labels a parentless dialog `_NET_WM_WINDOW_TYPE_NORMAL`; the type is
 recorded, the floating and the untouched grid are what is asserted.
+
+### Alt+Z voice typing, measured
+
+Run `44211439574`, live session under UEFI: the switch, the audio path, the
+typing, the notifications and the process accounting, 38 checks, none failed.
+
+| Check | Evidence |
+| --- | --- |
+| One press starts | `listening` 1.3 s after a single Alt+Z |
+| One press stops | `stopped` 2.5 s after a single Alt+Z, no retry needed |
+| Exactly one recogniser | `pgrep -f 'nerd-dictation begin'` = 1, and 0 after stopping |
+| The microphone is released | PipeWire source outputs 1 while listening, 0 after |
+| Speech becomes text | "100019Nah no to i know 018603" typed into a real text field |
+| Feedback is visible | a bubble reading **"Voice typing: listening / Speak now. Press Alt+Z to stop."**, counted on the session bus and read off the screen |
+| Stopping is announced | a second bubble, **"Voice typing: stopped"** |
+| Ctrl+Z, Ctrl+X, Ctrl+A | the running i3 binds none of the three (0,0,0); the ^A and ^X bytes reach the application, and ^Z is turned into a signal by the terminal instead of being typed as text |
+
+The session's message bus on this image is the one `dbus-launch` creates in
+`/tmp`, not `/run/user/1000/bus`; the test now reads the address from the
+session itself, which is why the earlier runs reported "cannot deliver a
+notification" while the desktop was in fact delivering them.
 
 ### The installation test
 

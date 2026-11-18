@@ -42,7 +42,7 @@ configuration and known limitations are in `TECHNICAL-REFERENCE-1.5.0.md`.
 | Live boot tests | run `44198224595` - 85 checks passed, none failed, BIOS and UEFI |
 | Installer version label | run `44198233045` - 12 checks passed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 checks passed, helper from the image |
-| Voice typing and Jellyfin | VOICE_ROW |
+| Voice typing and Jellyfin | run `44211439574` - 38 checks passed, none failed |
 | Installation test | INSTALL_ROW |
 | Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
 
