@@ -19,6 +19,7 @@ import os
 import re
 import socket
 import subprocess
+import shlex
 import sys
 import time
 
@@ -131,6 +132,7 @@ class Shell:
     def __init__(self, chan):
         self.chan = chan
         self.counter = 0
+        self._session = {}
 
     def login(self, user="user", password="live", timeout=900):
         matched, _ = self.chan.expect(r"login:", timeout=timeout)
@@ -170,18 +172,42 @@ class Shell:
         note("$ %s\n%s" % (command, text))
         return text
 
-    def xrun(self, command, timeout=180, lines=60):
-        """Run a command with the live session's display and bus.
+    def session_environment(self):
+        """The live session's own display, runtime directory and bus address.
 
-        Every command runs in its own subshell, so an `export` from an earlier
-        command is gone: without these variables xdotool cannot reach the
-        display, notify-send cannot reach the notification daemon and mpv picks
-        a console video output.  They are therefore repeated per command.
+        The bus is not at /run/user/1000/bus on this image: the session is
+        started with its own dbus-launch, so every guess at the socket made
+        notify-send fail with "No such file or directory".  The session's own
+        processes know the real values, so ask them once.
         """
-        return self.run(
-            "export DISPLAY=:0 XDG_RUNTIME_DIR=/run/user/1000 "
-            "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus; " + command,
-            timeout=timeout, lines=lines)
+        if self._session:
+            return self._session
+        out = self.run(
+            "for p in $(pgrep -x i3) $(pgrep -x xfce4-panel) $(pgrep -x hunter-panel); "
+            "do tr '\0' '\n' < /proc/$p/environ 2>/dev/null "
+            "| grep -E '^(DISPLAY|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS)='; "
+            "done | sort -u", timeout=120)
+        env = {}
+        for line in out.splitlines():
+            if "=" in line and not line.startswith("$"):
+                key, value = line.split("=", 1)
+                env[key.strip()] = value.strip()
+        self._session = env
+        record("INFO: session environment: %s"
+               % " ".join("%s=%s" % item for item in sorted(env.items()))[:220])
+        return env
+
+    def xrun(self, command, timeout=180, lines=60):
+        """Run a command with the live session's display and bus."""
+        env = self.session_environment()
+        exports = " ".join(
+            "%s=%s" % (key, shlex.quote(env.get(key, fallback)))
+            for key, fallback in (("DISPLAY", ":0"),
+                                  ("XDG_RUNTIME_DIR", "/run/user/1000"),
+                                  ("DBUS_SESSION_BUS_ADDRESS",
+                                   "unix:path=/run/user/1000/bus")))
+        return self.run("export " + exports + "; " + command,
+                        timeout=timeout, lines=lines)
 
     def wait_for_x(self, timeout=600):
         deadline = time.time() + timeout
@@ -205,6 +231,13 @@ def count_notifications(shell):
                     timeout=60)
     numbers = [ln.strip() for ln in out.splitlines() if ln.strip().isdigit()]
     return int(numbers[-1]) if numbers else 0
+
+
+def notification_text(shell):
+    """The summary and body strings of the captured notifications."""
+    out = shell.run("grep -o 'string \"[^\"]*\"' /tmp/notif.txt 2>/dev/null "
+                    "| tail -14", timeout=60)
+    return " ".join(out.split()).replace('string "', "").replace('"', "")
 
 
 def start_qemu():
@@ -441,33 +474,59 @@ def main():
         check("Ctrl+Z is handled by the terminal, not typed as text",
               " 032 " not in sent, sent[:120])
 
-        # ------------------------------------------------------ Alt+Z stops it
-        # A single synthesised keystroke can be lost while a window is
-        # settling; press again and say so rather than blaming the feature.
+        # ---------------------------------------- one press stops, one starts
+        # No retries here: a keystroke that needs three attempts is not "a
+        # single press toggles dictation".  Each press is timed and reported as
+        # measured, and the notification text is checked for the wording.
+        shell.xrun("xdotool key --clearmodifiers alt+z", timeout=90)
+        pressed_at = time.time()
         stopped = ""
-        for attempt in range(3):
-            shell.xrun("xdotool key --clearmodifiers alt+z; sleep 4", timeout=90)
+        for _ in range(20):
+            time.sleep(1)
             stopped = shell.run("hunter-dictation status", timeout=60).strip()
             if stopped.endswith("stopped"):
                 break
-            record("INFO: Alt+Z had no effect on attempt %d, pressing again"
-                   % (attempt + 1))
+        took = time.time() - pressed_at
+        record("INFO: one press reached '%s' after %.1f s"
+               % (stopped.splitlines()[-1] if stopped else "", took))
         shot = monitor.screenshot("voice-stopped")
         procs = shell.run("pgrep -c -f 'nerd-dictation be[g]in' || echo 0",
                           timeout=60).strip()
         recording = shell.xrun(
             "pactl list source-outputs | grep -c 'Source Output' || echo 0",
             timeout=60).strip()
-        check("Alt+Z stops dictation", stopped.endswith("stopped"), stopped)
+        check("one Alt+Z press stops dictation", stopped.endswith("stopped"), stopped)
+        check("a single press is enough", took <= 10, "%.1f s" % took)
         check("no recogniser is left behind", procs.splitlines()[-1:] == ["0"], procs)
         check("the microphone is released when dictation stops",
               recording.splitlines()[-1:] == ["0"], recording)
-        text = (ocr(shot) + " " + ocr(monitor.screenshot("voice-stopped-again"))).lower()
-        notif_stop = count_notifications(shell)
+        stopped_text = notification_text(shell)
+        record("INFO: notification after stopping: %s" % stopped_text[:140])
+        check("the stopped notification names the state",
+              "Voice typing: stopped" in stopped_text, stopped_text[:120])
+        text = ocr(shot).lower()
         record("INFO: text on screen after stopping: %s" % " ".join(text.split())[:100])
-        check("stopping dictation raises a stopped notification",
-              notif_stop > notif_start,
-              "bubbles %d -> %d" % (notif_start, notif_stop))
+
+        # And one press brings it back.
+        time.sleep(3)
+        shell.xrun("xdotool key --clearmodifiers alt+z", timeout=90)
+        pressed_at = time.time()
+        restarted = ""
+        for _ in range(20):
+            time.sleep(1)
+            restarted = shell.run("hunter-dictation status", timeout=60).strip()
+            if restarted.endswith("listening"):
+                break
+        took = time.time() - pressed_at
+        record("INFO: one press reached '%s' after %.1f s"
+               % (restarted.splitlines()[-1] if restarted else "", took))
+        check("one Alt+Z press starts dictation again",
+              restarted.endswith("listening"), restarted)
+        listening_text = notification_text(shell)
+        record("INFO: notification after starting: %s" % listening_text[:140])
+        check("the listening notification names the state",
+              "Voice typing: listening" in listening_text, listening_text[:120])
+        shell.xrun("hunter-dictation stop; sleep 2", timeout=90)
 
         # ------------------------------------------------- no duplicate start
         shell.xrun("hunter-dictation start; sleep 6; "

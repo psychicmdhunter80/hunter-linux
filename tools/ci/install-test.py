@@ -236,10 +236,29 @@ class Display:
         self.client = api.connect(VNC, password=None)
         self.step = 0
 
+    @staticmethod
+    def blank(path):
+        """True for a frame with no content in it."""
+        try:
+            image = Image.open(path).convert("L")
+        except Exception:
+            return False
+        low, high = image.getextrema()
+        return high - low < 24
+
     def shot(self, name):
         self.step += 1
         path = os.path.join(WORK, f"{self.step:02d}-{name}.png")
         self.client.captureScreen(path)
+        if self.blank(path):
+            # The installer's own X screen blanks after ten idle minutes and a
+            # blanked framebuffer OCRs as nothing at all, which is why a long
+            # install looked like a wizard stuck on an empty page.
+            record("INFO: the installer screen was blank; waking it and "
+                   "capturing again")
+            self.press("shift")
+            time.sleep(3)
+            self.client.captureScreen(path)
         record(f"screenshot {os.path.basename(path)}")
         return path
 
@@ -419,19 +438,35 @@ class Display:
         return path
 
     def select_erase(self, path, origin=(135, 50)):
-        """Pick the 'Erase disk' radio button on the partitioning page."""
-        body = (150, 120, 1160, 690)
-        point = self.find(path, "Erase", region=body) \
-            or self.find(path, "disk", region=body)
+        """Pick 'Erase disk' and prove that a layout was planned.
+
+        The radio buttons sit near the top of the page, around y=100, and the
+        crop this used to read started at y=120: the OCR never saw the choice,
+        the fallback click landed between the two radios, and the wizard
+        advanced to manual partitioning with an empty table and a disabled
+        Next.  The selection now has to produce a partition plan.
+        """
+        body = (150, 60, 1160, 320)
+        point = self.find(path, "Erase", region=body)
         if point:
-            self.click(point[0] - 22, point[1])
-            record("PASS: selected 'Erase disk'")
+            # The radio itself is about seventy pixels left of its caption.
+            self.click(point[0] - 70, point[1])
+            record("PASS: clicked the 'Erase disk' radio")
         else:
             record("WARN: 'Erase disk' not found by OCR; clicking the radio "
-                   "at its position relative to the window")
-            self.click(origin[0] + 178, origin[1] + 80)
-        time.sleep(3)
-        return self.shot("partition-selected")
+                   "at its known place in the window")
+            self.click(origin[0] + 178, origin[1] + 67)
+        deadline = time.time() + 75
+        shot = path
+        while time.time() < deadline:
+            time.sleep(5)
+            shot = self.shot("partition-selected")
+            text = self.text(shot)
+            if re.search(r"ext4|fat32|vfat|swap", text, re.IGNORECASE):
+                record("PASS: the installer planned a partition layout")
+                return shot
+        record("FAIL: no partition layout appeared after choosing 'Erase disk'")
+        return shot
 
     def fill_users(self, path):
         """Fill name, login name and password on the users page."""
@@ -532,14 +567,16 @@ def main():
         time.sleep(20)
         disp.shot("welcome")
 
-        def step(label, tries=5):
+        def step(label, tries=5, absent=None):
             """Click the wizard's own button and confirm the page changed.
 
             The fixed coordinate is only a fallback: the window is centred in
             the workspace i3 gives it, so its bottom row moved when the panel
             started reserving space along the bottom edge.
             """
-            before = disp.signature(disp.shot(f"{label}-before"))
+            before_path = disp.shot(f"{label}-before")
+            before = disp.signature(before_path)
+            before_text = disp.text(before_path)
             for attempt in range(tries):
                 path = disp.shot(f"{label}-try{attempt}")
                 point = disp.button(path) or NEXT
@@ -554,8 +591,17 @@ def main():
                     disp.click(*CANCEL_NO)
                     time.sleep(2)
                 time.sleep(6)
-                after = disp.shot(f"{label}-after")
-                if disp.differs(before, disp.signature(after), 1.5):
+                after_path = disp.shot(f"{label}-after")
+                after_text = disp.text(after_path)
+                # A page is left when its own content is gone, or when both the
+                # layout and the text changed noticeably.  The old test treated
+                # a moved mouse pointer as a new page.
+                if absent and absent.lower() not in after_text.lower():
+                    record(f"PASS: left the {label} page")
+                    return True
+                if (not absent
+                        and after_text.strip() != before_text.strip()
+                        and disp.differs(before, disp.signature(after_path), 12.0)):
                     record(f"PASS: left the {label} page")
                     return True
             record(f"FAIL: the {label} page did not advance")
@@ -568,7 +614,9 @@ def main():
         # Partitions: choose "Erase disk", then continue.
         disp.select_erase(disp.shot("partition"), origin)
         time.sleep(2)
-        step("partition")    # -> Users
+        if not step("partition", absent="Unpartitioned space"):
+            record("FAIL: the partitioning page never advanced")
+            return 1
 
         # Users: only the name and the password.  Calamares fills the login
         # name and the computer name from the name by itself, and typing into
@@ -587,7 +635,21 @@ def main():
         # Summary: the primary button starts the installation.
         disp.shot("summary")
         disp.click(*NEXT)
-        record("PASS: the installation was started")
+        disk_image = os.path.join(WORK, "disk.qcow2")
+        start_size = os.path.getsize(disk_image) if os.path.exists(disk_image) else 0
+        started = False
+        for _ in range(40):
+            time.sleep(15)
+            size = os.path.getsize(disk_image) if os.path.exists(disk_image) else 0
+            if size > start_size + (128 << 20):
+                started = True
+                break
+        record("PASS: the installation started writing the target disk (%.0f MiB)"
+               % ((size - start_size) / (1 << 20))
+               if started else
+               "FAIL: the target disk never grew, so the installation never started")
+        if not started:
+            return 1
         time.sleep(20)
         monitor.screenshot("install-progress")
 
