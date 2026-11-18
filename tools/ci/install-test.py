@@ -390,14 +390,22 @@ class Display:
     def button(self, path):
         """Find the primary button of the wizard.
 
-        Small grey captions are unreliable for OCR, so the fallback measures
-        from the Cancel button, which is always rendered in plain black text.
+        The button row is the lowest text on the screen, so every candidate is
+        searched there and the lowest match wins.  The row is taken from the
+        screenshot itself: assuming the screen size, or measuring a window that
+        turned out to be a 1024x520 helper at (0,0), put the clicks in the
+        middle of the page where nothing happens.
         """
-        row = (0, 690, 1280, 800)
-        for word in ("Next", "Continue", "Install"):
+        with Image.open(path) as image:
+            width, height = image.size
+        row = (0, int(height * 0.78), width, height)
+        best = None
+        for word in ("Next", "Continue", "Install now", "Install", "Done"):
             point = self.find(path, word, region=row)
-            if point:
-                return point
+            if point and (best is None or point[1] > best[1]):
+                best = point
+        if best:
+            return best
         cancel = self.find(path, "Cancel", region=row)
         if cancel:
             # Back, Next, Cancel sit in that order along the bottom right.
@@ -539,18 +547,26 @@ def main():
         # assuming one, and keep the widget positions relative to it.
         origin = (135, 50)
         shape = (1010, 700)
-        win_id = shell.run("DISPLAY=:0 xdotool search --class calamares "
-                           "2>/dev/null | head -1", timeout=60).strip()
-        if win_id:
+        # `xdotool search --class calamares` also answers with small helper
+        # windows; take the largest one, which is the wizard itself.
+        ids = shell.run("DISPLAY=:0 xdotool search --class calamares "
+                        "2>/dev/null", timeout=60).split()
+        best = (0, None, None)
+        for win_id in ids:
             info = shell.run(f"DISPLAY=:0 xdotool getwindowgeometry {win_id} 2>&1",
                              timeout=60)
             position = re.search(r"Position:\s*(-?\d+),(-?\d+)", info)
             size = re.search(r"Geometry:\s*(\d+)x(\d+)", info)
-            if position:
-                origin = (int(position.group(1)), int(position.group(2)))
-            if size:
-                shape = (int(size.group(1)), int(size.group(2)))
-            record(f"INFO: installer window at {origin} size {shape}")
+            if not (position and size):
+                continue
+            area = int(size.group(1)) * int(size.group(2))
+            if area > best[0]:
+                best = (area, (int(position.group(1)), int(position.group(2))),
+                        (int(size.group(1)), int(size.group(2))))
+        if best[1] and best[2][0] >= 600 and best[2][1] >= 400:
+            origin, shape = best[1], best[2]
+        record(f"INFO: installer window at {origin} size {shape} "
+               f"(from {len(ids)} candidates)")
         # Back, Next and Cancel are right-aligned in a row 35 px above the
         # window's bottom edge, so they are measured from its bottom-right
         # corner: the window is not always the same size (1024x696 here).
@@ -562,7 +578,12 @@ def main():
         # window at (130,38) and 1024x696, Next is at (1005,712) and Cancel at
         # (1103,712), i.e. 149 px and 51 px from the right edge, 22 px above
         # the bottom edge.
-        NEXT = (right - 149, bottom - 22)
+        probe_path = disp.shot("screen")
+        with Image.open(probe_path) as probe_image:
+            screen_size = probe_image.size
+        NEXT = (int(screen_size[0] * 0.78), int(screen_size[1] * 0.91))
+        record("INFO: screen %dx%d, fallback Next at %s"
+               % (screen_size[0], screen_size[1], NEXT))
         CANCEL_NO = ((origin[0] + right) // 2 + 152, (origin[1] + bottom) // 2 + 26)
         time.sleep(20)
         disp.shot("welcome")
