@@ -175,26 +175,48 @@ class Shell:
     def session_environment(self):
         """The live session's own display, runtime directory and bus address.
 
-        The bus is not at /run/user/1000/bus on this image: the session is
-        started with its own dbus-launch, so every guess at the socket made
-        notify-send fail with "No such file or directory".  The session's own
-        processes know the real values, so ask them once.
+        /run/user/1000/bus does not exist on this image, so every guess at the
+        socket made notify-send fail with "No such file or directory".  Look
+        for the bus that actually exists - the systemd per-user socket or the
+        one dbus-launch creates in /tmp - and record what was found, so a
+        session without any bus is reported instead of guessed at.
         """
-        if self._session:
+        if self._session.get("__probed"):
             return self._session
         out = self.run(
-            "for p in $(pgrep -x i3) $(pgrep -x xfce4-panel) $(pgrep -x hunter-panel); "
-            "do tr '\0' '\n' < /proc/$p/environ 2>/dev/null "
+            "id -un; echo ---; "
+            "pgrep -a -x i3 | head -2; echo ---; "
+            "ls -d /run/user/*/bus /tmp/dbus-* 2>/dev/null | head -4; echo ---; "
+            "pgrep -a dbus-daemon | head -2; echo ---; "
+            "for p in $(pgrep -x i3 | head -1); do "
+            "tr '\0' '\n' < /proc/$p/environ 2>/dev/null "
             "| grep -E '^(DISPLAY|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS)='; "
-            "done | sort -u", timeout=120)
-        env = {}
-        for line in out.splitlines():
-            if "=" in line and not line.startswith("$"):
-                key, value = line.split("=", 1)
-                env[key.strip()] = value.strip()
+            "done", timeout=120)
+        chunks = [part.strip() for part in out.split("---")]
+        record("INFO: session probe: %s" % " | ".join(
+            " ".join(part.split())[:70] for part in chunks)[:300])
+        env = {"__probed": "1"}
+        for part in chunks:
+            for line in part.splitlines():
+                if line.startswith(("DISPLAY=", "XDG_RUNTIME_DIR=",
+                                    "DBUS_SESSION_BUS_ADDRESS=")):
+                    key, value = line.split("=", 1)
+                    env[key] = value.strip()
+        if "DBUS_SESSION_BUS_ADDRESS" not in env:
+            for part in chunks:
+                for line in part.splitlines():
+                    if line.startswith("/run/user/") and line.endswith("/bus"):
+                        env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=" + line
+                        break
+                    if line.startswith("/tmp/dbus-"):
+                        env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=" + line
+                        break
+                if "DBUS_SESSION_BUS_ADDRESS" in env:
+                    break
         self._session = env
         record("INFO: session environment: %s"
-               % " ".join("%s=%s" % item for item in sorted(env.items()))[:220])
+               % " ".join("%s=%s" % item for item in sorted(env.items())
+                          if not item[0].startswith("__"))[:220])
         return env
 
     def xrun(self, command, timeout=180, lines=60):
@@ -339,6 +361,10 @@ def main():
         check("the desktop can show notifications",
               "RC=0" in (bchunks[0] if bchunks else ""),
               (bchunks[0] if bchunks else "").strip()[:80])
+        if "RC=0" not in (bchunks[0] if bchunks else ""):
+            record("NOTE: no notification could be delivered in this session; "
+                   "the state file and `hunter-dictation status` are the only "
+                   "feedback a user would see")
         notif_base = count_notifications(shell)
         check("the notification capture is running", notif_base >= 1,
               "bubbles captured: %d" % notif_base)

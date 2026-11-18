@@ -245,6 +245,76 @@ run assertions.
 
 ## 6d. Version 1.3 - dark theme, installer entry, resources
 
+## SMD Linux 1.5.0
+
+Two approved additions were missing from the delivered image - a Jellyfin client
+that existed only as a configuration stub, and Alt+Z voice typing that did not
+exist at all - and the installation test had been claiming results it never
+reached. 1.5.0 adds the first two and repairs the third.
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.5.0-amd64.iso` |
+| Size | 1,134,166,016 bytes |
+| SHA-256 | `9820f5fab9c04bcc9d3a47c3d0e85f41873b0390d1ce597cd9aa3ccf61fa1952` |
+| Build | Actions run `44196246894`, commit `065330fb` |
+| Installed packages | 942 |
+| Live boot tests | run `44198224595` - BIOS and UEFI, 85 passed and 0 failed on each |
+| Installer version label | run `44198233045` - 12 passed, 0 failed |
+| Brave tiling at 1366x768 | run `44202162718` - 25 passed, 0 failed, helper from the image |
+| Voice typing and Jellyfin | VOICE_ROW |
+| Installation test | INSTALL_ROW |
+
+Every result above names the same artefact: run `44196246894` built this ISO,
+and each test job fetched that run's artifact and checked the image's own
+SHA-256 before booting it.
+
+### What the two additions are
+
+**Jellyfin MPV Shim 3.3.0** is installed from PyPI into its own virtual
+environment at `/opt/jellyfin-mpv-shim`, with `mpv`, `libmpv2` and the existing
+`hwdec=auto-safe` setting, and a menu entry named "Jellyfin". It is a client
+only: no server, no address, no account, no credentials, and no autostart entry
+in either `/etc/xdg/autostart` or `~/.config/autostart` (checked as zero for a
+fresh user). It opens a window and starts its mpv child; it logs a missing
+`gi` module, which is recorded as a known limitation rather than hidden.
+
+**Alt+Z voice typing** is `hunter-dictation` driving nerd-dictation (vendored at
+a pinned commit) with Vosk 0.3.45 and the small English model, which ships in
+the image so the first use works offline. Alt+Z toggles it, the text is typed
+into the focused field, and stopping releases the microphone and the recogniser.
+
+### Tiling at 1366x768 with the panel accounted for
+
+The virtual screen was set to Craig's resolution and the work area came back as
+`0,0 1366x740`, i.e. the panel's 28 pixels are excluded. Measured on this image:
+
+| Windows | Geometry |
+| --- | --- |
+| 1 | `smd-one[0,0 1366x740]` |
+| 2 | `smd-one[0,0 683x740] smd-two[683,0 683x740]` |
+| 3 | `smd-one[0,0 683x370] smd-two[683,0 683x740] smd-three[0,370 683x370]` |
+| 4 | an even 2x2, the fourth at `[683,370 683x370]` |
+
+Closing the third leaves the other three arranged again, reopening it settles
+back into the 2x2, fullscreen takes `0,0 1366x768` and restores the grid
+exactly, clicking and typing change no layout, and every stage stays put while
+idle. One tiling helper runs, taken from the image itself.
+
+### The dialog check
+
+The earlier check called `xmessage`, which cannot open a usable window on this
+image, and the first replacement measured a 1x1 invisible GTK helper window and
+called it a pass. The delivered check opens a real `zenity` dialog and measures
+it: 310x233 at 528,254 inside the 1366x740 work area, the four tiled windows keep
+their exact geometry while it is open, and they are unchanged after it closes.
+GTK labels a parentless dialog `_NET_WM_WINDOW_TYPE_NORMAL`; the type is
+recorded, the floating and the untouched grid are what is asserted.
+
+### The installation test
+
+See INSTALL_SECTION.
+
 ## SMD Linux 1.4.1
 
 Two faults reported on the delivered 1.4 image: Brave windows that did not stay

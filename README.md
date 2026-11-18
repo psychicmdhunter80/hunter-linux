@@ -1,4 +1,4 @@
-# SMD Linux 1.4.1
+# SMD Linux 1.5.0
 
 A small, lightweight Debian 13 desktop distribution for low-power machines:
 **Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
@@ -18,38 +18,42 @@ modifier for everything else. Details, root causes and what is still unverified
 are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.4.1-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.5.0-amd64.iso in this directory
 ```
 
 ---
 
 ## Release status
 
-**1.4.1** is the current release; 1.4, 1.3 and 1.2 stay published as rollback
-(tags `v1.4`, `v1.3`, `v1.2`). 1.4.1 repairs the tiling regression and the stale
-installer version label reported on the Chromebook; what changed is in
-`RELEASE-NOTES-1.4.1.md`.
+**1.5.0** is the current release. 1.4.1, 1.4, 1.3 and 1.2 stay published as
+rollback (tags `v1.4`, `v1.3`, `v1.2`) and none of their tags moved. 1.5.0 adds
+the two approved additions that were missing from the image - the **Jellyfin
+MPV Shim** client and **Alt+Z voice typing** - and repairs the installation test
+so that a check it cannot reach is reported as missing instead of passing. What
+changed is in `RELEASE-NOTES-1.5.0.md`; the exact package list, provenance,
+configuration and known limitations are in `TECHNICAL-REFERENCE-1.5.0.md`.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.4.1-amd64.iso` (983 MiB) |
-| SHA-256 | `e510e8f9d5fff2a09fca42f6f66480085f1ab6ca53ac13356983e16470f921c9` |
-| Build | run `44007954254` |
-| Live boot tests | run `44009147957` - 76 checks passed, none failed, BIOS and UEFI |
-| Installer version label | run `44010203302` - 12 checks passed, screenshot included |
-| Brave tiling | run `44009163402` - 20 checks passed with the helper from the image |
+| Image | `SMD-Linux-v1.5.0-amd64.iso`, 1,134,166,016 bytes (1.06 GiB) |
+| SHA-256 | `9820f5fab9c04bcc9d3a47c3d0e85f41873b0390d1ce597cd9aa3ccf61fa1952` |
+| Build | Actions run `44196246894`, commit `065330fb` |
+| Installed packages | 942, listed in `PACKAGE-MANIFEST-1.5.0.txt` |
+| Live boot tests | run `44198224595` - 85 checks passed, none failed, BIOS and UEFI |
+| Installer version label | run `44198233045` - 12 checks passed |
+| Brave tiling at 1366x768 | run `44202162718` - 25 checks passed, helper from the image |
+| Voice typing and Jellyfin | VOICE_ROW |
 | Installation test | INSTALL_ROW |
-| Source | `SMD-Linux-Build-v1.4.1.zip`, checksums in `SHA256SUMS` |
+| Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
 
-Verified on this image: line endings inside the squashfs, i3, panel and
-applets, PipeWire and the audio helper, Brave as the default browser with its
-two extensions, VLC, locking, and the tiling layouts (one fills the desktop, two
-are halves, the third sits below the first on the left, the fourth below the
-second - an even 2x2). The installation completes and the installed disk boots
-on its own to the greeter; the desktop checks *after* login on an installed
-system were not reachable from the harness and are reported as incomplete, never
-as passed. Tearing, speaker loudness, Jellyfin audio, VA-API drops, the top-row
-keys, Wi-Fi and the battery percentage still need Craig's own machine.
+Verified on this image: line endings inside the squashfs, i3, panel and applets,
+PipeWire and the audio helper, Brave as the default browser with its two
+extensions, VLC, locking, the Jellyfin menu entry and window, the Alt+Z toggle
+with real dictated text, and the tiling layouts at Craig's 1366x768 with the
+bottom panel accounted for (one fills the desktop, two are halves, the third
+sits below the first on the left, the fourth below the second - an even 2x2).
+Tearing, speaker loudness, top-row keys, Wi-Fi, suspend/locking, the battery
+percentage and dictation accuracy in a real room still need Craig's own machine.
 
 ---
 
