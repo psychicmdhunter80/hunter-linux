@@ -477,19 +477,54 @@ class Display:
         return shot
 
     def fill_users(self, path):
-        """Fill name, login name and password on the users page."""
-        body = (150, 120, 1160, 690)
-        point = self.find(path, "name", region=body)
-        if point:
-            self.click(point[0] + 170, point[1])
-        self.type(FULL_NAME)
-        for _ in range(3):
-            self.press("tab")
-        self.type(PASSWORD)
-        self.press("tab")
-        self.type(PASSWORD)
-        return self.shot("users-filled")
+        """Fill the name and both password fields, then read them back.
 
+        Fixed offsets into the window put every click a few pixels low, so the
+        full name, the password and the confirmation were all typed into the
+        first field: the account was created as "hunterhuntertesthuntertest"
+        with no password at all, and the installed system could not be logged
+        into.  Each field is found by the label above it instead.
+        """
+        body = (150, 50, 1240, 700)
+        name = self.find(path, "your name", region=body)
+        if name:
+            self.click(name[0] + 40, name[1] + 27)
+            record("PASS: found the name field")
+        else:
+            record("WARN: the name label was not read; using the field centre")
+            self.click(400, 84)
+        time.sleep(1)
+        self.type(FULL_NAME)
+        time.sleep(1)
+        shot = self.shot("users-named")
+        password = self.find(shot, "Choose a password", region=body)
+        if password:
+            self.click(password[0] + 40, password[1] + 27)
+        else:
+            record("WARN: the password label was not read; using its centre")
+            self.click(400, 252)
+        time.sleep(1)
+        self.type(PASSWORD)
+        time.sleep(1)
+        confirm = self.find(self.shot("users-password"), "Repeat", region=body)
+        if confirm:
+            self.click(confirm[0], confirm[1])
+        else:
+            record("WARN: the confirmation field was not read; using its centre")
+            self.click(611, 252)
+        time.sleep(1)
+        self.type(PASSWORD)
+        time.sleep(2)
+        filled = self.shot("users-filled")
+        text = self.text(filled)
+        ok_name = FULL_NAME.lower() in text.lower()
+        # The placeholders disappear once a password is typed.
+        ok_password = "repeat password" not in text.lower()
+        record("PASS: the name field holds %r" % FULL_NAME if ok_name
+               else "FAIL: the name field does not hold %r" % FULL_NAME)
+        record("PASS: both password fields took a value" if ok_password
+               else "FAIL: a password field still shows its placeholder")
+        return filled
 
 def main():
     disk = os.path.join(WORK, "disk.qcow2")
@@ -642,15 +677,7 @@ def main():
         # Users: only the name and the password.  Calamares fills the login
         # name and the computer name from the name by itself, and typing into
         # them would append to the auto-filled text.
-        disp.shot("users")
-        # Field positions measured from the window's top-left corner when the
-        # wizard was laid out at 1010x700 (name field, password, confirmation).
-        for offset, value in (((269, 63), FULL_NAME),
-                              ((268, 231), PASSWORD),
-                              ((472, 231), PASSWORD)):
-            disp.click(origin[0] + offset[0], origin[1] + offset[1])
-            disp.type(value)
-        disp.shot("users-filled")
+        disp.fill_users(disp.shot("users"))
         step("users")        # -> Summary
 
         # Summary: the primary button starts the installation.
