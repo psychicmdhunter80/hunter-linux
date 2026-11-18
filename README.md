@@ -43,7 +43,7 @@ configuration and known limitations are in `TECHNICAL-REFERENCE-1.5.0.md`.
 | Installer version label | run `44198233045` - 12 checks passed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 checks passed, helper from the image |
 | Voice typing and Jellyfin | run `44211439574` - 38 checks passed, none failed |
-| Installation test | run `44213161457` - the installer completes and the installed disk boots, but no installed-session login was reached; see `Test-Report.md` |
+| Installation test | run `44230051498` - installed to a disposable disk, booted without the ISO, logged in and verified the installed desktop; see `Test-Report.md` |
 | Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
 
 **Hardware confirmation (Hunter, on Craig):** the tiling behaves as intended,

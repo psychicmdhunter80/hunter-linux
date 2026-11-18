@@ -263,7 +263,7 @@ reached. 1.5.0 adds the first two and repairs the third.
 | Installer version label | run `44198233045` - 12 passed, 0 failed |
 | Brave tiling at 1366x768 | run `44202162718` - 25 passed, 0 failed, helper from the image |
 | Voice typing and Jellyfin | run `44211439574` - 38 passed, 0 failed |
-| Installation test | run `44213161457` - installer completes and the disk boots, but the installed session was not reached (see below) |
+| Installation test | run `44230051498` - installed, booted without the ISO, logged into the installed desktop and checked it there |
 
 Every result above names the same artefact: run `44196246894` built this ISO,
 and each test job fetched that run's artifact and checked the image's own
@@ -300,6 +300,83 @@ Closing the third leaves the other three arranged again, reopening it settles
 back into the 2x2, fullscreen takes `0,0 1366x768` and restores the grid
 exactly, clicking and typing change no layout, and every stage stays put while
 idle. One tiling helper runs, taken from the image itself.
+
+### Hardware confirmation
+
+Hunter tested this candidate on Craig: **the tiling behaves correctly, including
+four Brave windows settling into the intended 2x2 grid.** That is his
+observation on the real machine, not an automated result - what the harness
+measured at 1366x768 is above, and the two agree on the layout.
+
+Still open on real hardware: speakers and headphones, playback and tearing,
+the printed top-row keys, Wi-Fi against real access points, suspend and lid
+behaviour, and the battery percentage.
+
+### The dialog check
+
+The earlier check called `xmessage`, which cannot open a usable window on this
+image, and the first replacement measured a 1x1 invisible GTK helper window and
+called it a pass. The delivered check opens a real `zenity` dialog and measures
+it: 310x233 at 528,254 inside the 1366x740 work area, the four tiled windows keep
+their exact geometry while it is open, and they are unchanged after it closes.
+GTK labels a parentless dialog `_NET_WM_WINDOW_TYPE_NORMAL`; the type is
+recorded, the floating and the untouched grid are what is asserted.
+
+### Alt+Z voice typing, measured
+
+Run `44211439574`, live session under UEFI: the switch, the audio path, the
+typing, the notifications and the process accounting, 38 checks, none failed.
+
+| Check | Evidence |
+| --- | --- |
+| One press starts | `listening` 1.3 s after a single Alt+Z |
+| One press stops | `stopped` 2.5 s after a single Alt+Z, no retry needed |
+| Exactly one recogniser | `pgrep -f 'nerd-dictation begin'` = 1, and 0 after stopping |
+| The microphone is released | PipeWire source outputs 1 while listening, 0 after |
+| Speech becomes text | "100019Nah no to i know 018603" typed into a real text field |
+| Feedback is visible | a bubble reading **"Voice typing: listening / Speak now. Press Alt+Z to stop."**, counted on the session bus and read off the screen |
+| Stopping is announced | a second bubble, **"Voice typing: stopped"** |
+| Ctrl+Z, Ctrl+X, Ctrl+A | the running i3 binds none of the three (0,0,0); the ^A and ^X bytes reach the application, and ^Z is turned into a signal by the terminal instead of being typed as text |
+
+The session's message bus on this image is the one `dbus-launch` creates in
+`/tmp`, not `/run/user/1000/bus`; the test now reads the address from the
+session itself, which is why the earlier runs reported "cannot deliver a
+notification" while the desktop was in fact delivering them.
+
+### The installation test
+
+Run `44230051498` did the whole journey: install to a disposable disk, detach the
+ISO, boot that disk, log in at its greeter, and run the checks inside the
+installed session. The shell proves it is the installed system - root is
+`/dev/vda2` (ext4), `/run/live` is absent and no squashfs is mounted - and every
+desktop check below ran there, not in a retained live session:
+
+| Verified in the installed system | Result |
+| --- | --- |
+| The installer's own pages, Erase disk, planned layout, 295 MiB written | pass |
+| Finish-up step ran, GRUB menu and EFI boot loader present | pass |
+| Boots without the ISO; login as `hunter` on the serial console | pass |
+| LightDM greeter appears; logging in starts the session | pass |
+| Wallpaper drawn, panel starts and sits along the bottom edge | pass |
+| PipeWire and WirePlumber running | pass |
+| Installed application set matches the image | pass |
+| Jellyfin client and Voice Typing present and working after the reboot | pass |
+| Wi-Fi supplicant present; Search key opens the launcher | pass |
+| Cockpit active, enabled, answers inside and from outside as the user | pass |
+| The system shuts down cleanly | pass |
+
+One check failed and it was the harness's fault, not the image's: it demanded
+that the panel auto-hide, which the image retired in 1.3 and which the live-boot
+test correctly asserts as "stays visible". That check now matches the product
+and the run was repeated. The unprivileged power request is refused from a
+serial session (it is not an active seat), so the shutdown used the account's
+own privilege tool; the desktop power menu itself is not verified here.
+
+Getting this far took six runs; each fixed a real harness defect rather than
+relaxing a check: the wizard's page-advance test treated a moved mouse pointer
+as a new page, the click geometry came from a helper window at (0,0), the users
+page typed every value into the first box, no greeter login was performed at
+all, and the identity check rejected an empty CD drive.
 
 ### Hardware confirmation
 
