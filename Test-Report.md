@@ -372,7 +372,7 @@ put, and an installer that still called itself 1.3.
 | Live boot tests | Actions run `44009147957` |
 | Brave tiling (helper from the image) | Actions run `44009163402` |
 | Installer version label | Actions run `44010203302` |
-| Installation test | INSTALL_ROW |
+| Installation test | run `44017535180` - failed; the serial login of the installed system was never obtained, so no installed-session check ran |
 
 ### The tiling regression: what it actually was
 
