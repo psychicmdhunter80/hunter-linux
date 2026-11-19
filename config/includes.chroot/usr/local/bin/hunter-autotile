@@ -288,9 +288,39 @@ def main():
         note("  could not close every placeholder")
         return False
 
+    def clear_leftovers(name):
+        """Close empty containers an earlier rebuild left on the workspace.
+
+        A rebuild appends a wrapper - a splith or a splitv - and moves the
+        windows into its slots; when the slots are closed the wrapper can stay
+        behind as an empty container.  The next rebuild would then be appended
+        inside it, and the layout would come out at half width.
+        """
+        for _attempt in range(10):
+            workspace = find_workspace(i3.tree(), name) or {}
+            empties = [n["id"] for n in nodes_of(workspace)
+                       if n.get("type") == "con" and not n.get("window")
+                       and not n.get("nodes")]
+            if not empties:
+                return True
+            for con_id in empties:
+                i3.command("[con_id=%d] kill" % con_id)
+            time.sleep(0.15)
+        note("  could not close every empty container")
+        return False
+
     def build_layout(name, count):
-        """Put the column structure on the workspace, one marked slot each."""
+        """Put the column structure on the workspace, one marked slot each.
+
+        Every rebuild marks its slots with names of its own.  The marks used to
+        be the same on every workspace, and a mark that a window kept after a
+        rebuild could be found from another workspace: the next rebuild then
+        moved its window to that one and dragged the window over with it.
+        """
         clear_slots(name)
+        clear_leftovers(name)
+        state["builds"] = state.get("builds", 0) + 1
+        token = "smd-b%d" % state["builds"]
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
                                              encoding="utf-8")
         json.dump(layout_for(count), handle)
@@ -335,14 +365,14 @@ def main():
             index = node["name"].rsplit("-", 1)[-1]
             if not index.isdigit():
                 continue
-            i3.command('[con_id=%d] mark --add smd-slot-%s'
-                       % (node["id"], index))
-            placed.append((int(index), node["id"]))
+            mark = "%s-s%s" % (token, index)
+            i3.command('[con_id=%d] mark --add %s' % (node["id"], mark))
+            placed.append((int(index), mark))
         placed.sort()
         note("  placeholders: %d of %d" % (len(placed), count))
         if len(placed) < count:
             return []
-        return [con_id for _index, con_id in placed]
+        return [mark for _index, mark in placed]
 
     def windows_in_tree():
         return {n.get("id") for n in nodes_of(i3.tree()) if n.get("window")}
@@ -452,6 +482,7 @@ def main():
         # the layout would then be built on another one.
         i3.command('workspace "%s"' % name)
 
+        slots = []
         if len(order) == 1:
             # One window always fills the screen, whatever the tree looks like.
             i3.command("[con_id=%d] move container to workspace %s"
@@ -465,13 +496,15 @@ def main():
                 slots = build_layout(name, len(order))
                 for index, con_id in enumerate(order):
                     if index < len(slots):
-                        i3.command("[con_id=%d] move container to mark "
-                                   "smd-slot-%d" % (con_id, index))
+                        i3.command("[con_id=%d] move container to mark %s"
+                                   % (con_id, slots[index]))
                     else:
                         i3.command("[con_id=%d] move container to workspace %s"
                                    % (con_id, name))
             finally:
                 clear_slots(name)
+                for mark in slots:
+                    i3.command("unmark %s" % mark)
 
         geometry = geometry_of(name)
         placed = [con_id for con_id in order if con_id in geometry]
