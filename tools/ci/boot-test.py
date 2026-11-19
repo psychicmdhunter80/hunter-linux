@@ -1230,14 +1230,14 @@ def main():
             walk(data, None)
             return found[0] if found else None
 
-        # One workspace for the layouts.  The helper rebuilds whichever
-        # workspace a window arrives on and focuses it while it works, so a
-        # window launched during a rebuild lands beside the helper wherever the
-        # focus happens to be.  A window rule cannot fix that: i3 matches it
-        # when the window is mapped, before xfce4-terminal has set the title.
-        # Moving by the container id i3 reports is the one thing that is
-        # deterministic, because i3 serialises commands, so a window that
-        # arrives away from the others is moved here and the result is checked.
+        # One workspace for the layouts.  The helper arranges the workspace a
+        # window arrives on, and it never moves the focus, so a window launched
+        # while another workspace is being rebuilt lands wherever the owner's
+        # focus is.  A window rule cannot fix that: i3 matches it when the
+        # window is mapped, before xfce4-terminal has set the title.  Moving by
+        # the container id i3 reports is the one thing that is deterministic,
+        # because i3 serialises commands, so a window that arrives away from
+        # the others is moved here the ordinary way and the result is checked.
         home = 9
 
         def ws_of(window_id):
@@ -1285,22 +1285,6 @@ def main():
                 time.sleep(1)
             return False
 
-        def nudge_helper(window_id):
-            """Make the helper rebuild the workspace the window has arrived on.
-
-            It ignores move events on purpose - it moves windows itself, and
-            reacting to its own moves would loop - so a window put on a
-            workspace by something else keeps the size it had until the next
-            window opens or closes.  A fullscreen toggle is a change it does
-            act on, and toggling it twice puts the window back as it was.
-            """
-            shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
-                      "DISPLAY=:0 i3-msg -q 'fullscreen toggle'; sleep 2; "
-                      "DISPLAY=:0 i3-msg -q 'fullscreen toggle'" % window_id,
-                      timeout=60)
-            time.sleep(2)
-            helper_quiet()
-
         def move_home(window_id, there):
             """Move the window to the measurement workspace, then read it back.
 
@@ -1308,24 +1292,32 @@ def main():
             while the same command without one works, so the window is made the
             focused container first and the move applies to that.  A window on
             a workspace that is not on screen is unmapped, and xdotool cannot
-            focus it, so the workspace it is on is shown first.  The move is
-            only accepted if the window is still there when it is read twice.
+            focus it, so the workspace it is on is shown first.  Nothing is
+            triggered afterwards: the measurement workspace is then shown,
+            which is what arranges it, and the window has to still be there
+            when it is read twice.
             """
             for _attempt in range(8):
                 helper_quiet()
                 current = ws_of(window_id)
                 if current is None:
                     return False
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; sleep 1; "
-                          "DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
-                          "DISPLAY=:0 i3-msg -q 'move container to workspace %d'"
-                          % (current, window_id, home), timeout=60)
+                if current != home:
+                    shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; "
+                              "sleep 1; "
+                              "DISPLAY=:0 xdotool windowactivate --sync %s; "
+                              "sleep 1; "
+                              "DISPLAY=:0 i3-msg -q 'move container to "
+                              "workspace %d'" % (current, window_id, home),
+                              timeout=60)
+                    time.sleep(2)
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home,
+                          timeout=30)
                 time.sleep(3)
                 if ws_of(window_id) == home:
                     time.sleep(2)
                     if ws_of(window_id) == home:
-                        nudge_helper(window_id)
-                        return ws_of(window_id) == home
+                        return True
             return False
 
         def open_window(title):
@@ -1422,7 +1414,7 @@ def main():
                 len({round(b["y"]) for b in boxes if round(b["x"]) == x}) == 2
                 for x in xs)
 
-        def wait_for(count, timeout=120):
+        def wait_for(count, timeout=120, workspace=None):
             """Poll until the helper has produced the arrangement for the windows.
 
             The helper arranges a new window a moment after it appears, and on
@@ -1430,15 +1422,23 @@ def main():
             pause measures the pause, not the result: this waits for the real
             arrangement, records how long it took, and only reports a failure
             when it never arrives.
+
+            With no workspace given the measurement is the whole desktop and a
+            window that drifted onto another workspace is brought back; with
+            one given only the windows on it are counted and nothing is moved,
+            so a window that was deliberately sent away stays away.
             """
             started = time.time()
             boxes = tiles()
             reported = False
             while time.time() - started < timeout:
                 boxes = tiles()
+                if workspace is not None:
+                    boxes = [b for b in boxes if b.get("ws") == workspace]
                 # A window the helper put down on another workspace is put back
                 # here rather than measured as if the layout spanned two.
-                stray = [b for b in boxes if b.get("ws") != home]
+                stray = [b for b in boxes if workspace is None
+                         and b.get("ws") != home]
                 if stray:
                     for box in stray:
                         record("INFO: %s drifted to workspace %s, moving it "
@@ -1507,6 +1507,48 @@ def main():
         four, ok4 = wait_for(4)
         check(results, "four windows form an even 2x2 grid", ok4)
         record("INFO: tiling four: " + describe(four))
+
+        # --- an ordinary move between workspaces ---------------------------
+        # The owner's own action: pick a window up and send it elsewhere.
+        # Nothing is triggered afterwards - the workspace is simply shown, as
+        # he would show it - and both ends have to be right.
+        away = 1
+
+        def send(window_name, target):
+            """Move the named window to another workspace, the ordinary way."""
+            window_id = next((b["win"] for b in tiles()
+                              if b.get("name") == window_name), None)
+            if not window_id:
+                return False
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; sleep 1; "
+                      "DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
+                      "DISPLAY=:0 i3-msg -q 'move container to workspace "
+                      "number %d'" % (home, window_id, target), timeout=60)
+            time.sleep(2)
+            return True
+
+        send("smd-four", away)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home, timeout=30)
+        left, okleft = wait_for(3, workspace=home)
+        check(results, "moving a window away re-tiles the ones that stay", okleft)
+        record("INFO: after moving smd-four to workspace %d: %s"
+               % (away, describe(left)))
+
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % away, timeout=30)
+        alone, okalone = wait_for(1, workspace=away)
+        check(results, "the workspace it moved to shows it filling the screen",
+              okalone)
+        record("INFO: on workspace %d after the move: %s"
+               % (away, describe(alone)))
+
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home, timeout=30)
+        send("smd-three", away)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % away, timeout=30)
+        pair, okpair = wait_for(2, workspace=away)
+        check(results, "a second window moved in shares the screen as halves",
+              okpair)
+        record("INFO: on workspace %d after two arrived: %s"
+               % (away, describe(pair)))
 
         record("INFO: autotile log: " + " | ".join(
             shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:400])

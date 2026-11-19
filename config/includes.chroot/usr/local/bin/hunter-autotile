@@ -9,10 +9,18 @@ alternately: left takes the 1st, 3rd, 5th... arrival, right the 2nd, 4th, 6th...
 Order is arrival order per workspace, tracked by container id - never by title,
 and never by whichever window happened to be focused last.
 
-The helper speaks i3's IPC protocol itself: it subscribes to the window events,
-asks for the tree, and issues i3's own commands.  Replies and events arrive on
-the same socket, so every read demultiplexes them; treating an event as a
-command reply is what used to kill the helper after its first command.
+The helper speaks i3's IPC protocol itself: it subscribes to the window and
+workspace events, asks for the tree, and issues i3's own commands.  Replies and
+events arrive on the same socket, so every read demultiplexes them; treating an
+event as a command reply is what used to kill the helper after its first
+command.
+
+A window that moves to another workspace changes the shape of both ends: the
+one it left has a tile fewer, the one it arrived on a tile more, so both are
+rebuilt.  Rebuilding appends a layout, and i3 appends it to the focused
+workspace, so a workspace the owner is not looking at is marked due instead and
+arranged the moment it is shown - the layout never pulls the focus away from
+what he is working on.
 """
 
 import collections
@@ -225,7 +233,7 @@ def main():
     note("connected to %s" % path)
 
     state = {"order": {}, "busy": False, "pending": set(),
-             "settled": {}, "where": {}}
+             "settled": {}, "where": {}, "due": set()}
 
     def workspace_names():
         return [n.get("name") for n in nodes_of(i3.tree())
@@ -404,7 +412,20 @@ def main():
         # machine: the window set can.
         signature = tuple(order)
         if attempt == 1 and state["settled"].get(name) == signature:
+            state["due"].discard(name)
             return
+
+        # Building the layout means appending it, and i3 appends to the
+        # workspace that has the focus.  Rebuilding a workspace the owner is
+        # not looking at would take the focus away from what he is working on,
+        # so it is marked due and rebuilt the moment it is shown - which is
+        # also the first moment its arrangement can be seen at all.
+        current = focused_workspace(i3.tree()) or {}
+        if current.get("name") != name:
+            state["due"].add(name)
+            note("%s is not on screen: it is arranged when it is shown" % name)
+            return
+        state["due"].discard(name)
 
         note("reflow %s order=%s attempt=%d" % (name, order, attempt))
 
@@ -494,8 +515,8 @@ def main():
     # The helper never changes workspace: parking happens with "move
     # container to workspace", which does not take the focus away from the
     # workspace the owner is working in.
-    i3.message(SUBSCRIBE, json.dumps(["window"]))
-    note("subscribed to window events")
+    i3.message(SUBSCRIBE, json.dumps(["window", "workspace"]))
+    note("subscribed to window and workspace events")
 
     for name in workspace_names():
         handle(name)
@@ -512,6 +533,14 @@ def main():
             # The placeholders the helper appends raise events of their own.
             return
         change = payload.get("change")
+        if change in ("focus", "init") and isinstance(payload.get("current"), dict):
+            # A workspace has just been shown: anything left due on it is
+            # arranged now, while it has the focus the rebuild needs.
+            name = payload["current"].get("name")
+            if name and name != SCRATCH:
+                note("event %s on workspace %s" % (change, name))
+                handle(name)
+            return
         if change in ("new", "close", "fullscreen_mode"):
             # A closing window is already gone from the tree and a new one may
             # not be in it yet, so its workspace is looked up first, then the
@@ -527,12 +556,28 @@ def main():
             name = workspace.get("name") if workspace else None
             note("event %s on workspace %s" % (change, name))
             handle(name)
-        # A move is never a rebuild reason: the helper moves windows itself,
-        # and reacting to its own moves would loop.
+        elif change == "move":
+            # Both ends changed shape.  The helper's own moves arrive here as
+            # well, and they change nothing: the workspace they happen on is
+            # already settled for exactly that set of windows.
+            con_id = container.get("id")
+            here = (workspace_containing(i3.tree(), con_id) or {}).get("name")
+            was = state["where"].get(con_id)
+            if not here or here == SCRATCH:
+                return
+            state["where"][con_id] = here
+            if was == here:
+                return
+            note("window %s moved from %s to %s" % (con_id, was, here))
+            for name in (here, was):
+                if name and name != SCRATCH:
+                    state["due"].add(name)
+                    handle(name)
         elif change == "empty":
             name = (payload.get("container") or {}).get("name")
             state["order"].pop(name, None)
             state["settled"].pop(name, None)
+            state["due"].discard(name)
 
     while True:
         try:
@@ -544,7 +589,7 @@ def main():
             if not path:
                 return 1
             i3 = I3(path)
-            i3.message(SUBSCRIBE, json.dumps(["window"]))
+            i3.message(SUBSCRIBE, json.dumps(["window", "workspace"]))
             for name in workspace_names():
                 handle(name)
             continue

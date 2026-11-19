@@ -176,7 +176,8 @@ def start_qemu():
     return subprocess.Popen(args, stdout=log, stderr=log)
 
 
-BOX = re.compile(r"WIN id=\d+ .*?xid=(\d+) class=(\S+) .*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
+BOX = re.compile(r"WIN id=\d+ .*?xid=(\d+) class=(\S+) .*?ws=(\d+) "
+                 r".*?rect=(-?\d+),(-?\d+)\+(\d+)x(\d+)")
 # Only the browser windows are under test: the panel owns a real window too,
 # and it is furniture, not a window the layout has to arrange.
 UNDER_TEST = "brave"
@@ -189,8 +190,21 @@ def layouts(text):
         xid = int(match.group(1))
         if not xid or not match.group(2).lower().startswith(UNDER_TEST):
             continue
-        found[xid] = tuple(int(match.group(i)) for i in range(3, 7))
+        found[xid] = tuple(int(match.group(i)) for i in range(4, 8))
     return found
+
+
+def spaces(text):
+    """The workspace number of every window in a tree dump, keyed by X id."""
+    return {int(match.group(1)): int(match.group(3)) for match in BOX.finditer(text)
+            if int(match.group(1))}
+
+
+def on_space(text, number):
+    """The windows of the browser under test on one workspace."""
+    where = spaces(text)
+    return {xid: rect for xid, rect in layouts(text).items()
+            if where.get(xid) == number}
 
 
 def describe(found, labels=None):
@@ -533,6 +547,61 @@ def main():
         reopened, stable_reopen = stage("after reopening", idle=15)
         ok("reopening settles into a 2x2 grid",
            len(reopened) == 4 and stable_reopen, describe(reopened))
+
+        # --- an ordinary move to another workspace --------------------------
+        # This is what the owner does: pick a window up and send it elsewhere.
+        # Both ends have to be right afterwards, and the helper is given
+        # nothing except the move itself - no fullscreen toggle, no other
+        # test-only trigger.
+        def wait_on(number, count, timeout=90):
+            started = time.time()
+            found = {}
+            while time.time() - started < timeout:
+                found = on_space(tree(), number)
+                if len(found) == count:
+                    return found, True
+                time.sleep(3)
+            return found, False
+
+        here_ws = spaces(tree()).get(names.get("smd-one"))
+        away_ws = 7 if here_ws != 7 else 6
+        record("INFO: the four windows are on workspace %s, moving to %s"
+               % (here_ws, away_ws))
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % here_ws,
+                  timeout=60)
+        shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
+                  "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
+                  % (names.get("smd-four"), away_ws), timeout=90)
+        kept, kept_ok = wait_on(here_ws, 3)
+        ok("the windows left behind are tiled again after one moves away",
+           kept_ok, describe(kept, labels_for(kept)))
+
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+                  timeout=60)
+        arrived, arrived_ok = wait_on(away_ws, 1)
+        fills_away = False
+        if len(arrived) == 1:
+            x, y, w, h = list(arrived.values())[0]
+            fills_away = abs(w - work[2]) <= 4 and abs(h - work[3]) <= 4
+        ok("the workspace it arrives on shows it filling the screen",
+           arrived_ok and fills_away, describe(arrived, labels_for(arrived)))
+
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % here_ws,
+                  timeout=60)
+        shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
+                  "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
+                  % (names.get("smd-three"), away_ws), timeout=90)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+                  timeout=60)
+        pair, pair_ok = wait_on(away_ws, 2)
+        halves_away = False
+        if len(pair) == 2 and pair_ok:
+            first, second = list(pair.values())
+            halves_away = (abs(first[2] - second[2]) <= 4 and first[0] != second[0])
+        ok("a second window moved in becomes two equal halves", halves_away,
+           describe(pair, labels_for(pair)))
+        record("INFO: windows now on %s and %s, reflows=%s"
+               % (here_ws, away_ws, reflows()))
 
         record("INFO: helper processes at the end: %s" % helpers())
         record("INFO: reflows at the end: %s" % reflows())
