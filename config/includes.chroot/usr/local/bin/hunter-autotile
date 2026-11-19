@@ -17,10 +17,12 @@ command.
 
 A window that moves to another workspace changes the shape of both ends: the
 one it left has a tile fewer, the one it arrived on a tile more, so both are
-rebuilt.  Rebuilding appends a layout, and i3 appends it to the focused
-workspace, so a workspace the owner is not looking at is marked due instead and
-arranged the moment it is shown - the layout never pulls the focus away from
-what he is working on.
+rebuilt.  The layout is made by splitting the window that has to share its half
+and moving the new one beside it, so nothing is appended to the workspace and
+no structure is left behind for a later rebuild to nest inside.  Rebuilding a
+workspace takes the focus i3 needs for that, so a workspace the owner is not
+looking at is marked due instead and arranged the moment it is shown - the
+layout never pulls the focus away from what he is working on.
 """
 
 import collections
@@ -30,7 +32,6 @@ import os
 import socket
 import struct
 import sys
-import tempfile
 import time
 
 SCRATCH = "smd-autotile-scratch"
@@ -177,18 +178,6 @@ def find_workspace(tree, name):
     return None
 
 
-def focused_node(tree):
-    """The deepest container i3 has the focus on.
-
-    The focused workspace carries "focused": true as well, so the first match
-    while walking down is the workspace even when a window in it has the focus.
-    Taking that one made the walk up to the workspace end before it started,
-    and the layout was appended inside whatever container the window was in.
-    """
-    focused = [node for node in nodes_of(tree) if node.get("focused")]
-    return focused[-1] if focused else None
-
-
 def focused_workspace(tree):
     """The workspace holding the focused window.
 
@@ -252,132 +241,6 @@ def main():
                 if n.get("type") == "workspace" and n.get("name")
                 and n.get("name") != SCRATCH]
 
-    def placeholder(index):
-        """One slot of the layout, named so it can be found in the tree.
-
-        i3 layout files have no mark field, so the placeholders are marked
-        after they appear, from the tree, in layout order.
-        """
-        return {"type": "con", "name": "smd-slot-%d" % index,
-                "border": "none",
-                # Nothing can match this: the placeholder stays until the
-                # helper closes it, so it keeps the slot open.
-                "swallows": [{"class": "^$SMD-NEVER-MATCH$"}]}
-
-    def layout_for(count):
-        if count <= 2:
-            return {"type": "con", "layout": "splith",
-                    "nodes": [placeholder(i) for i in range(count)]}
-        left = [i for i in range(count) if i % 2 == 0]
-        right = [i for i in range(count) if i % 2 == 1]
-        return {"type": "con", "layout": "splith", "nodes": [
-            {"type": "con", "layout": "splitv", "percent": 0.5,
-             "nodes": [placeholder(i) for i in left]},
-            {"type": "con", "layout": "splitv", "percent": 0.5,
-             "nodes": [placeholder(i) for i in right]},
-        ]}
-
-    def clear_slots(name):
-        """Close every placeholder on the workspace and wait until none is left."""
-        for _attempt in range(10):
-            workspace = find_workspace(i3.tree(), name) or {}
-            slots = [n["id"] for n in nodes_of(workspace)
-                     if str(n.get("name", "")).startswith("smd-slot-")]
-            if not slots:
-                return True
-            for con_id in slots:
-                i3.command("[con_id=%d] kill" % con_id)
-            i3.command('[con_mark="^smd-slot-"] kill')
-            time.sleep(0.15)
-        note("  could not close every placeholder")
-        return False
-
-    def clear_leftovers(name):
-        """Close empty containers an earlier rebuild left on the workspace.
-
-        A rebuild appends a wrapper - a splith or a splitv - and moves the
-        windows into its slots; when the slots are closed the wrapper can stay
-        behind as an empty container.  The next rebuild would then be appended
-        inside it, and the layout would come out at half width.
-        """
-        for _attempt in range(10):
-            workspace = find_workspace(i3.tree(), name) or {}
-            empties = [n["id"] for n in nodes_of(workspace)
-                       if n.get("type") == "con" and not n.get("window")
-                       and not n.get("nodes")]
-            if not empties:
-                return True
-            for con_id in empties:
-                i3.command("[con_id=%d] kill" % con_id)
-            time.sleep(0.15)
-        note("  could not close every empty container")
-        return False
-
-    def build_layout(name, count):
-        """Put the column structure on the workspace, one marked slot each.
-
-        Every rebuild marks its slots with names of its own.  The marks used to
-        be the same on every workspace, and a mark that a window kept after a
-        rebuild could be found from another workspace: the next rebuild then
-        moved its window to that one and dragged the window over with it.
-        """
-        clear_slots(name)
-        clear_leftovers(name)
-        state["builds"] = state.get("builds", 0) + 1
-        token = "smd-b%d" % state["builds"]
-        handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
-                                             encoding="utf-8")
-        json.dump(layout_for(count), handle)
-        handle.close()
-        i3.command('workspace "%s"' % name)
-        # append_layout puts the layout inside the focused container, so a
-        # rebuild started while a window in a column had the focus nested the
-        # new structure inside that column: three windows ended up as three
-        # narrow tiles in the left half of the screen.  i3 has no way to name
-        # the workspace as the target, so the focus is walked up to it first.
-        for _step in range(6):
-            node = focused_node(i3.tree()) or {}
-            if node.get("type") == "workspace":
-                break
-            i3.command("focus parent")
-            time.sleep(0.15)
-        note("  append into %s" % (focused_node(i3.tree()) or {}).get("type"))
-        i3.command("append_layout %s" % handle.name)
-        os.unlink(handle.name)
-
-        # append_layout runs through i3's command queue, so the placeholders
-        # can be a moment late: ask for the tree until they are all there.
-        slots = []
-        for _attempt in range(30):
-            workspace = find_workspace(i3.tree(), name) or {}
-            slots = [n for n in nodes_of(workspace)
-                     if str(n.get("name", "")).startswith("smd-slot-")]
-            if len(slots) >= count:
-                break
-            time.sleep(0.1)
-        # What i3 actually built, so a wrong structure is visible in the log.
-        shape = []
-        for node in nodes_of(find_workspace(i3.tree(), name) or {}):
-            if node.get("type") in ("workspace", "con") or node.get("window"):
-                rect = node.get("rect") or {}
-                shape.append("%s/%s/%s/%dx%d@%d,%d" % (
-                    node.get("id"), node.get("type"), node.get("name"),
-                    rect.get("width", 0), rect.get("height", 0),
-                    rect.get("x", 0), rect.get("y", 0)))
-        note("  tree: %s" % " ".join(shape[:14]))
-        placed = []
-        for node in slots:
-            index = node["name"].rsplit("-", 1)[-1]
-            if not index.isdigit():
-                continue
-            mark = "%s-s%s" % (token, index)
-            i3.command('[con_id=%d] mark --add %s' % (node["id"], mark))
-            placed.append((int(index), mark))
-        placed.sort()
-        note("  placeholders: %d of %d" % (len(placed), count))
-        if len(placed) < count:
-            return []
-        return [mark for _index, mark in placed]
 
     def windows_in_tree():
         return {n.get("id") for n in nodes_of(i3.tree()) if n.get("window")}
@@ -487,29 +350,28 @@ def main():
         # the layout would then be built on another one.
         i3.command('workspace "%s"' % name)
 
-        slots = []
         if len(order) == 1:
             # One window always fills the screen, whatever the tree looks like.
             i3.command("[con_id=%d] move container to workspace %s"
                        % (order[0], name))
         else:
-            try:
-                # Nothing is parked: i3 destroys an emptied workspace. The
-                # structure is appended beside the windows and every window is
-                # moved into its slot, so the workspace is never empty and the
-                # orientation does not depend on what was there before.
-                slots = build_layout(name, len(order))
-                for index, con_id in enumerate(order):
-                    if index < len(slots):
-                        i3.command("[con_id=%d] move container to mark %s"
-                                   % (con_id, slots[index]))
-                    else:
-                        i3.command("[con_id=%d] move container to workspace %s"
-                                   % (con_id, name))
-            finally:
-                clear_slots(name)
-                for mark in slots:
-                    i3.command("unmark %s" % mark)
+            # The columns are made from the windows themselves: i3 splits a
+            # workspace when a window arrives, so the only thing left to do is
+            # to make the half that has to hold two of them vertical, around
+            # the one that stays on top.  Nothing is appended, so there is no
+            # wrapper container to be left behind and nested into by the next
+            # rebuild - which is what turned two windows into two thirds of the
+            # screen and three into three narrow tiles in one half.
+            for index in range(2, len(order)):
+                top = order[index - 2]
+                mark = "smd-pair-%d" % index
+                i3.command("[con_id=%d] mark --add %s" % (top, mark))
+                i3.command("[con_id=%d] focus" % top)
+                i3.command("split vertical")
+                i3.command("[con_id=%d] move container to mark %s"
+                           % (order[index], mark))
+                i3.command("unmark %s" % mark)
+                time.sleep(0.15)
 
         geometry = geometry_of(name)
         placed = [con_id for con_id in order if con_id in geometry]
@@ -517,10 +379,6 @@ def main():
         note("  placed: %s" % " ".join(
             "%d@%d,%d+%dx%d" % ((con_id,) + geometry[con_id])
             for con_id in placed))
-        leftover = [n["id"] for n in nodes_of(find_workspace(i3.tree(), name) or {})
-                    if str(n.get("name", "")).startswith("smd-slot-")]
-        if leftover:
-            note("  placeholders still open: %s" % leftover)
         if good:
             state["settled"][name] = signature
             return
@@ -581,14 +439,6 @@ def main():
     def handle_event(payload):
         """One window event: recognise the helper's own and rebuild if needed."""
         container = payload.get("container") or {}
-        marks = [str(m) for m in container.get("marks", []) or []]
-        # Only the name and the marks identify a placeholder: i3 reuses the
-        # container ids of the slots it destroys for windows opened later, so
-        # filtering by those ids would drop real windows.
-        if str(container.get("name", "")).startswith("smd-slot") \
-                or any(str(m).startswith("smd-slot") for m in marks):
-            # The placeholders the helper appends raise events of their own.
-            return
         change = payload.get("change")
         if change in ("focus", "init") and isinstance(payload.get("current"), dict):
             # A workspace has just been shown: anything left due on it is
