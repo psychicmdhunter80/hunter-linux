@@ -1224,25 +1224,20 @@ def main():
             walk(data, None)
             return found[0] if found else None
 
-        # The helper rebuilds a workspace by focusing it, so which one a window
-        # opens on is not the test's to choose; the first window decides and
-        # every later one has to join it.  That is the only property the
-        # layouts need: one workspace, all the test windows on it.
-        home = {"ws": None}
+        # One workspace for the layouts, chosen by i3 rather than by this test.
+        # The helper rebuilds whichever workspace a window arrives on, and it
+        # focuses that workspace while it works, so a window launched while a
+        # rebuild is in flight lands beside the helper; moving it afterwards
+        # only makes the helper rebuild where it actually arrived.  A window
+        # rule is applied by i3 as the window is mapped, so every test window
+        # lands in the same place with nothing for the helper to undo.
+        home = 9
 
         def open_window(title):
-            """Launch a titled terminal beside the others, or say so honestly.
-
-            A window launched while a rebuild is in flight lands wherever the
-            helper put the focus.  Moving it afterwards only makes the helper
-            reflow the workspace it actually arrived on, so a window that
-            arrives away from the others is closed and launched again after
-            the shared workspace is focused.  One that keeps arriving
-            elsewhere is reported as a failure, never measured as a layout.
-            """
+            """Launch a titled terminal on workspace 9, or say so honestly."""
             for attempt in range(1, 4):
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'"
-                          % (home["ws"] or 1), timeout=30)
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home,
+                          timeout=30)
                 shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                           "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
                 here = None
@@ -1255,13 +1250,7 @@ def main():
                     record("INFO: %s never appeared in i3 (attempt %d)"
                            % (title, attempt))
                     continue
-                if home["ws"] is None:
-                    home["ws"] = here[1]
-                    record("INFO: the tiling windows are on workspace %s"
-                           % here[1])
-                    time.sleep(2)
-                    return
-                if here[1] == home["ws"]:
+                if here[1] == home:
                     record("INFO: %s is on workspace %s" % (title, here[1]))
                     time.sleep(2)
                     return
@@ -1272,7 +1261,7 @@ def main():
                           timeout=30)
                 time.sleep(3)
             record("FAIL: %s could not be opened on workspace %s"
-                   % (title, home["ws"]))
+                   % (title, home))
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree.
@@ -1374,7 +1363,13 @@ def main():
         # switch workspaces and reload i3, so the focused one is whatever they
         # left behind; two windows on different workspaces are two lone
         # windows, each filling its own screen, and no layout to measure.
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=60)
+        # The rule is left in place: this run has no window checks after the
+        # layouts, and removing it again would need a config reload that would
+        # re-run every exec_always line.
+        shell.run("DISPLAY=:0 i3-msg -q 'for_window "
+                  "[title=\"^smd-(one|two|three|four)$\"] move container to "
+                  "workspace 9'", timeout=60)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 9'", timeout=60)
         time.sleep(2)
         here = shell.run("DISPLAY=:0 i3-msg -t get_workspaces", timeout=60)
         focused = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
