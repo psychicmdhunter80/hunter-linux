@@ -1224,19 +1224,25 @@ def main():
             walk(data, None)
             return found[0] if found else None
 
-        def open_window(title):
-            """Launch a titled terminal on workspace 1, or say so honestly.
+        # The helper rebuilds a workspace by focusing it, so which one a window
+        # opens on is not the test's to choose; the first window decides and
+        # every later one has to join it.  That is the only property the
+        # layouts need: one workspace, all the test windows on it.
+        home = {"ws": None}
 
-            The tiling helper rebuilds a workspace by focusing it, so a window
-            launched while a rebuild is in flight lands beside the helper
-            rather than where this test is measuring.  Moving it afterwards
-            fights the helper - it reflows the workspace the window actually
-            arrived on - so the window is closed and launched again on a
-            freshly focused workspace 1 instead.  One that keeps arriving
+        def open_window(title):
+            """Launch a titled terminal beside the others, or say so honestly.
+
+            A window launched while a rebuild is in flight lands wherever the
+            helper put the focus.  Moving it afterwards only makes the helper
+            reflow the workspace it actually arrived on, so a window that
+            arrives away from the others is closed and launched again after
+            the shared workspace is focused.  One that keeps arriving
             elsewhere is reported as a failure, never measured as a layout.
             """
             for attempt in range(1, 4):
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=30)
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'"
+                          % (home["ws"] or 1), timeout=30)
                 shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                           "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
                 here = None
@@ -1249,8 +1255,14 @@ def main():
                     record("INFO: %s never appeared in i3 (attempt %d)"
                            % (title, attempt))
                     continue
-                if here[1] == 1:
-                    record("INFO: %s is on workspace 1" % title)
+                if home["ws"] is None:
+                    home["ws"] = here[1]
+                    record("INFO: the tiling windows are on workspace %s"
+                           % here[1])
+                    time.sleep(2)
+                    return
+                if here[1] == home["ws"]:
+                    record("INFO: %s is on workspace %s" % (title, here[1]))
                     time.sleep(2)
                     return
                 record("INFO: %s arrived on workspace %s, closing it and "
@@ -1259,7 +1271,8 @@ def main():
                 shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill'" % here[0],
                           timeout=30)
                 time.sleep(3)
-            record("FAIL: %s could not be opened on workspace 1" % title)
+            record("FAIL: %s could not be opened on workspace %s"
+                   % (title, home["ws"]))
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree.
