@@ -10,8 +10,8 @@ exactly here instead of repeating the survey.
 | Branch | `release/1.6.0` (the 1.5.0 delivery is untouched: tag `v1.5.0`, branch `baseline-1.5.0`) |
 | Baseline | `SMD-Linux-v1.5.0-amd64.iso`, 1,134,166,016 bytes, `9820f5fa...fa1952`, tag `v1.5.0` at `84349b0` |
 | Version now | `1.6.0`, written once in `VERSION` |
-| Build revision | `2e18858` (the source the image is built from) |
-| Build attempts | `44437139505` failed in the artwork step; `44438132258` is the live build |
+| Build revision | `41f79bf` (the source the delivered image is built from) |
+| Final build | `44550560639` - `SMD-Linux-v1.6.0-amd64.iso`, 1,207,959,552 bytes, `94a38565...a05141` |
 | Static checks | `python tools/verify-project.py` - all pass |
 
 ## Done in this session
@@ -59,6 +59,47 @@ exactly here instead of repeating the survey.
 
 The 1.5.0 baseline is untouched: `baseline-1.5.0` branch and tag `v1.5.0`, ISO
 still `9820f5fa...fa1952`.
+
+## Second image: the i3 wedge found and fixed
+
+The live boot test on `91e4103...` failed on both firmwares, and the cause was
+this project's own code, not the test: `hunter-workspaces` asked i3 for the
+workspace list from inside i3's event stream, on the same socket i3 uses to
+answer that request. i3 stopped answering - `i3-msg -t get_workspaces` never
+returned - and the tiling helper could not get its work done in time either.
+The helper now reads the workspace number out of the event itself and never
+talks to i3 from inside the loop. Two test defects from the same run are fixed
+too: boot frames were never captured (the monitor was out of scope) and a hung
+guest produced one failure per stranded command instead of one honest line.
+
+| | |
+| --- | --- |
+| Build `44454488079` | success, commit `1b65fea`; `SMD-Linux-v1.6.0-amd64.iso`, 1,207,959,552 bytes, SHA-256 `7a7653945dd06f7beb3b3f153146bab53cfad9f267a43897e6ada8ac279f936f`; downloaded to `../delivery-1.6.0/`, re-hashed, matches |
+| Manifest `44456401528` | 944 packages (+plymouth, +libplymouth5); `PACKAGE-MANIFEST-1.6.0.txt` |
+| Installer label `44455799482` | RESULT: passed - productName, version, versionedName, os-release, issue, lsb-release, window title and on-screen text all say 1.6.0 |
+
+The first manifest run failed because the version-free ISO glob sat in a
+variable, where the shell never expands it; fixed in the workflow and re-run.
+
+## Where this ended
+
+The delivered image is build `44550560639` (commit `41f79bf`), and every test
+below was run against that exact artifact:
+
+| Check | Result |
+| --- | --- |
+| Live boot `44560534614` | BIOS and UEFI, 102 passed and 0 failed on each |
+| Installer label `44552638839` | 12 passed, 0 failed |
+| Brave tiling at 1366x768 `44552628935` | 25 passed, 0 failed, helper from the image |
+| Voice typing and Jellyfin `44552633676` | 38 passed, 0 failed |
+| Installation `44552643828` | 53 passed, 0 failed, 1 note about the power menu |
+| Package manifest `44552648621` | 944 packages, identical to `PACKAGE-MANIFEST-1.6.0.txt` |
+
+Three defects were found by testing and fixed in this release, all in this
+project's own code rather than in the tests: the workspace helper acted on i3's
+`empty` event for the workspace just left, the tiling helper rebuilt from its
+remembered window order and so pulled a moved window back, and the boot test's
+window placement used i3 criteria that matched nothing on this image.
 
 ## Not done yet - next steps in order
 

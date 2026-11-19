@@ -1,4 +1,4 @@
-# SMD Linux 1.5.0
+# SMD Linux 1.6.0
 
 A small, lightweight Debian 13 desktop distribution for low-power machines:
 **Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
@@ -18,33 +18,38 @@ modifier for everything else. Details, root causes and what is still unverified
 are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.5.0-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.6.0-amd64.iso in this directory
 ```
 
 ---
 
 ## Release status
 
-**1.5.0** is the current release. 1.4.1, 1.4, 1.3 and 1.2 stay published as
-rollback (tags `v1.4`, `v1.3`, `v1.2`) and none of their tags moved. 1.5.0 adds
-the two approved additions that were missing from the image - the **Jellyfin
-MPV Shim** client and **Alt+Z voice typing** - and repairs the installation test
-so that a check it cannot reach is reported as missing instead of passing. What
-changed is in `RELEASE-NOTES-1.5.0.md`; the exact package list, provenance,
-configuration and known limitations are in `TECHNICAL-REFERENCE-1.5.0.md`.
+**1.6.0** is the current release. 1.5.0, 1.4.1, 1.4, 1.3 and 1.2 stay
+available as rollback (`v1.5.0`, `v1.4`, `v1.3`, `v1.2`) and none of their tags
+moved. 1.6.0 changes what you see and what you can reach, not how the desktop
+works: running windows are **icons with their title in the tooltip**, the
+**File Manager is pinned beside Brave**, the miniature workspace previews are
+replaced by **four numbered buttons `1 2 3 4`** that are always there, a
+**loading screen** replaces the bare cursor between the boot menu and the
+desktop, and the installer is a favourite in the live session only. The release
+number is now written once, in `VERSION`, and everything - including the
+pictures - is generated from it. What changed is in `RELEASE-NOTES-1.6.0.md`;
+the exact package list, provenance, configuration and known limitations are in
+`TECHNICAL-REFERENCE-1.6.0.md`.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.5.0-amd64.iso`, 1,134,166,016 bytes (1.06 GiB) |
-| SHA-256 | `9820f5fab9c04bcc9d3a47c3d0e85f41873b0390d1ce597cd9aa3ccf61fa1952` |
-| Build | Actions run `44196246894`, commit `065330fb` |
-| Installed packages | 942, listed in `PACKAGE-MANIFEST-1.5.0.txt` |
-| Live boot tests | run `44198224595` - 85 checks passed, none failed, BIOS and UEFI |
-| Installer version label | run `44198233045` - 12 checks passed |
-| Brave tiling at 1366x768 | run `44202162718` - 25 checks passed, helper from the image |
-| Voice typing and Jellyfin | run `44211439574` - 38 checks passed, none failed |
-| Installation test | run `44234076502` - 92 checks, 0 failures: installed to a disposable disk, booted without the ISO, logged into the installed desktop and verified it there; see `Test-Report.md` |
-| Source | `SMD-Linux-Build-v1.5.0.zip`, checksums in `SHA256SUMS` |
+| Image | `SMD-Linux-v1.6.0-amd64.iso`, 1,207,959,552 bytes (1.13 GiB) |
+| SHA-256 | `94a3856560ad99cc9674730939591b5e731afbad11542b30feee25e108a05141` |
+| Build | Actions run `44550560639`, commit `41f79bf` |
+| Installed packages | 944, listed in `PACKAGE-MANIFEST-1.6.0.txt` |
+| Live boot tests | run `44560534614` - BIOS and UEFI, 102 checks passed on each, 0 failed |
+| Installer version label | run `44514444611` - 12 checks passed |
+| Brave tiling at 1366x768 | run `44514436615` - 25 checks passed, helper from the image |
+| Voice typing and Jellyfin | run `44514440599` - 38 checks passed, none failed |
+| Installation test | run `44514448357` - 53 checks, 0 failures: installed to a disposable disk, booted without the ISO, logged into the installed desktop and verified it there; see `Test-Report.md` |
+| Source | `SMD-Linux-Build-v1.6.0.zip`, checksums in `SHA256SUMS` |
 
 **Hardware confirmation (Hunter, on Craig):** the tiling behaves as intended,
 including four Brave windows settling into the intended 2x2 grid. The rest
@@ -71,7 +76,7 @@ percentage and dictation accuracy in a real room still need Craig's own machine.
 | Kernel | Debian stable `linux-image-amd64` |
 | Display | Xorg (X11), no Wayland, no compositor |
 | Window manager | i3 (`i3-wm`), **Left Alt** modifier, no i3bar; the **Search** key alone opens the launcher |
-| Panel / taskbar | `xfce4-panel` on the **bottom edge, always visible**, with the S menu, a small spacer, the Brave launcher, task list, pager, systray, clock, volume, battery and power menu |
+| Panel / taskbar | `xfce4-panel` on the **bottom edge, always visible**, with the S menu, a small spacer, the Brave and File Manager launchers, an **icons-only task list (titles in the tooltip)**, **four numbered workspace buttons**, systray, clock, volume, battery and power menu |
 | File manager | Thunar (+ `udisks2`, `gvfs`) |
 | Terminal | `xfce4-terminal` |
 | Editor | `nano` (console); no graphical editor |
@@ -85,7 +90,7 @@ percentage and dictation accuracy in a real room still need Craig's own machine.
 | Installer | Calamares 3.3 |
 | Remote administration | Cockpit (`cockpit`, `cockpit-system`) on port 9090, enabled in the live session and in the installed system |
 | Live system | `live-boot` + `live-config`, autologin, no persistence |
-| Boot | isolinux (BIOS/CSM) and GRUB EFI (UEFI), signed Debian shim when available |
+| Boot | isolinux (BIOS/CSM) and GRUB EFI (UEFI), signed Debian shim when available; **plymouth loading screen** from the initramfs until the desktop is up |
 | Build | Debian `live-build` 1:20250505, `debootstrap`, `xorriso`, squashfs + xz |
 
 No GNOME, KDE, Cinnamon, MATE or full XFCE desktop is installed: only the
@@ -139,8 +144,8 @@ The build downloads roughly 1.5 GB of Debian packages and takes 20-60 minutes
 depending on the machine and mirror. The result is:
 
 ```
-SMD-Linux-v1.4-amd64.iso          the bootable hybrid image
-SMD-Linux-v1.4-amd64.iso.sha256   its checksum
+SMD-Linux-v1.6.0-amd64.iso          the bootable hybrid image
+SMD-Linux-v1.6.0-amd64.iso.sha256   its checksum
 ```
 
 Use a different mirror without editing anything:
@@ -179,7 +184,7 @@ method (it preserves both boot paths).
 Linux:
 
 ```
-sudo dd if=SMD-Linux-v1.4-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=SMD-Linux-v1.6.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 Use the whole device (`/dev/sdX`), never a partition (`/dev/sdX1`). This
@@ -189,7 +194,7 @@ macOS:
 
 ```
 diskutil list                                  # find the disk number
-sudo dd if=SMD-Linux-v1.4-amd64.iso of=/dev/rdiskN bs=4m
+sudo dd if=SMD-Linux-v1.6.0-amd64.iso of=/dev/rdiskN bs=4m
 ```
 
 Windows: use [Rufus](https://rufus.ie) in **DD mode**, or balenaEtcher, and
@@ -208,7 +213,11 @@ The boot menu offers:
 | Install SMD Linux | Boots the same live system and opens the installer automatically. |
 | Advanced Boot Options | Verbose boot, run entirely in RAM, check the medium's checksums, UEFI firmware settings, boot from the first hard disk. |
 
-The menu counts down for 30 seconds and then starts the live system.
+The menu counts down for 30 seconds and then starts the live system. From that
+moment until the desktop is drawn there is a **loading screen** - "SMD LINUX",
+the version, "SMD Linux is loading…" and three dots that light in turn - instead
+of several seconds of bare cursor. Escape shows the boot messages behind it, and
+if the graphics cannot be used plymouth falls back to its own text screen.
 
 The live session logs in automatically as:
 
@@ -282,7 +291,7 @@ itself. A one-page reference is on the desktop ("Keyboard Shortcuts") and on
 | `Alt+F4`, `Alt+Shift+Q` | Close the focused window |
 | `Alt+H` `J` `K` `L` | Move the focus left, down, up, right |
 | `Alt+Shift+H` `J` `K` `L` | Move the window |
-| `Alt+1` … `Alt+0` | Workspaces 1-10 |
+| `Alt+1` … `Alt+0` | Workspaces 1-10 (the first four are the panel buttons) |
 | `Alt+Shift+1` … `Alt+Shift+0` | Move window to workspace |
 | `Alt+R` | Resize mode |
 | `Alt+Shift+E` | Power menu (lock, log out, restart, shut down) |
@@ -293,10 +302,16 @@ itself. A one-page reference is on the desktop ("Keyboard Shortcuts") and on
 Arrow keys are deliberately **not** bound to window focus: `Alt+Left/Right` is
 back and forward in Firefox. Use `Alt+H/J/K/L` instead.
 
-The panel holds the application menu, the window list, workspaces, network and
-Bluetooth status, the clock (hover for the date), volume, battery percentage on
-laptops, and the power menu. It sits along the **bottom edge, black, and stays
-visible**; full-screen video covers it. Auto-hide was retired in 1.3 - i3
+The panel holds the application menu, the window list, four numbered
+workspaces, network and Bluetooth status, the clock (hover for the date),
+volume, battery percentage on laptops, and the power menu. Running windows show
+**an icon each, with the title in the tooltip** - a long page title used to take
+half the bar - and the **File Manager sits pinned beside Brave**. The workspace
+buttons read `1 2 3 4`: they are always there, even when a workspace is empty
+(i3 discards an empty one when you leave it, so the old miniature previews
+could not show it), the current one is filled in the accent colour, and clicking
+one switches to it without moving any window. It sits along the **bottom edge,
+black, and stays visible**; full-screen video covers it. Auto-hide was retired in 1.3 - i3
 cannot move dock windows, so hiding the panel never worked reliably, and it is
 not needed now that video is watched full screen. It is
 started by the i3 configuration (`hunter-panel`), not by the session wrapper, so
@@ -454,7 +469,11 @@ system works normally without it.
 * **The panel does not auto-hide.** i3 refuses to move dock windows (i3 issue
   4153), so the panel stays visible along the bottom edge. Full-screen video
   covers it. If the panel ever fails to appear, `~/.cache/smd/panel.log` has
-  the reason.
+  the reason, and `~/.cache/smd/workspaces.log` says whether the four workspace
+  buttons were written.
+* **The loading screen is a fallback, not a guarantee.** Where the graphics
+  cannot be handed over early, plymouth shows its own text screen instead of
+  the SMD one; the boot is not delayed either way.
 * **Battery percentage is whatever UPower reports.** The 10-15 % sudden
   power-off seen on the older installation is a hardware/gauge behaviour; the
   image neither fakes the percentage nor forces a cutoff.
@@ -494,9 +513,13 @@ config/
     usr/share/                  backgrounds, icons, .desktop entries, docs
   includes.binary/README.txt    readme at the root of the ISO
 tools/
-  make-assets.py                regenerates every PNG (wallpaper, splashes, art)
+  make-assets.py                regenerates every PNG from VERSION (wallpaper,
+                                splashes, installer art, workspace icons, the
+                                plymouth theme)
   verify-project.py             static checks: YAML, XML, desktop files, shell,
-                                package lists, Calamares cross-references
+                                package lists, Calamares cross-references,
+                                version derivation, panel and loading screen
+  ci/                           the tests that boot and install the image
 Test-Report.md                  build and test status, measurements, risks
 ```
 

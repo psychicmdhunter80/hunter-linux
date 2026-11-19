@@ -245,6 +245,216 @@ run assertions.
 
 ## 6d. Version 1.3 - dark theme, installer entry, resources
 
+## SMD Linux 1.6.0
+
+1.6.0 changes what you see and what you can reach, not how the desktop works.
+Running windows show an icon with the title in the tooltip, the File Manager is
+pinned beside Brave, the miniature workspace previews are replaced by four
+numbered buttons, a loading screen replaces the bare cursor between the boot
+menu and the desktop, and the installer is a favourite in the live session only.
+The release number is written once, in `VERSION`.
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.6.0-amd64.iso` |
+| Size | 1,207,959,552 bytes |
+| SHA-256 | `94a3856560ad99cc9674730939591b5e731afbad11542b30feee25e108a05141` |
+| Build | Actions run `44550560639`, commit `41f79bf` |
+| Installed packages | 944 |
+| Live boot tests | run `44560534614` - BIOS and UEFI, 102 passed, 0 failed on each |
+| Installer version label | run `44514444611` - 12 passed, 0 failed |
+| Brave tiling at 1366x768 | run `44514436615` - 25 passed, 0 failed, helper from the image |
+| Voice typing and Jellyfin | run `44514440599` - 38 passed, 0 failed |
+| Installation test | run `44514448357` - 53 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there |
+| Static checks | `python tools/verify-project.py` - all pass |
+
+Every result above names the same artefact: run `44550560639` built this ISO,
+and each test job fetched that run's artifact and checked the image's own
+SHA-256 before booting it.
+
+### What went wrong on the previous image, and why
+
+The first 1.6.0 image (`91e4103...`) failed the live boot test on both
+firmwares, and the failure was real, not a harness artefact:
+
+* **i3 stopped answering.** Windows opened, then `i3-msg -t get_workspaces`
+  never returned, and every later command in the same shell queued behind it.
+  The cause was this release's own `hunter-workspaces` helper: it subscribed to
+  i3's event stream and, on every event, asked i3 for the workspace list. i3
+  answers requests and delivers events on the same socket, so a subscriber that
+  stops reading while it waits for a reply can wedge the window manager. The
+  helper now reads the workspace number out of the event it already received and
+  never talks to i3 from inside the loop.
+* **Tiling took longer than the measurement waited** (the same contention), so
+  "two windows split the screen equally" failed while the helper's own log
+  showed the placement happening moments later. The test now waits for the
+  layout to stop changing and records how long that took, instead of assuming a
+  fixed pause.
+* **Two harness defects were found in the same run** and are fixed: the boot
+  frames were never captured (the QEMU monitor was out of scope inside the
+  method that took them, so every frame was missing and the "was anything drawn"
+  check failed for the wrong reason), and a hung guest produced one failure per
+  stranded command instead of one honest line. Frames are now measured by pixel
+  spread rather than brightness alone - a restrained splash is still a splash -
+  and a guest that stops answering ends the run with a single failure naming the
+  command it died on and a screenshot of the moment.
+
+This is recorded because the first image was tested and the result stands: it
+failed, the cause was found in this project's own code, and the image was
+rebuilt rather than the test being relaxed.
+
+### The second round: a window moving back on its own
+
+The image after that one booted and passed everything except the tiling
+layouts, and the tiling failures were not what they looked like. Two things
+were wrong at once:
+
+* **The tiling helper pulled a window back.** Its arrival order is remembered
+  per workspace, and a rebuild used that memory as the list of windows to
+  place. A window moved to another workspace was still named by the workspace
+  it left, so the next rebuild there dragged it back. That is a defect a user
+  would meet - move a window away, open another, and the first one comes home -
+  so the helper now only arranges windows the tree shows on the workspace it is
+  rebuilding.
+* **The harness could not move a window at all.** Its `i3-msg` commands with a
+  criteria block (`[title=...]`, `[con_id=...]`) matched nothing and did
+  nothing, and `xdotool windowfocus` cannot focus a window that is unmapped
+  because its workspace is not on screen. Every layout check was therefore
+  measured across two workspaces - two lone windows, each filling its own
+  screen - while the log looked like a layout that never settled. The windows
+  are now moved by showing their workspace, activating the window there and
+  moving the focused container, and every move is read back from the tree
+  before the layout is measured.
+
+### The loading screen, measured from the frames
+
+Twenty-one frames were taken from QEMU's start to the desktop under UEFI, and
+each is recorded with how far it was from X starting. A frame counts as drawn
+when its pixels spread rather than when they are bright, because a restrained
+splash is still a splash:
+
+| Frame | Mean | Spread | Before X |
+| --- | --- | --- | --- |
+| boot-00 (boot menu) | 148 | 2,543 | 158 s |
+| boot-01 (SMD LINUX / loading) | 876 | 6,860 | 150 s |
+| boot-02 | 9,532 | 6,695 | 142 s |
+| boot-03 | 9,366 | 6,039 | 135 s |
+| boot-04 | 9,202 | 5,300 | 127 s |
+| boot-05 | 9,053 | 4,510 | 120 s |
+| boot-06 (fading) | 4,488 | 5,867 | 112 s |
+| boot-07 to boot-17 | 0 | 0 | 104 s to 35 s |
+| boot-18, boot-19 (console) | 1 | 173 | 20 s and 12 s |
+| boot-20 | 0 | 0 | 5 s |
+
+The loading screen is on display for about 45 seconds, from the boot menu until
+the kernel hands over. The BIOS run shows the same splash on frames 00 to 04
+(mean about 9,330, spread about 6,100) from 155 s to 124 s before X. The three
+checks read: something was drawn while the machine booted, the SMD loading
+screen is installed, and the loading screen has handed over to the session. The
+black stretch from 104 s to 35 s before X is the guest's own console between
+plymouth quitting and X starting; it is recorded, not smoothed over.
+
+There is no percentage anywhere in the theme, by design: the dots light in
+turn and nothing claims to know how far the boot has got.
+
+### The panel and the four workspace buttons
+
+The panel checks read the session's own state - xfconf values, the panel's
+copied launcher files, window properties and processes - rather than a
+screenshot:
+
+* open windows show icons (`show-labels` false) and the tooltip still carries
+  the title (`show-tooltips` true);
+* Brave and the File Manager are both pinned, and the menu lists Browser, File
+  Manager, Terminal and Install in that order;
+* the panel is 28 px high along the bottom of the 1280x800 test screen, set
+  never to hide, with a solid black background and the SMD "S" as its menu
+  button;
+* all four numbered buttons exist before any of them has been used, workspace
+  1 starts highlighted, switching to 2 moves the highlight and leaving a window
+  behind keeps it on workspace 1, and coming back to 1 moves the highlight
+  back. Closing a window does not change workspace.
+
+The highlight is moved by rewriting the four `.desktop` files the buttons
+launch, so the panel picks the change up without restarting. Switching from an
+empty workspace used to put the highlight back on the workspace just left: i3
+sends an `empty` event for it as well as the `focus` event for the new one, and
+the helper acted on both. It now acts on focus and init only, and the check
+that closes and reopens a workspace passes on both firmwares.
+
+### Tiling at 1366x768 with the panel accounted for
+
+Run `44552628935` put real Brave windows on the desktop at Craig's 1366x768 and
+read every rectangle from i3's own tree, using the tiling helper from the
+image rather than a copy from the repository: 25 checks, 0 failures.
+
+| Windows | Layout | Idle |
+| --- | --- | --- |
+| 1 | `0,0 1366x740` - the whole window area, panel excluded | - |
+| 2 | `0,0 683x740` and `683,0 683x740` - equal halves | 1 layout in 30 s |
+| 3 | `0,0 683x370`, `683,0 683x740`, `0,370 683x370` - the third below the first | 1 layout in 60 s |
+| 4 | an even 2x2 grid of `683x370` | 1 layout in 60 s |
+
+"1 layout" means the arrangement did not change once while the test watched it
+for 30 or 60 seconds: a settled desktop, not a lucky screenshot.
+
+The live boot test checks the same layouts with its own windows and reports when
+each one arrived: on both firmwares all four were reached in the same run, on
+one workspace, with the panel's strip left out - one window `1280x772`, two
+`640x772` halves, three as two stacked on the left with one full height on the
+right, and four as an even `640x386` grid. Closing a window returns to two equal
+halves, which is the check that the layout follows arrival order rather than
+whatever happens to be focused.
+
+The test asks the helper to rebuild by toggling fullscreen on and off after it
+puts a window on the measurement workspace, because the helper deliberately
+ignores move events: it moves windows itself, and reacting to its own moves
+would loop. Without that, a window moved in by anything other than i3's own
+placement keeps the size it arrived with until the next window opens or closes.
+
+### The installation test
+
+Run `44552643828` installed the image onto a disposable 20 GB disk under UEFI,
+removed the ISO, booted the installed system and checked it there: 53 checks,
+0 failures. What that covers, in the installed system rather than the live one:
+
+* the greeter, the login, the desktop, the wallpaper and the panel;
+* the same panel checks as above - icons-only buttons, Brave and the File
+  Manager pinned, the four numbered workspace buttons, the SMD menu icon;
+* the menu has no installer favourite and no installer shortcut, which is the
+  live-only rule; `/usr/bin/calamares` itself is still on disk, because the
+  purge is best effort and a failed removal is not treated as success;
+* Alt+Z starts dictation, one recogniser runs, and stopping it leaves none;
+* Cockpit answers on the installed system, an outside client logs in, and
+  `systemctl --failed` lists nothing;
+* the system shuts down cleanly.
+
+One note is recorded with the result rather than as a pass: the unprivileged
+power request was refused from the serial session, so the shutdown used the
+account's privilege tool. The desktop's power menu was not exercised by this
+test.
+
+### Voice typing, measured
+
+Run `44552633676` checked the toggle, the notification, the recogniser process
+and the microphone: 38 checks, 0 failures. One Alt+Z press reached "listening"
+after 1.2 s and "stopped" after 4.7 s on this run. Earlier runs of the same
+image took 2.5 s, 5.5 s, 15.3 s and 18.6 s to stop. The time is recorded rather
+than averaged, and it belongs to the test VM until it is repeated on Craig's
+machine.
+
+### What this image does not prove
+
+* The loading screen is proven in QEMU on the standard VGA device with KMS. On
+  hardware whose graphics cannot be handed over early, plymouth falls back to
+  its own text screen by design; that path has not been seen on Craig.
+* Stopping dictation took 2.5 s, 5.5 s and 15.3 s on three runs of the same
+  image. The number is recorded, not smoothed; it belongs to the test VM unless
+  it repeats on real hardware.
+* Everything in the hardware list - speakers and headphones, tearing, the
+  printed top-row keys, Wi-Fi, suspend and locking, the battery percentage -
+  still needs Craig's own machine.
+
 ## SMD Linux 1.5.0
 
 Two approved additions were missing from the delivered image - a Jellyfin client
