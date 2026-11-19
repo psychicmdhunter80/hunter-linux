@@ -368,14 +368,17 @@ def main():
     def reflow(name, attempt=1):
         tree = i3.tree()
         workspace = find_workspace(tree, name)
-        live = windows_in_tree()
         # Arrival order lives in this process, not in the tree: the tree order
-        # is not arrival order once windows have been moved around.
-        order = [i for i in state["order"].get(name, []) if i in live]
+        # is not arrival order once windows have been moved around.  It is only
+        # used for the windows that are still here, though: a window moved to
+        # another workspace used to be pulled back to this one on the next
+        # rebuild, because it was still in this workspace's remembered order.
+        here = {node.get("id") for node in leaves_of(workspace or {})}
+        order = [i for i in state["order"].get(name, []) if i in here]
         if workspace is not None:
             for node in leaves_of(workspace):
                 con_id = node.get("id")
-                if con_id in live and con_id not in order:
+                if con_id not in order:
                     order.append(con_id)
         if not order:
             state["order"].pop(name, None)
