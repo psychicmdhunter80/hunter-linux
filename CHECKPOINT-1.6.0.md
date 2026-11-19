@@ -46,9 +46,23 @@ exactly here instead of repeating the survey.
 6. **Checks.** `tools/verify-project.py` grew `check_panel_controls`,
    `check_startup_feedback` and `check_installer_favourite`, all source-level.
 
+## Test results so far (exact ISO `91e4103...`)
+
+| Check | Result |
+| --- | --- |
+| Build `44438132258` | success; `SMD-Linux-v1.6.0-amd64.iso`, 1,207,959,552 bytes, SHA-256 `91e410328141abda48837736c7dfadbf4409bab3fa61a9c327213148b66f4261` (local copy re-hashed, matches) |
+| Installer version label `44439474802` | 12/12 pass - productName, version, versionedName, os-release, issue, lsb-release, window title and on-screen text all say 1.6.0 |
+| Installation test `44444481561` | **106 pass, 0 fail**, 2 notes (power handling from a serial session): greeter login, installed desktop, wallpaper, panel, icons-only buttons, Brave and File Manager pinned, four workspace buttons, **no installer favourite and no installer shortcut on the installed system** |
+| Voice typing `44448554475` | 37 pass, 1 fail: the toggle, notification, single recogniser and mic release all pass; the recogniser transcribed the fixture as "OnceThe roses" instead of the digits. Re-run `44449785929` dispatched to see whether that is flaky |
+| Live boot `44443429824` | **failed**: both firmwares. Boot frames were all black ("something was drawn while the machine booted" failed), and a cluster of unrelated checks failed together (PipeWire, solid panel background, menu icon, top row, notifications, tiling) alongside `WARN: command timed out` lines - the guest stopped answering the serial console mid-run. That pattern is a hung/starved test VM, not yet a diagnosed image defect; it needs one run with the serial timeouts instrumented before anything is concluded |
+| Tiling `44448557433` | still running |
+
+The 1.5.0 baseline is untouched: `baseline-1.5.0` branch and tag `v1.5.0`, ISO
+still `9820f5fa...fa1952`.
+
 ## Not done yet - next steps in order
 
-1. Watch run `44438132258` (the first build, `44437139505`, failed on an
+1. (done) Watch run `44438132258` (the first build, `44437139505`, failed on an
    artwork byte-comparison that was unsound across zlib builds; the build now
    regenerates the artwork instead of comparing it).
 2. Download the ISO artefact and record its size and SHA-256.
