@@ -49,10 +49,19 @@ def i3_message(kind):
 
 
 def all_leaves(node):
+    """Every window below a node.
+
+    The desktop notification bubble i3 keeps as a floating window is left
+    out: it is furniture that disappears by itself, and it must not make an
+    otherwise empty workspace a place the workspace walk stops at.
+    """
     found = []
     for key in ("nodes", "floating_nodes"):
         for child in node.get(key, []) or []:
-            if child.get("window"):
+            properties = child.get("window_properties") or {}
+            decoration = (str(properties.get("class", "")).lower()
+                          in ("xfce4-notifyd", "i3-nagbar"))
+            if child.get("window") and not decoration:
                 found.append(child)
             found.extend(all_leaves(child))
     return found

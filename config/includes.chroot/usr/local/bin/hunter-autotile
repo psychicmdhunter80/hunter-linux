@@ -289,10 +289,18 @@ def main():
         return False
 
     def float_overflow(con_id, number, title, why):
-        """Keep the window, floating and visible, and say so."""
+        """Keep the window, floating and visible, and say so.
+
+        Each command carries the criteria on its own.  i3 applies a criteria
+        prefix to one command, so a chained "floating enable, resize set ..."
+        resizes whatever happens to be focused - a tiled window on this image,
+        which turned a pair of halves into a 66/33 split.  Naming the window in
+        every command is what keeps the exception to the window that needs it.
+        """
         i3.command("[con_id=%d] mark --add smd-overflow" % con_id)
-        i3.command("[con_id=%d] floating enable, resize set 66 ppt 70 ppt, "
-                   "move position center" % con_id)
+        i3.command("[con_id=%d] floating enable" % con_id)
+        i3.command("[con_id=%d] resize set 66 ppt 70 ppt" % con_id)
+        i3.command("[con_id=%d] move position center" % con_id)
         notify("Workspace %d is full" % number,
                "%s is floating there. %s" % (title, why))
 

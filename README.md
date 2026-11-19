@@ -1,4 +1,4 @@
-# SMD Linux 1.6.0
+# SMD Linux 1.7.0
 
 A small, lightweight Debian 13 desktop distribution for low-power machines:
 **Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
@@ -18,51 +18,55 @@ modifier for everything else. Details, root causes and what is still unverified
 are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.6.0-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.7.0-amd64.iso in this directory
 ```
 
 ---
 
 ## Release status
 
-**1.6.0** is the current release. 1.5.0, 1.4.1, 1.4, 1.3 and 1.2 stay
-available as rollback (`v1.5.0`, `v1.4`, `v1.3`, `v1.2`) and none of their tags
-moved. 1.6.0 changes what you see and what you can reach, not how the desktop
-works: running windows are **icons with their title in the tooltip**, the
-**File Manager is pinned beside Brave**, the miniature workspace previews are
-replaced by **four numbered buttons `1 2 3 4`** that are always there, a
-**loading screen** replaces the bare cursor between the boot menu and the
-desktop, and the installer is a favourite in the live session only. The release
-number is now written once, in `VERSION`, and everything - including the
-pictures - is generated from it. What changed is in `RELEASE-NOTES-1.6.0.md`;
-the exact package list, provenance, configuration and known limitations are in
-`TECHNICAL-REFERENCE-1.6.0.md`.
+**1.7.0** is the current release. 1.6.0, 1.5.0, 1.4.1, 1.4, 1.3 and 1.2 stay
+available as rollback (`v1.6.0`, `v1.5.0`, `v1.4`, `v1.3`, `v1.2`) and none of
+their tags moved. 1.7.0 changes how windows are placed and how many workspaces
+there are: **two windows on a workspace** - the first fills it, the second makes
+equal left/right halves - and a **third opens on the next empty workspace**, one
+of **ten**, instead of being squeezed in. `Ctrl+Alt+Right`/`Left` walk the
+**occupied** workspaces in numerical order, wrapping round; the panel keeps its
+buttons `1 2 3 4` and gains one compact control for **5-10** that shows the
+active number. When all ten workspaces are full a new program stays floating,
+with a notification, rather than being closed. The panel, applications,
+installer, loading screen and the rest of the shortcuts are unchanged. What
+changed is in `RELEASE-NOTES-1.7.0.md`; the exact package list, provenance,
+configuration and known limitations are in `TECHNICAL-REFERENCE-1.7.0.md`.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.6.0-amd64.iso`, 1,207,959,552 bytes (1.13 GiB) |
-| SHA-256 | `94a3856560ad99cc9674730939591b5e731afbad11542b30feee25e108a05141` |
-| Build | Actions run `44550560639`, commit `41f79bf` |
-| Installed packages | 944, listed in `PACKAGE-MANIFEST-1.6.0.txt` |
-| Live boot tests | run `44560534614` - BIOS and UEFI, 102 checks passed on each, 0 failed |
-| Installer version label | run `44514444611` - 12 checks passed |
-| Brave tiling at 1366x768 | run `44514436615` - 25 checks passed, helper from the image |
-| Voice typing and Jellyfin | run `44514440599` - 38 checks passed, none failed |
-| Installation test | run `44514448357` - 53 checks, 0 failures: installed to a disposable disk, booted without the ISO, logged into the installed desktop and verified it there; see `Test-Report.md` |
-| Source | `SMD-Linux-Build-v1.6.0.zip`, checksums in `SHA256SUMS` |
+| Image | `SMD-Linux-v1.7.0-amd64.iso`, 1,207,959,552 bytes |
+| SHA-256 | `b38d88fa27780e23ba24d9b770d6eec112baa1f57ee964415bef5d2ea03db869` |
+| Build | Actions run `44630204635`, image commit `e2d64f0be21d537b5a0ff6db44e2f67ce7956c10` |
+| Installed packages | 944, listed in `PACKAGE-MANIFEST-1.7.0.txt` |
+| Live boot tests | run `44631601192` - BIOS and UEFI, `<BOOT_COUNTS>` |
+| Installer version label | run `44631616005` - `<LABEL_COUNTS>` |
+| Window and workspace behaviour at 1366x768 | run `44631605492` - `<TILING_COUNTS>` |
+| Voice typing and Jellyfin | run `44631612966` - `<VOICE_COUNTS>` |
+| Installation test | run `44631609406` - `<INSTALL_COUNTS>`; see `Test-Report.md` |
+| Source | `SMD-Linux-Build-v1.7.0.zip`, checksums in `SHA256SUMS` |
 
-**Hardware confirmation (Hunter, on Craig):** the tiling behaves as intended,
-including four Brave windows settling into the intended 2x2 grid. The rest
-of the hardware list - speakers and headphones, tearing, the printed top-row
-keys, Wi-Fi, suspend and locking, the battery percentage - is still open.
-Requests for the next release are collected in `NEXT-RELEASE.md`.
+**Hardware confirmation (Hunter, on Craig):** the four-window layout of 1.6.0
+was confirmed on Craig; the two-window rule is this release's change and still
+needs his confirmation on that machine. The rest of the hardware list -
+speakers and headphones, tearing, the printed top-row keys, Wi-Fi, suspend and
+locking, the battery percentage - is still open. Requests for the next release
+are collected in `NEXT-RELEASE.md`.
 
 Verified on this image: line endings inside the squashfs, i3, panel and applets,
 PipeWire and the audio helper, Brave as the default browser with its two
 extensions, VLC, locking, the Jellyfin menu entry and window, the Alt+Z toggle
-with real dictated text, and the tiling layouts at Craig's 1366x768 with the
-bottom panel accounted for (one fills the desktop, two are halves, the third
-sits below the first on the left, the fourth below the second - an even 2x2).
+with real dictated text, and the window rules at Craig's 1366x768 with the
+bottom panel accounted for (one window fills the desktop, two are equal
+left/right halves, a third opens on the next empty workspace and a fourth splits
+it, closing expands the neighbour, a move into a full workspace stays floating,
+the workspace walk skips empty workspaces, and the ten-workspace limit holds).
 Tearing, speaker loudness, top-row keys, Wi-Fi, suspend/locking, the battery
 percentage and dictation accuracy in a real room still need Craig's own machine.
 
@@ -76,7 +80,7 @@ percentage and dictation accuracy in a real room still need Craig's own machine.
 | Kernel | Debian stable `linux-image-amd64` |
 | Display | Xorg (X11), no Wayland, no compositor |
 | Window manager | i3 (`i3-wm`), **Left Alt** modifier, no i3bar; the **Search** key alone opens the launcher |
-| Panel / taskbar | `xfce4-panel` on the **bottom edge, always visible**, with the S menu, a small spacer, the Brave and File Manager launchers, an **icons-only task list (titles in the tooltip)**, **four numbered workspace buttons**, systray, clock, volume, battery and power menu |
+| Panel / taskbar | `xfce4-panel` on the **bottom edge, always visible**, with the S menu, a small spacer, the Brave and File Manager launchers, an **icons-only task list (titles in the tooltip)**, **workspace buttons `1 2 3 4` plus one control for 5-10**, systray, clock, volume, battery and power menu |
 | File manager | Thunar (+ `udisks2`, `gvfs`) |
 | Terminal | `xfce4-terminal` |
 | Editor | `nano` (console); no graphical editor |
@@ -85,7 +89,7 @@ percentage and dictation accuracy in a real room still need Craig's own machine.
 | Audio | PipeWire + `pipewire-pulse` + WirePlumber + `pavucontrol` (no PulseAudio daemon) |
 | Media player | VLC, for local audio and video files |
 | Locking | `i3lock` through the session's `LockCommand`, with lock-on-suspend enabled |
-| Window layout | `hunter-autotile` keeps ordinary windows in 1 / 2 / 2x2 balanced slots, by i3 IPC |
+| Window layout | `hunter-autotile` keeps **two ordinary windows per workspace** (one fills, two are halves) on **ten workspaces**, and sends a third to the next empty one; by i3 IPC |
 | Authentication agent | `xfce-polkit`, started with the session |
 | Installer | Calamares 3.3 |
 | Remote administration | Cockpit (`cockpit`, `cockpit-system`) on port 9090, enabled in the live session and in the installed system |
@@ -144,8 +148,8 @@ The build downloads roughly 1.5 GB of Debian packages and takes 20-60 minutes
 depending on the machine and mirror. The result is:
 
 ```
-SMD-Linux-v1.6.0-amd64.iso          the bootable hybrid image
-SMD-Linux-v1.6.0-amd64.iso.sha256   its checksum
+SMD-Linux-v1.7.0-amd64.iso          the bootable hybrid image
+SMD-Linux-v1.7.0-amd64.iso.sha256   its checksum
 ```
 
 Use a different mirror without editing anything:
@@ -184,7 +188,7 @@ method (it preserves both boot paths).
 Linux:
 
 ```
-sudo dd if=SMD-Linux-v1.6.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=SMD-Linux-v1.7.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 Use the whole device (`/dev/sdX`), never a partition (`/dev/sdX1`). This
@@ -194,7 +198,7 @@ macOS:
 
 ```
 diskutil list                                  # find the disk number
-sudo dd if=SMD-Linux-v1.6.0-amd64.iso of=/dev/rdiskN bs=4m
+sudo dd if=SMD-Linux-v1.7.0-amd64.iso of=/dev/rdiskN bs=4m
 ```
 
 Windows: use [Rufus](https://rufus.ie) in **DD mode**, or balenaEtcher, and
@@ -291,8 +295,10 @@ itself. A one-page reference is on the desktop ("Keyboard Shortcuts") and on
 | `Alt+F4`, `Alt+Shift+Q` | Close the focused window |
 | `Alt+H` `J` `K` `L` | Move the focus left, down, up, right |
 | `Alt+Shift+H` `J` `K` `L` | Move the window |
-| `Alt+1` … `Alt+0` | Workspaces 1-10 (the first four are the panel buttons) |
+| `Alt+1` … `Alt+0` | Workspaces 1-10 (the first four are the panel buttons, 5-10 are behind the button beside them) |
 | `Alt+Shift+1` … `Alt+Shift+0` | Move window to workspace |
+| `Ctrl+Alt+Right` / `Ctrl+Alt+Left` | Next / previous workspace that has a window on it, wrapping round |
+| `Ctrl+Alt+Shift+Right` / `Left` | Move the focused window to the next / previous workspace |
 | `Alt+R` | Resize mode |
 | `Alt+Shift+E` | Power menu (lock, log out, restart, shut down) |
 | `Alt+Shift+X` | Lock the screen |
@@ -302,20 +308,33 @@ itself. A one-page reference is on the desktop ("Keyboard Shortcuts") and on
 Arrow keys are deliberately **not** bound to window focus: `Alt+Left/Right` is
 back and forward in Firefox. Use `Alt+H/J/K/L` instead.
 
-The panel holds the application menu, the window list, four numbered
-workspaces, network and Bluetooth status, the clock (hover for the date),
-volume, battery percentage on laptops, and the power menu. Running windows show
-**an icon each, with the title in the tooltip** - a long page title used to take
-half the bar - and the **File Manager sits pinned beside Brave**. The workspace
-buttons read `1 2 3 4`: they are always there, even when a workspace is empty
-(i3 discards an empty one when you leave it, so the old miniature previews
-could not show it), the current one is filled in the accent colour, and clicking
-one switches to it without moving any window. It sits along the **bottom edge,
-black, and stays visible**; full-screen video covers it. Auto-hide was retired in 1.3 - i3
+The panel holds the application menu, the window list, the workspace controls,
+network and Bluetooth status, the clock (hover for the date), volume, battery
+percentage on laptops, and the power menu. Running windows show **an icon each,
+with the title in the tooltip** - a long page title used to take half the bar -
+and the **File Manager sits pinned beside Brave**. The four buttons read
+`1 2 3 4`: they are always there, even when a workspace is empty (i3 discards an
+empty one when you leave it, so the old miniature previews could not show it),
+the current one is filled in the accent colour, and clicking one switches to it
+without moving any window. The button beside them opens **workspaces 5-10** as a
+list of all ten with the occupied ones marked; its icon shows the number itself
+while you are up there, and an accent dot while something is running on 5-10, so
+the active number is never hidden. It sits along the **bottom edge, black, and
+stays visible**; full-screen video covers it. Auto-hide was retired in 1.3 - i3
 cannot move dock windows, so hiding the panel never worked reliably, and it is
 not needed now that video is watched full screen. It is
 started by the i3 configuration (`hunter-panel`), not by the session wrapper, so
 it comes up in the live session and on an installed system alike.
+
+**Windows on a workspace.** A workspace holds at most **two** windows: the first
+fills it and the second makes equal left/right halves. A third program does not
+squeeze in - it opens on the **next empty workspace** (1-10, wrapping) and the
+desktop shows it there. Closing a window lets its neighbour fill the workspace
+again, and nothing slides between workspaces. If all ten workspaces already
+hold a window, a new program stays **floating** on the workspace it opened on,
+marked, with a notification saying why; nothing is closed or moved to make room.
+A window you move into a workspace that already has two stays there floating,
+with the same notification.
 
 **Chromebook top row.** On this hardware the top row is not F1-F12: the printed
 keys send F1-F10 instead of the media keysyms, which is why the volume and
@@ -469,8 +488,9 @@ system works normally without it.
 * **The panel does not auto-hide.** i3 refuses to move dock windows (i3 issue
   4153), so the panel stays visible along the bottom edge. Full-screen video
   covers it. If the panel ever fails to appear, `~/.cache/smd/panel.log` has
-  the reason, and `~/.cache/smd/workspaces.log` says whether the four workspace
-  buttons were written.
+  the reason, and `~/.cache/smd/workspaces.log` says whether the workspace
+  buttons were written. `~/.cache/smd/autotile.log` records every window the
+  tiling helper had to move or keep floating, and why.
 * **The loading screen is a fallback, not a guarantee.** Where the graphics
   cannot be handed over early, plymouth shows its own text screen instead of
   the SMD one; the boot is not delayed either way.

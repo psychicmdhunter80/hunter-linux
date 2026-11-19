@@ -399,7 +399,7 @@ def main():
         def ok(label, condition, detail=""):
             nonlocal passed
             record(("PASS: " if condition else "FAIL: ") + label
-                   + ((" - " + detail) if detail else ""))
+                   + ((" - " + str(detail)) if detail else ""))
             passed = passed and condition
             return condition
 
@@ -457,7 +457,7 @@ def main():
                 if not line.startswith("WIN "):
                     continue
                 head, _sep, title = line.partition(" name=")
-                fields = dict(word.split("=", 1) for word in head.split()[2:]
+                fields = dict(word.split("=", 1) for word in head.split()[1:]
                               if "=" in word)
                 try:
                     found[title.strip()] = (int(fields.get("ws", 0)),
@@ -465,6 +465,25 @@ def main():
                 except ValueError:
                     continue
             return found
+
+        def placement(window_id):
+            """(workspace, tiled?) of one window, by id, or (None, None)."""
+            for line in dump().splitlines():
+                if not line.startswith("WIN "):
+                    continue
+                head = line.partition(" name=")[0]
+                fields = dict(word.split("=", 1) for word in head.split()[1:]
+                              if "=" in word)
+                if str(fields.get("id")) == str(window_id):
+                    return int(fields.get("ws", 0)), fields.get("tiled") == "1"
+            return None, None
+
+        def notifications():
+            """How many desktop notification bubbles are on screen."""
+            for line in dump().splitlines():
+                if line.startswith("NOTIFY "):
+                    return int(line.split()[1])
+            return 0
 
         def wait_for(want, timeout=90):
             """Poll the workspace state until want(focused, held, highest)."""
@@ -489,16 +508,7 @@ def main():
 
         def send(window_id, target):
             """Move a window the way the owner does: focus it, then move it."""
-            here = None
-            for line in dump().splitlines():
-                if not line.startswith("WIN "):
-                    continue
-                head = line.partition(" name=")[0]
-                fields = dict(word.split("=", 1) for word in head.split()[2:]
-                              if "=" in word)
-                if str(fields.get("id")) == str(window_id):
-                    here = int(fields.get("ws", 0))
-                    break
+            here, _tiled = placement(window_id)
             if here is None:
                 return False
             if here != target:
@@ -516,6 +526,23 @@ def main():
             return (abs(first[2] - second[2]) <= 4
                     and abs(first[1] - second[1]) <= 4
                     and first[0] < second[0])
+
+        def wait_shape(number, predicate, timeout=60):
+            """Poll until a *shown* workspace really has the wanted shapes.
+
+            i3 does not re-lay-out a workspace that is not on screen, so a
+            workspace measured while it is hidden reports stale rectangles.
+            The workspace is shown first, then measured until it settles.
+            """
+            switch(number)
+            started = time.time()
+            found = on_space(tree(), number)
+            while time.time() - started < timeout:
+                found = on_space(tree(), number)
+                if predicate(found):
+                    return found, True
+                time.sleep(2)
+            return found, False
 
         def fills(found):
             if len(found) != 1:
@@ -686,41 +713,45 @@ def main():
             lambda focused, held, highest: focused == 1
             and held.get(1, (0, 0))[0] == 0
             and held.get(7, (0, 0))[0] == 1)
-        ok("a window moved to an empty workspace settles there on its own",
-           moved_ok and fills(on_space(tree(), 7)),
-           "focused=%s held=%s" % (moved[0], sorted(moved[1].items())))
+        ok("a window moved to an empty workspace leaves the old one empty",
+           moved_ok, "focused=%s held=%s" % (moved[0], sorted(moved[1].items())))
         ok("moving it in the background did not take the focus", moved[0] == 1,
            "focused=%s" % moved[0])
+        alone, alone_ok = wait_shape(7, fills)
+        ok("and it fills that workspace once it is shown", alone_ok,
+           describe(alone, labels_for(alone)))
 
         switch(2)
         send(names.get("smd-four"), 7)
-        pair7, pair7_ok = wait_for(
-            lambda focused, held, highest: focused == 2
-            and held.get(7, (0, 0))[0] == 2)
-        ok("a window moved beside one window makes two halves",
-           pair7_ok and two_halves(on_space(tree(), 7)),
-           describe(on_space(tree(), 7), labels_for(on_space(tree(), 7))))
-        ok("and that move did not take the focus either", pair7[0] == 2,
-           "focused=%s" % pair7[0])
+        after_second = state()[0]
+        ok("the second move did not take the focus either", after_second == 2,
+           "focused=%s" % after_second)
+        pair7, pair7_ok = wait_shape(7, two_halves)
+        ok("a window moved beside one window makes two halves", pair7_ok,
+           describe(pair7, labels_for(pair7)))
 
-        send(names.get("smd-three"), 7)
-        full, full_ok = wait_for(
-            lambda focused, held, highest: focused == 2
-            and held.get(7, (0, 0))[0] == 2
-            and held.get(7, (0, 0))[1] >= 1)
+        switch(2)
+        send(names.get("smd-three"), 7)   # that workspace now holds two
+        where_three, tiled_three = placement(names.get("smd-three"))
         ok("a window moved into a full workspace stays there floating",
-           full_ok, "focused=%s held=%s" % (full[0], sorted(full[1].items())))
+           where_three == 7 and tiled_three is False,
+           "workspace=%s tiled=%s" % (where_three, tiled_three))
+        ok("and the owner is notified on screen", notifications() >= 1,
+           "%s notification window(s)" % notifications())
         marks = shell.run("DISPLAY=:0 i3-msg -t get_marks", timeout=60)
         ok("the overflow window is marked so it can be recognised",
            "smd-overflow" in marks, marks.strip()[:120])
-        leftover = on_space(tree(), 7)
+        leftover, leftover_ok = wait_shape(7, two_halves)
         ok("nothing that was already on the full workspace was moved",
-           two_halves(leftover) and names.get("smd-one") in leftover
-           and names.get("smd-four") in leftover, describe(leftover))
-        said = shell.run("grep -c 'was full' ~/.cache/smd/autotile.log",
+           leftover_ok and names.get("smd-one") in leftover
+           and names.get("smd-four") in leftover,
+           describe(leftover, labels_for(leftover)))
+        said = shell.run("grep -c 'stays floating' ~/.cache/smd/autotile.log",
                          timeout=60)
         ok("the helper records why the window is floating",
            said.strip().splitlines()[-1:] == ["1"], said.strip()[:120])
+        record("INFO: autotile log: " + " | ".join(
+            shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:500])
 
         # --- navigation and the ten-workspace limit, ordinary launches -----
         shell.run("pkill -x brave; pkill -x brave-browser; sleep 3; "
@@ -746,7 +777,7 @@ def main():
                 if not line.startswith("WIN "):
                     continue
                 head, _sep, name = line.partition(" name=")
-                fields = dict(word.split("=", 1) for word in head.split()[2:]
+                fields = dict(word.split("=", 1) for word in head.split()[1:]
                               if "=" in word)
                 if name.strip() == title:
                     shell.run("DISPLAY=:0 xdotool windowclose %s"
@@ -813,18 +844,20 @@ def main():
         term("exhaust", None)
         exhausted, exhausted_ok = wait_for(
             lambda focused, held, highest: focused == 10
-            and held.get(10, (0, 0))[1] >= 1, timeout=120)
+            and windows().get("exhaust", (None, True))[1] is False, timeout=120)
         ok("with every workspace full a new window is kept, floating",
            exhausted_ok, "focused=%s held=%s"
            % (exhausted[0], sorted(exhausted[1].items())))
         ok("no eleventh workspace was created to hold it",
            exhausted[2] <= 10, exhausted[2])
+        ok("and the owner is notified that no workspace is empty",
+           notifications() >= 1, "%s notification window(s)" % notifications())
         marks = shell.run("DISPLAY=:0 i3-msg -t get_marks", timeout=60)
         ok("the exhausted window is marked as overflow",
            "smd-overflow" in marks, marks.strip()[:120])
         said = shell.run("grep -c 'no workspace is empty' "
                          "~/.cache/smd/autotile.log", timeout=60)
-        ok("the owner is told that no workspace is empty",
+        ok("the helper says that no workspace is empty",
            said.strip().splitlines()[-1:] == ["1"], said.strip()[:120])
 
         # Overflow with gaps and wraparound: 1-9 are emptied, 10 stays full,

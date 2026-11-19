@@ -1287,10 +1287,24 @@ def main():
                 return None, {}, 0
             held, highest = {}, 0
 
+            def bubbles(node):
+                """Desktop notification windows: evidence, not a window slot."""
+                count = 0
+                for key in ("nodes", "floating_nodes"):
+                    for child in node.get(key, []) or []:
+                        properties = child.get("window_properties") or {}
+                        if child.get("window") and str(
+                                properties.get("class", "")).lower() == "xfce4-notifyd":
+                            count += 1
+                        count += bubbles(child)
+                return count
+
             def leaves(node, floating):
                 rows = []
                 for child in node.get("floating_nodes", []) if floating else node.get("nodes", []):
-                    if child.get("window"):
+                    properties = child.get("window_properties") or {}
+                    notification = str(properties.get("class", "")).lower() == "xfce4-notifyd"
+                    if child.get("window") and not notification:
                         rows.append(child)
                     rows.extend(leaves(child, floating))
                 return rows
@@ -1353,6 +1367,65 @@ def main():
             return (abs(first["width"] - second["width"]) <= 4
                     and first["y"] == second["y"]
                     and first["x"] < second["x"])
+
+        def show(number):
+            """Show a workspace: i3 does not re-lay-out a hidden one."""
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                      "number %d'" % number, timeout=30)
+            time.sleep(3)
+
+        def wait_shape(number, predicate, timeout=60):
+            show(number)
+            started = time.time()
+            while time.time() - started < timeout:
+                if predicate(number):
+                    return True
+                time.sleep(2)
+            return False
+
+        def floating_titles(number):
+            """Titles i3 has floating on one workspace."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return []
+            found = []
+
+            def walk(node, here):
+                for key in ("nodes", "floating_nodes"):
+                    for child in node.get(key, []) or []:
+                        inside = (child.get("num") if child.get("type") == "workspace"
+                                  else here)
+                        if child.get("window") and inside == number and \
+                                str(child.get("floating", "")).endswith("_on"):
+                            found.append(str(child.get("name", "")))
+                        walk(child, inside)
+
+            walk(data, None)
+            return found
+
+        def notifications():
+            """Desktop notification windows currently on screen."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return 0
+            count = 0
+
+            def walk(node):
+                nonlocal count
+                for key in ("nodes", "floating_nodes"):
+                    for child in node.get(key, []) or []:
+                        properties = child.get("window_properties") or {}
+                        if child.get("window") and str(
+                                properties.get("class", "")).lower() == "xfce4-notifyd":
+                            count += 1
+                        walk(child)
+
+            walk(data)
+            return count
 
         # Only the test's own windows may be in the layout.
         shell.run("pkill -x brave; pkill -x xfce4-terminal; "
@@ -1424,28 +1497,36 @@ def main():
         record("INFO: workspace walk from %d: %s" % (home, walked))
 
         # A move between workspaces, with both ends settling on their own.
+        # i3 does not re-lay-out a workspace that is not on screen, so each
+        # destination is shown before its rectangles are measured - exactly as
+        # the owner would show it.
         send_to("smd-three", 6)
         focused, held, _top = state()
-        moved = [b for b in tiles() if b.get("ws") == 6]
-        check(results, "a window moved to an empty workspace fills it",
-              len(moved) == 1 and moved[0]["width"] >= 1300)
         check(results, "the move did not take the focus", focused == home)
+        check(results, "a window moved to an empty workspace fills it",
+              wait_shape(6, lambda number: len([b for b in tiles()
+                                                if b.get("ws") == number]) == 1
+                         and [b for b in tiles() if b.get("ws") == number][0]["width"] >= 1300))
 
         send_to("smd-two", 6)
-        time.sleep(4)
         check(results, "a window moved beside one window makes two halves",
-              two_halves(6))
+              wait_shape(6, two_halves))
+
         send_to("smd-one", 6)
-        time.sleep(6)
+        time.sleep(3)
+        floated = floating_titles(6)
         focused, held, _top = state()
         check(results, "a window moved into a full workspace is kept floating",
-              held.get(6, [0, 0])[0] == 2 and held.get(6, [0, 0])[1] >= 1)
+              any("smd-one" in title for title in floated),
+              )
+        check(results, "the owner is told the workspace is full",
+              notifications() >= 1)
         check(results, "the windows already there were not moved",
-              two_halves(6))
+              wait_shape(6, two_halves))
         check(results, "no workspace above ten exists", state()[2] <= 10)
         marks = shell.run("DISPLAY=:0 i3-msg -t get_marks", timeout=60)
         check(results, "the overflow window is marked", "smd-overflow" in marks)
-        said = shell.run("grep -c 'was full' ~/.cache/smd/autotile.log "
+        said = shell.run("grep -c 'stays floating' ~/.cache/smd/autotile.log "
                          "2>/dev/null || echo 0", timeout=60)
         check(results, "the helper records why the window is floating",
               said.strip().splitlines()[-1:] == ["1"])

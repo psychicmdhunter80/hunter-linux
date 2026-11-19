@@ -6,13 +6,19 @@ serial console can carry them:
 
     FOCUSED <n>                      the workspace that has the focus
     MAX <n>                          the highest workspace number that exists
+    NOTIFY <n>                       notification bubbles on screen
     WS <n> tiled=<n> floating=<n>    how many windows of each kind it holds
-    WIN ws=<n> tiled=<0|1> id=<x> name=<title>
+    WIN ws=<n> tiled=<0|1> id=<x> class=<c> name=<title>
 
 A tiled window is one i3 has in the workspace's tiling tree; a floating one
 is a dialog, a utility window or a window the tiling helper kept as overflow.
 Counting the two separately is what proves that dialogs and overflow windows
 do not take an ordinary slot.
+
+The desktop notification bubble (class `xfce4-notifyd`) is counted separately
+and left out of the workspace totals: it is what the tiling helper's overflow
+notice looks like on screen, so its presence is evidence, not a window that
+took a slot.
 """
 
 import json
@@ -63,10 +69,15 @@ def main():
         print("FOCUSED %s" % focused)
 
     highest = 0
+    bubbles = 0
     lines = []
 
+    def bubble(window):
+        properties = window.get("window_properties") or {}
+        return str(properties.get("class", "")).lower() == "xfce4-notifyd"
+
     def walk(node):
-        nonlocal highest
+        nonlocal highest, bubbles
         for key in ("nodes", "floating_nodes"):
             for child in node.get(key, []) or []:
                 if child.get("type") == "workspace":
@@ -75,21 +86,25 @@ def main():
                         highest = max(highest, number)
                         tiled = leaves({"nodes": child.get("nodes") or []})
                         floaters = floating_leaves(child)
+                        bubbles += sum(1 for window in tiled + floaters
+                                       if bubble(window))
+                        tiled = [w for w in tiled if not bubble(w)]
+                        floaters = [w for w in floaters if not bubble(w)]
                         lines.append("WS %d tiled=%d floating=%d name=%s"
                                      % (number, len(tiled), len(floaters),
                                         child.get("name", number)))
-                        for window in tiled:
-                            lines.append("WIN ws=%d tiled=1 id=%s name=%s"
-                                         % (number, window.get("window"),
-                                            str(window.get("name", "")).strip()))
-                        for window in floaters:
-                            lines.append("WIN ws=%d tiled=0 id=%s name=%s"
-                                         % (number, window.get("window"),
+                        for window, kind in ((w, 1) for w in tiled) + \
+                                ((w, 0) for w in floaters):
+                            properties = window.get("window_properties") or {}
+                            lines.append("WIN ws=%d tiled=%d id=%s class=%s name=%s"
+                                         % (number, kind, window.get("window"),
+                                            properties.get("class", "-"),
                                             str(window.get("name", "")).strip()))
                 walk(child)
 
     walk(tree)
     print("MAX %d" % highest)
+    print("NOTIFY %d" % bubbles)
     for line in lines:
         print(line)
     return 0
