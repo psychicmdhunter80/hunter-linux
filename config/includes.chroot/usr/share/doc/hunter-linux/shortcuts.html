@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SMD Linux 1.6.1 - Keyboard Shortcuts</title>
+<title>SMD Linux 1.7.0 - Keyboard Shortcuts</title>
 <style>
   body { margin: 0; padding: 2.5em 3em; background: #1d232b; color: #e6e6e6;
          font-family: "DejaVu Sans", sans-serif; font-size: 15px; line-height: 1.5; }
@@ -24,7 +24,7 @@
 <body>
 
 <h1>SMD LINUX</h1>
-<p class="sub">Keyboard shortcuts &mdash; version 1.6.1</p>
+<p class="sub">Keyboard shortcuts &mdash; version 1.7.0</p>
 
 <p>The <kbd>Search</kbd> key (where a Caps Lock key normally sits on this
 Chromebook, and the Windows key on other keyboards) opens the application menu
@@ -57,11 +57,24 @@ for itself.</p>
 </table>
 
 <h2>Workspaces</h2>
+<p>There are ten workspaces and no more. A workspace holds at most two
+windows: the first fills the screen, the second splits it into equal halves,
+and a third program opens on the next empty workspace instead - which is
+shown, so the program you just opened is the one you see. Closing a window
+lets its neighbour fill the workspace again. When all ten workspaces already
+hold a window, a new program stays floating on the workspace it opened on and
+a notification says so.</p>
 <table>
-  <tr><td class="key"><kbd>Alt</kbd> + <kbd>1</kbd> &hellip; <kbd>0</kbd></td><td>Go to workspace 1 &hellip; 10</td></tr>
+  <tr><td class="key"><kbd>Alt</kbd> + <kbd>1</kbd> &hellip; <kbd>0</kbd></td><td>Go to workspace 1 &hellip; 10, including an empty one</td></tr>
   <tr><td class="key"><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> &hellip; <kbd>0</kbd></td><td>Move the focused window to that workspace</td></tr>
-  <tr><td class="key"><kbd>Alt</kbd> + <kbd>Ctrl</kbd> + <kbd>&larr;</kbd>/<kbd>&rarr;</kbd></td><td>Move the focused window to the previous/next workspace</td></tr>
+  <tr><td class="key"><kbd>Alt</kbd> + <kbd>Ctrl</kbd> + <kbd>&rarr;</kbd></td><td>Go to the next workspace that has a window on it (wraps round)</td></tr>
+  <tr><td class="key"><kbd>Alt</kbd> + <kbd>Ctrl</kbd> + <kbd>&larr;</kbd></td><td>The same, backwards</td></tr>
+  <tr><td class="key"><kbd>Alt</kbd> + <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>&larr;</kbd>/<kbd>&rarr;</kbd></td><td>Move the focused window to the previous/next workspace</td></tr>
 </table>
+<p>On the panel, the four numbered buttons go straight to workspaces 1-4. The
+button beside them opens workspaces 5-10 as a list, marking the ones in use;
+its icon shows the workspace number while you are up there, and a dot while
+something is running on 5-10.</p>
 
 <h2>Voice typing and text editing</h2>
 <table>

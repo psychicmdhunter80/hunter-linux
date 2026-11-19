@@ -588,8 +588,16 @@ def main():
               "helper-running" in helper)
         written = shell.run("ls ~/.local/share/applications/smd-workspace-*.desktop "
                             "2>/dev/null | wc -l", timeout=60)
-        check(results, "all four workspace buttons exist",
-              written.strip().splitlines()[-1:] == ["4"])
+        check(results, "the four workspace buttons and the 5-10 control exist",
+              written.strip().splitlines()[-1:] == ["5"])
+        # 1.7: workspaces 5-10 are reachable from the panel through one
+        # control; the list it opens names all ten, so nothing is hidden.
+        listing = shell.run("hunter-workspaces-nav menu --print 2>&1", timeout=60)
+        listed = [line.split()[0] for line in listing.strip().splitlines()
+                  if line.split()]
+        check(results, "the 5-10 control lists all ten workspaces",
+              listed == [str(number) for number in range(1, 11)])
+        record("INFO: workspace menu: %s" % listing.strip()[:200])
 
         def workspace_icons():
             """The icon each of the four buttons currently carries."""
@@ -675,6 +683,18 @@ def main():
                   "IsUnMapped" in state or "IsUnviewable" in state)
             record("INFO: window left behind: %s" % " ".join(state.split())[:80])
         monitor.screenshot("07-panel-workspace-2")
+
+        # The active workspace number has to stay visible above 4 too: the
+        # 5-10 button carries the number itself while one of them is active.
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                  "number 6'", timeout=60)
+        time.sleep(4)
+        more_icon = shell.run("sed -n 's/^Icon=//p' ~/.local/share/applications/"
+                              "smd-workspace-more.desktop 2>/dev/null",
+                              timeout=60).strip()
+        check(results, "the 5-10 button shows the active workspace number",
+              more_icon == "smd-ws-6-active")
+        record("INFO: 5-10 button icon on workspace 6: %s" % (more_icon or "none"))
 
         shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number 1'", timeout=60)
         time.sleep(4)
@@ -1221,7 +1241,7 @@ def main():
         check(results, "the audio helper derives the card number from the directory",
               "CARD-FROM-DIR" in nchunks[1])
 
-        # --- 1.4: automatic balanced tiling --------------------------------
+        # --- 1.7: two windows per workspace, ten workspaces ----------------
         helper = shell.run(
             "test -x /usr/local/bin/hunter-autotile && echo HELPER=ok "
             "|| echo HELPER=missing; echo ---; "
@@ -1233,17 +1253,13 @@ def main():
               hchu[1].strip() == "1")
         record("INFO: autotile processes: " +
                " ".join(shell.run("pgrep -af hunter-autotile 2>&1").split())[:200])
+        navtool = shell.run("test -x /usr/local/bin/hunter-workspaces-nav "
+                            "&& echo NAV=ok || echo NAV=missing", timeout=60)
+        check(results, "the workspace navigation helper is installed",
+              "NAV=ok" in navtool)
 
-        # Detach every terminal: a background job that inherits the session
-        # keeps the channel open and the next command times out.
         def placed(title):
-            """(X11 window id, workspace number) of the window with that title.
-
-            The window id is the one `get_tree` reports as `window`, which is
-            also what `xdotool` and `xwininfo` use; the container id next to it
-            is i3's own, and naming it in a command matches nothing and does
-            nothing at all.
-            """
+            """(X11 window id, workspace number) of the window with that title."""
             tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
             try:
                 data = json.loads(tree[tree.index("{"):])
@@ -1262,333 +1278,183 @@ def main():
             walk(data, None)
             return found[0] if found else None
 
-        # One workspace for the layouts.  The helper arranges the workspace a
-        # window arrives on, and it never moves the focus, so a window launched
-        # while another workspace is being rebuilt lands wherever the owner's
-        # focus is.  A window rule cannot fix that: i3 matches it when the
-        # window is mapped, before xfce4-terminal has set the title.  Moving by
-        # the container id i3 reports is the one thing that is deterministic,
-        # because i3 serialises commands, so a window that arrives away from
-        # the others is moved here the ordinary way and the result is checked.
-        home = 9
-
-        def ws_of(window_id):
-            """Which workspace that window is on, or None if it is gone."""
+        def state():
+            """(focused workspace, {number: [tiled, floating]}, highest)."""
             tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
             try:
                 data = json.loads(tree[tree.index("{"):])
             except (ValueError, KeyError):
-                return None
-            found = []
+                return None, {}, 0
+            held, highest = {}, 0
 
-            def walk(node, workspace):
-                for child in node.get("nodes", []) + node.get("floating_nodes", []):
-                    number = (child.get("num") if child.get("type") == "workspace"
-                              else workspace)
-                    if child.get("window") and child.get("window") == window_id:
-                        found.append(number)
-                    walk(child, number)
+            def leaves(node, floating):
+                rows = []
+                for child in node.get("floating_nodes", []) if floating else node.get("nodes", []):
+                    if child.get("window"):
+                        rows.append(child)
+                    rows.extend(leaves(child, floating))
+                return rows
 
-            walk(data, None)
-            return found[0] if found else None
+            def walk(node):
+                nonlocal highest
+                for key in ("nodes", "floating_nodes"):
+                    for child in node.get(key, []) or []:
+                        if child.get("type") == "workspace":
+                            number = child.get("num")
+                            if isinstance(number, int) and 1 <= number <= 10:
+                                highest = max(highest, number)
+                                row = held.setdefault(number, [0, 0])
+                                row[0] += len(leaves({"nodes": child.get("nodes", [])}, False))
+                                row[1] += len(leaves(child, True))
+                        walk(child)
 
-        def close_window(window_id):
-            """Close a window the X way; i3 criteria are not usable here."""
-            shell.run("DISPLAY=:0 xdotool windowclose %s" % window_id, timeout=30)
-
-        def helper_quiet(seconds=3, timeout=45):
-            """Wait until the tiling helper stops writing to its log.
-
-            It arranges a window a moment after it appears, and it issues the
-            moves it worked out before that.  Moving a window while that is in
-            flight is why a window could be put on the measurement workspace
-            and then be taken back: both of them were moving it.  Nothing is
-            moved here until the helper has been idle for a few seconds.
-            """
-            last, since = None, time.time()
-            deadline = time.time() + timeout
-            while time.time() < deadline:
-                size = shell.run("wc -l < ~/.cache/smd/autotile.log 2>/dev/null "
-                                 "|| echo 0", timeout=30).strip()
-                if size != last:
-                    last, since = size, time.time()
-                elif time.time() - since >= seconds:
-                    return True
-                time.sleep(1)
-            return False
-
-        def move_home(window_id, there):
-            """Move the window to the measurement workspace, then read it back.
-
-            `i3-msg` commands that carry criteria do nothing on this image
-            while the same command without one works, so the window is made the
-            focused container first and the move applies to that.  A window on
-            a workspace that is not on screen is unmapped, and xdotool cannot
-            focus it, so the workspace it is on is shown first.  Nothing is
-            triggered afterwards: the measurement workspace is then shown,
-            which is what arranges it, and the window has to still be there
-            when it is read twice.
-            """
-            for _attempt in range(8):
-                helper_quiet()
-                current = ws_of(window_id)
-                if current is None:
-                    return False
-                if current != home:
-                    shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'; "
-                              "sleep 1; "
-                              "DISPLAY=:0 xdotool windowactivate --sync %s; "
-                              "sleep 1; "
-                              "DISPLAY=:0 i3-msg -q 'move container to "
-                              "workspace %d'" % (current, window_id, home),
-                              timeout=60)
-                    time.sleep(2)
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home,
-                          timeout=30)
-                time.sleep(3)
-                if ws_of(window_id) == home:
-                    time.sleep(2)
-                    if ws_of(window_id) == home:
-                        return True
-            return False
-
-        def open_window(title):
-            """Launch a titled terminal on workspace 9, or say so honestly."""
-            for attempt in range(1, 4):
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home,
-                          timeout=30)
-                shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
-                          "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-                here = None
-                for _poll in range(20):
-                    time.sleep(2)
-                    here = placed(title)
-                    if here:
-                        break
-                if not here:
-                    record("INFO: %s never appeared in i3 (attempt %d)"
-                           % (title, attempt))
-                    continue
-                if here[1] == home or move_home(here[0], here[1]):
-                    record("INFO: %s is on workspace %s" % (title, here[1]
-                                                            if here[1] == home
-                                                            else home))
-                    time.sleep(2)
-                    return
-                record("INFO: %s would not stay on workspace %s, closing it "
-                       "(attempt %d)" % (title, home, attempt))
-                close_window(here[0])
-                time.sleep(3)
-            record("FAIL: %s could not be opened on workspace %s"
-                   % (title, home))
-
-        def tiles():
-            """Rectangles of the test windows, via i3's own tree.
-
-            The helper's own placeholder windows are named `smd-slot-*`; they
-            are not test windows and must not be counted as one.
-            """
-            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            walk(data)
+            out = shell.run("DISPLAY=:0 i3-msg -t get_workspaces", timeout=60)
+            focused = None
             try:
-                data = json.loads(tree[tree.index("{"):])
+                spaces = json.loads(out[out.index("["):])
+                focused = next((space.get("num") for space in spaces
+                                if space.get("focused")), None)
             except (ValueError, KeyError):
-                return []
-            found = []
+                pass
+            return focused, held, highest
 
-            def walk(node, workspace):
-                for child in node.get("nodes", []) + node.get("floating_nodes", []):
-                    number = (child.get("num") if child.get("type") == "workspace"
-                              else workspace)
-                    name = str(child.get("name", ""))
-                    if child.get("window") and name.startswith("smd-") \
-                            and not name.startswith("smd-slot-") \
-                            and not str(child.get("floating", "")).startswith("user"):
-                        # The workspace travels with the rectangle: two windows
-                        # filling their own screens are two lone windows, not
-                        # a layout, and the evidence has to say so.  The title
-                        # and the X11 id travel too, so a window that drifted
-                        # can be named and put back.
-                        found.append(dict(child["rect"], ws=number, name=name,
-                                          win=child.get("window")))
-                    walk(child, number)
+        def open_on(title, number):
+            """Open a titled terminal on that workspace, as the owner would."""
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                      "number %d'" % number, timeout=30)
+            shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
+                      "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
+            for _poll in range(25):
+                time.sleep(2)
+                here = placed(title)
+                if here:
+                    return here
+            return None
 
-            walk(data, None)
-            return found
-
-        def describe(boxes):
-            return " ".join("[ws%s %d,%d %dx%d]" % (b.get("ws"), b["x"], b["y"],
-                                                    b["width"], b["height"])
-                            for b in boxes)
-
-        def shapes(count, boxes):
-            """Is this the arrangement the helper is supposed to produce?"""
-            if len(boxes) != count:
+        def send_to(title, target):
+            found = placed(title)
+            if not found:
                 return False
-            if count > 1 and len({b.get("ws") for b in boxes}) != 1:
-                return False
-            if count == 1:
-                return boxes[0]["width"] >= 1000 and boxes[0]["height"] >= 700
-            if count == 2:
-                first, second = boxes
-                return (abs(first["width"] - second["width"]) <= 4 and
-                        round(first["y"]) == round(second["y"]) and
-                        round(first["x"]) != round(second["x"]))
-            xs = sorted({round(b["x"]) for b in boxes})
-            if count == 3:
-                if len(xs) != 2:
-                    return False
-                left = [b for b in boxes if round(b["x"]) == xs[0]]
-                right = [b for b in boxes if round(b["x"]) == xs[1]]
-                return (len(left) == 2 and len({round(b["y"]) for b in left}) == 2
-                        and len(right) == 1
-                        and abs(left[0]["width"] - right[0]["width"]) <= 4)
-            return len(xs) == 2 and all(
-                len({round(b["y"]) for b in boxes if round(b["x"]) == x}) == 2
-                for x in xs)
-
-        def wait_for(count, timeout=120, workspace=None):
-            """Poll until the helper has produced the arrangement for the windows.
-
-            The helper arranges a new window a moment after it appears, and on
-            this runner that moment has been as long as 28 seconds.  A fixed
-            pause measures the pause, not the result: this waits for the real
-            arrangement, records how long it took, and only reports a failure
-            when it never arrives.
-
-            With no workspace given the measurement is the whole desktop and a
-            window that drifted onto another workspace is brought back; with
-            one given only the windows on it are counted and nothing is moved,
-            so a window that was deliberately sent away stays away.
-            """
-            started = time.time()
-            boxes = tiles()
-            reported = False
-            while time.time() - started < timeout:
-                boxes = tiles()
-                if workspace is not None:
-                    boxes = [b for b in boxes if b.get("ws") == workspace]
-                # A window the helper put down on another workspace is put back
-                # here rather than measured as if the layout spanned two.
-                stray = [b for b in boxes if workspace is None
-                         and b.get("ws") != home]
-                if stray:
-                    for box in stray:
-                        record("INFO: %s drifted to workspace %s, moving it "
-                               "back" % (box.get("name"), box.get("ws")))
-                        if box.get("win"):
-                            move_home(box.get("win"), box.get("ws"))
-                    boxes = tiles()
-                if shapes(count, boxes):
-                    record("INFO: the %d-window arrangement was reached after %.0f s"
-                           % (count, time.time() - started))
-                    return boxes, True
-                if not reported and time.time() - started > 20:
-                    reported = True
-                    record("INFO: still waiting for %d windows: %s"
-                           % (count, describe(boxes)))
-                    record("INFO: busy while waiting: " + " ".join(shell.run(
-                        "ps -eo pcpu,comm --sort=-pcpu | head -5", timeout=30).split()))
-                    record("INFO: autotile log while waiting: " + " | ".join(shell.run(
-                        "tail -6 ~/.cache/smd/autotile.log 2>/dev/null").split())[:300])
-                time.sleep(4)
-            record("INFO: the %d-window arrangement never arrived: %s"
-                   % (count, describe(boxes)))
-            return boxes, False
-
-        # Only the test's own windows may be in the layout: the browser from
-        # the earlier check is a normal window too and would take a slot.
-        shell.run("pkill -x brave; pkill -x xfce4-terminal; "
-                  "pkill -f 'SMD panel'; sleep 3", timeout=60)
-        # ...and they all have to land on the same workspace.  Earlier checks
-        # switch workspaces and reload i3, so the focused one is whatever they
-        # left behind; two windows on different workspaces are two lone
-        # windows, each filling its own screen, and no layout to measure.
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number 9'", timeout=60)
-        time.sleep(2)
-        here = shell.run("DISPLAY=:0 i3-msg -t get_workspaces", timeout=60)
-        focused = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
-                            here.replace(" ", ""))
-        record("INFO: the tiling windows open on workspace %s"
-               % (focused.group(1) if focused else "?"))
-        open_window("smd-one")
-        one, ok1 = wait_for(1)
-        check(results, "one window fills the usable desktop", ok1)
-        record("INFO: tiling one: " + describe(one))
-
-        open_window("smd-two")
-        two, ok2 = wait_for(2)
-        check(results, "two windows split the screen equally", ok2)
-        record("INFO: tiling two: " + describe(two))
-
-        open_window("smd-three")
-        three, ok3 = wait_for(3)
-        check(results, "the third window sits below the first", ok3)
-        record("INFO: tiling three: " + describe(three))
-
-        # Closing one window has to compress the survivors back into the
-        # two-window layout, using arrival order rather than focus.
-        shell.run("DISPLAY=:0 xdotool search --name '^smd-three$' windowclose",
-                  timeout=60)
-        time.sleep(6)
-        back, okback = wait_for(2)
-        check(results, "closing a window returns to two equal halves", okback)
-        record("INFO: tiling after close: " + describe(back))
-
-        open_window("smd-three")
-        open_window("smd-four")
-        four, ok4 = wait_for(4)
-        check(results, "four windows form an even 2x2 grid", ok4)
-        record("INFO: tiling four: " + describe(four))
-
-        # --- an ordinary move between workspaces ---------------------------
-        # The owner's own action: pick a window up and send it elsewhere.
-        # Nothing is triggered afterwards - the workspace is simply shown, as
-        # he would show it - and both ends have to be right.
-        away = 1
-
-        def send(window_name, target):
-            """Move the named window to another workspace, the ordinary way."""
-            window_id = next((b["win"] for b in tiles()
-                              if b.get("name") == window_name), None)
-            if not window_id:
-                return False
-            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'; sleep 1; "
+            window_id, here = found
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                      "number %d'; sleep 1; "
                       "DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                       "DISPLAY=:0 i3-msg -q 'move container to workspace "
-                      "number %d'" % (home, window_id, target), timeout=60)
-            time.sleep(2)
+                      "number %d'" % (here, window_id, target), timeout=90)
+            time.sleep(3)
             return True
 
-        send("smd-four", away)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home, timeout=30)
-        left, okleft = wait_for(3, workspace=home)
-        check(results, "moving a window away re-tiles the ones that stay",
-              okleft and shapes(3, left))
-        record("INFO: after moving smd-four to workspace %d: %s"
-               % (away, describe(left)))
+        def two_halves(number):
+            boxes = [b for b in tiles() if b.get("ws") == number]
+            if len(boxes) != 2:
+                return False
+            first, second = boxes
+            return (abs(first["width"] - second["width"]) <= 4
+                    and first["y"] == second["y"]
+                    and first["x"] < second["x"])
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % away, timeout=30)
-        alone, okalone = wait_for(1, workspace=away)
-        check(results, "the workspace it moved to shows it filling the screen",
-              okalone)
-        record("INFO: on workspace %d after the move: %s"
-               % (away, describe(alone)))
+        # Only the test's own windows may be in the layout.
+        shell.run("pkill -x brave; pkill -x xfce4-terminal; "
+                  "pkill -f 'SMD panel'; sleep 3", timeout=60)
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home, timeout=30)
-        send("smd-three", away)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % away, timeout=30)
-        pair, okpair = wait_for(2, workspace=away)
-        check(results, "a second window moved in shares the screen as halves",
-              okpair and shapes(2, pair))
-        record("INFO: on workspace %d after two arrived: %s"
-               % (away, describe(pair)))
+        home = 9
+        first = open_on("smd-one", home)
+        check(results, "the first window opens on the chosen workspace",
+              bool(first) and first[1] == home)
+        time.sleep(3)
+        one = [b for b in tiles() if b.get("ws") == home]
+        check(results, "one window fills the usable desktop",
+              len(one) == 1 and one[0]["width"] >= 1300
+              and one[0]["height"] >= 700)
+        record("INFO: tiling one: " + describe(one))
+
+        second = open_on("smd-two", home)
+        time.sleep(4)
+        check(results, "two windows split the screen into equal halves",
+              two_halves(home))
+        record("INFO: tiling two: " + describe(
+            [b for b in tiles() if b.get("ws") == home]))
+
+        open_on("smd-three", home)
+        time.sleep(6)
+        focused, held, highest = state()
+        check(results, "a third window opens on the next empty workspace",
+              focused == 10 and held.get(10, [0, 0])[0] == 1)
+        check(results, "the workspace it left still has two halves",
+              two_halves(home))
+        check(results, "the overflowed window is the one on screen",
+              bool(placed("smd-three")))
+        record("INFO: after the third launch: focused=%s held=%s"
+               % (focused, sorted(held.items())))
+
+        open_on("smd-four", 10)
+        time.sleep(4)
+        check(results, "a window opened there splits that workspace in half",
+              two_halves(10))
+        record("INFO: tiling four: " + describe(
+            [b for b in tiles() if b.get("ws") == 10]))
+
+        found = placed("smd-four")
+        if found:
+            close_window(found[0])
+        time.sleep(6)
+        focused, held, _top = state()
+        leftover = [b for b in tiles() if b.get("ws") == 10]
+        check(results, "closing one window lets its neighbour fill the workspace",
+              len(leftover) == 1 and leftover[0]["width"] >= 1300)
+        check(results, "closing it moves nothing on the other workspaces",
+              two_halves(home))
+        record("INFO: after closing the fourth: %s" % describe(leftover))
+
+        # The workspace walk: occupied workspaces only, numerical, wrapping.
+        def nav(action):
+            shell.run("hunter-workspaces-nav %s" % action, timeout=60)
+            time.sleep(2)
+            return state()[0]
+
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                  "number %d'" % home, timeout=30)
+        time.sleep(2)
+        walked = [nav("next"), nav("next")]
+        check(results, "Ctrl+Alt+Right walks the occupied workspaces and wraps",
+              walked == [10, home])
+        check(results, "Ctrl+Alt+Left walks them backwards",
+              nav("prev") == 10)
+        record("INFO: workspace walk from %d: %s" % (home, walked))
+
+        # A move between workspaces, with both ends settling on their own.
+        send_to("smd-three", 6)
+        focused, held, _top = state()
+        moved = [b for b in tiles() if b.get("ws") == 6]
+        check(results, "a window moved to an empty workspace fills it",
+              len(moved) == 1 and moved[0]["width"] >= 1300)
+        check(results, "the move did not take the focus", focused == home)
+
+        send_to("smd-two", 6)
+        time.sleep(4)
+        check(results, "a window moved beside one window makes two halves",
+              two_halves(6))
+        send_to("smd-one", 6)
+        time.sleep(6)
+        focused, held, _top = state()
+        check(results, "a window moved into a full workspace is kept floating",
+              held.get(6, [0, 0])[0] == 2 and held.get(6, [0, 0])[1] >= 1)
+        check(results, "the windows already there were not moved",
+              two_halves(6))
+        check(results, "no workspace above ten exists", state()[2] <= 10)
+        marks = shell.run("DISPLAY=:0 i3-msg -t get_marks", timeout=60)
+        check(results, "the overflow window is marked", "smd-overflow" in marks)
+        said = shell.run("grep -c 'was full' ~/.cache/smd/autotile.log "
+                         "2>/dev/null || echo 0", timeout=60)
+        check(results, "the helper records why the window is floating",
+              said.strip().splitlines()[-1:] == ["1"])
 
         record("INFO: autotile log: " + " | ".join(
             shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:400])
         record("INFO: workspace button log: " + " | ".join(
             shell.run("tail -6 ~/.cache/smd/workspaces.log 2>/dev/null").split())[:300])
-        shell.run("DISPLAY=:0 xdotool search --name '^smd-' windowclose; "
-                  "pkill -f xfce4-terminal", timeout=60)
+        shell.run("pkill -x xfce4-terminal; sleep 2", timeout=60)
 
         # --- keyboard mapping and start-up time (recorded, not asserted) ----
         shell.run("DISPLAY=:0 xmodmap -pm 2>/dev/null | grep -E 'mod1|mod4'",

@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Walk SMD's ten workspaces in numerical order, and choose one from the panel.
+
+    hunter-workspaces-nav next           next occupied workspace, wrapping
+    hunter-workspaces-nav prev           previous occupied workspace, wrapping
+    hunter-workspaces-nav move-next      send the focused window to the next
+    hunter-workspaces-nav move-prev      ... or to the previous workspace
+    hunter-workspaces-nav menu           choose any workspace 1-10
+    hunter-workspaces-nav menu --print   the same list, for the tests
+    hunter-workspaces-nav state          active=<n>, occupied=<list>
+
+"Occupied" means a workspace that holds a window, tiled or floating.  Empty
+workspaces are skipped, so Ctrl+Alt+Left/Right only visit screens that have
+something on them, and the order is always the workspace number: not the
+order the workspaces were last visited in.  From an empty workspace the
+nearest occupied one in the requested direction is used, wrapping through
+1..10; when nothing is occupied at all the view stays where it is, and when
+only one workspace is occupied it stays on that one.
+
+Direct selection stays possible: Alt+1..0 (and the menu) shows an empty
+workspace on purpose, and "move-next"/"move-prev" keep the old
+"move to the next/previous workspace" shortcut inside the ten.
+
+Nothing here subscribes to i3: each command asks one question, gets one
+answer and exits, so a slow reply can never hold the session's event stream.
+"""
+
+import json
+import subprocess
+import sys
+
+MAX_WORKSPACES = 10
+
+
+def i3_message(kind):
+    try:
+        finished = subprocess.run(["i3-msg", "-t", kind], capture_output=True,
+                                  text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    text = finished.stdout or ""
+    starts = [index for index in (text.find("{"), text.find("[")) if index >= 0]
+    if not starts:
+        return None
+    try:
+        return json.loads(text[min(starts):])
+    except ValueError:
+        return None
+
+
+def all_leaves(node):
+    found = []
+    for key in ("nodes", "floating_nodes"):
+        for child in node.get(key, []) or []:
+            if child.get("window"):
+                found.append(child)
+            found.extend(all_leaves(child))
+    return found
+
+
+def scan():
+    """workspace number -> (tiled windows, floating windows)."""
+    tree = i3_message("get_tree") or {}
+    held = {}
+
+    def walk(node):
+        for key in ("nodes", "floating_nodes"):
+            for child in node.get(key, []) or []:
+                if child.get("type") == "workspace":
+                    number = child.get("num")
+                    if isinstance(number, int) and 1 <= number <= MAX_WORKSPACES:
+                        tiled = all_leaves({"nodes": child.get("nodes") or []})
+                        floaters = all_leaves({"floating_nodes":
+                                               child.get("floating_nodes") or []})
+                        held[number] = (len(tiled), len(floaters))
+                walk(child)
+
+    walk(tree)
+    return held
+
+
+def active():
+    for entry in i3_message("get_workspaces") or []:
+        if entry.get("focused"):
+            number = entry.get("num")
+            if isinstance(number, int):
+                return number
+    return None
+
+
+def occupied(held=None):
+    held = scan() if held is None else held
+    return sorted(number for number, counts in held.items()
+                  if counts[0] + counts[1] > 0)
+
+
+def switch(number):
+    if not isinstance(number, int) or not 1 <= number <= MAX_WORKSPACES:
+        return
+    # --no-auto-back-and-forth: asking for the workspace you are already on
+    # would otherwise send the view to the workspace you came from, because
+    # the shipped i3 config sets workspace_auto_back_and_forth.
+    subprocess.run(["i3-msg", "-q",
+                    "workspace --no-auto-back-and-forth number %d" % number],
+                   timeout=15)
+
+
+def focused_window():
+    tree = i3_message("get_tree") or {}
+
+    def walk(node):
+        if node.get("focused") and node.get("window"):
+            return node.get("id")
+        for key in ("nodes", "floating_nodes"):
+            for child in node.get(key, []) or []:
+                hit = walk(child)
+                if hit:
+                    return hit
+        return None
+
+    return walk(tree)
+
+
+def step(direction, move=False):
+    held = scan()
+    here = active()
+    if move:
+        if here is None:
+            return 0
+        target = ((here - 1 + direction) % MAX_WORKSPACES) + 1
+        con_id = focused_window()
+        if not con_id or target == here:
+            return 0
+        subprocess.run(["i3-msg", "-q",
+                        "[con_id=%d] move --no-auto-back-and-forth container "
+                        "to workspace number %d" % (con_id, target)], timeout=15)
+        return 0
+    places = occupied(held)
+    if not places:
+        return 0
+    if here is None:
+        target = places[0] if direction > 0 else places[-1]
+    elif direction > 0:
+        later = [number for number in places if number > here]
+        target = later[0] if later else places[0]
+    else:
+        earlier = [number for number in places if number < here]
+        target = earlier[-1] if earlier else places[-1]
+    if target != here:
+        switch(target)
+    return 0
+
+
+def menu(print_only=False):
+    held = scan()
+    here = active()
+    lines = []
+    for number in range(1, MAX_WORKSPACES + 1):
+        tiled, floaters = held.get(number, (0, 0))
+        if number == here:
+            label = "current"
+        elif tiled or floaters:
+            count = tiled + floaters
+            label = "%d window%s" % (count, "" if count == 1 else "s")
+        else:
+            label = "empty"
+        lines.append("%d   %s" % (number, label))
+    if print_only:
+        print("\n".join(lines))
+        return 0
+    try:
+        chosen = subprocess.run(
+            ["rofi", "-dmenu", "-i", "-p", "Workspace",
+             "-lines", str(MAX_WORKSPACES), "-no-custom"],
+            input="\n".join(lines), capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return 0
+    if chosen.returncode != 0:
+        return 0
+    words = (chosen.stdout or "").split()
+    if words and words[0].isdigit():
+        switch(int(words[0]))
+    return 0
+
+
+def state():
+    held = scan()
+    here = active()
+    print("active=%s" % (here if here is not None else ""))
+    print("occupied=%s" % ",".join(str(number) for number in occupied(held)))
+    return 0
+
+
+def main(argv):
+    action = argv[1] if len(argv) > 1 else "state"
+    if action == "next":
+        return step(1)
+    if action == "prev":
+        return step(-1)
+    if action == "move-next":
+        return step(1, move=True)
+    if action == "move-prev":
+        return step(-1, move=True)
+    if action == "menu":
+        return menu(print_only="--print" in argv[2:])
+    if action == "state":
+        return state()
+    print("usage: hunter-workspaces-nav "
+          "next|prev|move-next|move-prev|menu [--print]|state", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

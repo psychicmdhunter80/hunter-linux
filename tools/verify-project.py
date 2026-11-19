@@ -354,33 +354,66 @@ def check_panel_controls():
             order == ["brave-browser.desktop", "thunar.desktop",
                       "xfce4-terminal.desktop", "hunter-install.desktop"])
 
-    # Numbered workspace buttons, all four, replacing the pager.
+    # Workspace controls: 1-4 directly, 5-10 behind one compact button.
     require("the miniature workspace previews are gone",
             'type="string" value="pager"' not in panel)
     for number in ("1", "2", "3", "4"):
         require("workspace button %s is present" % number,
                 'value="smd-workspace-%s.desktop"/>' % number in panel)
+    require("workspaces 5-10 have a control of their own",
+            'value="smd-workspace-more.desktop"/>' in panel and
+            'name="plugin-13"' in panel)
 
     # The helper that keeps the buttons in step, and the icons they use.
     helper = read(os.path.join(CHROOT, "usr/local/bin/hunter-workspaces"))
     require("the helper switches with i3-msg", 'i3-msg -q' in helper)
     require("the helper watches i3 workspace events", '"workspace"' in helper)
-    require("the helper writes all four buttons",
+    require("the helper writes the four direct buttons",
             'for number in 1 2 3 4; do' in helper)
+    require("the helper writes the 5-10 button through the menu",
+            "hunter-workspaces-nav menu" in helper)
     i3 = read(os.path.join(CHROOT, "etc/skel/.config/i3/config"))
     require("the helper starts with the session", "hunter-workspaces" in i3)
-    for number in ("1", "2", "3", "4"):
+    icons = os.path.join(CHROOT, "usr/share/icons/hicolor/32x32/apps")
+    for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
         for suffix in ("", "-active"):
-            icon = os.path.join(CHROOT, "usr/share/icons/hicolor/32x32/apps",
-                                "smd-ws-%s%s.png" % (number, suffix))
+            icon = os.path.join(icons, "smd-ws-%s%s.png" % (number, suffix))
             require("icon %s exists" % os.path.basename(icon), os.path.exists(icon))
+    for name in ("smd-ws-more.png", "smd-ws-more-busy.png"):
+        require("icon %s exists" % name, os.path.exists(os.path.join(icons, name)))
 
-    # Workspace keys: Alt+1..4 switch, and must not have been re-bound.
-    for number in ("1", "2", "3", "4"):
+    # Workspace keys: all ten switch directly, and must not have been re-bound.
+    for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
         require("Alt+%s switches workspace" % number,
                 "bindsym $mod+%s workspace number %s" % (number, number) in i3)
+    require("Alt+0 switches workspace 10",
+            "bindsym $mod+0 workspace number 10" in i3)
+    require("Alt+Shift+0 moves to workspace 10",
+            "bindsym $mod+Shift+0 move container to workspace number 10" in i3)
+    require("Ctrl+Alt+Right walks the occupied workspaces",
+            "bindsym $mod+Control+Right exec --no-startup-id "
+            "hunter-workspaces-nav next" in i3)
+    require("Ctrl+Alt+Left walks back",
+            "bindsym $mod+Control+Left exec --no-startup-id "
+            "hunter-workspaces-nav prev" in i3)
+    require("the window-move shortcut moved to Ctrl+Alt+Shift+Right",
+            "bindsym $mod+Control+Shift+Right exec --no-startup-id "
+            "hunter-workspaces-nav move-next" in i3)
     require("Alt+Z voice typing is untouched",
             "bindsym $mod+z exec --no-startup-id hunter-dictation toggle" in i3)
+
+    # The 1.7 window rule: two tiled windows per workspace, ten workspaces.
+    nav = os.path.join(CHROOT, "usr/local/bin/hunter-workspaces-nav")
+    require("the workspace navigation helper is shipped", os.path.exists(nav))
+    autotile = read(os.path.join(CHROOT, "usr/local/bin/hunter-autotile"))
+    require("the tiling helper allows two windows per workspace",
+            "MAX_TILED = 2" in autotile)
+    require("the tiling helper allows ten workspaces",
+            "MAX_WORKSPACES = 10" in autotile)
+    require("a third window is moved to the next empty workspace",
+            "next_empty_workspace" in autotile)
+    require("no eleventh workspace is created",
+            "((current - 1 + step) % MAX_WORKSPACES) + 1" in autotile)
 
 
 def check_startup_feedback():

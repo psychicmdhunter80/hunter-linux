@@ -1,24 +1,23 @@
 #!/bin/sh
-# SMD Linux 1.6 - keep the four numbered workspace buttons in step with i3.
+# SMD Linux 1.7 - keep the panel's workspace controls in step with i3.
 #
-# The panel used to show miniature previews of the windows on each workspace,
-# which is unreadable at 1366x768 and showed nothing at all for an empty
-# workspace: i3 only reports workspaces that exist, and it discards an empty
-# one as soon as you leave it.  The panel now carries four launcher buttons
-# instead, one per workspace, and this helper keeps them honest:
+# 1.7 gives the desktop ten workspaces with at most two windows on each, so
+# the panel carries five controls:
 #
-#   * it writes the four .desktop files the buttons launch on every start, so
-#     the buttons exist even when only workspace 1 has ever been used;
-#   * it subscribes to i3's workspace events and rewrites only the icon of the
-#     files whose state changed - the current workspace gets the filled tile,
-#     the rest the quiet outline.  The panel watches the .desktop files, so the
-#     highlight follows a switch without restarting anything.
+#   * four numbered buttons, 1-4, as before.  They are written on every start,
+#     so they exist even when a workspace has never been used, and their icon
+#     is rewritten when the active workspace changes;
+#   * one button for workspaces 5-10.  It opens
+#     "hunter-workspaces-nav menu", a rofi list of all ten workspaces that
+#     marks the occupied ones, so a workspace above 4 is never hidden.  Its
+#     own icon says what is happening up there without opening anything: a
+#     quiet grid when nothing runs on 5-10, an accent dot when something
+#     does, and the number itself - filled - while one of them is the
+#     workspace you are on.
 #
-# It costs one idle process that wakes on a workspace change, and it does
-# nothing at all between switches.
-#
-# Output goes to ~/.cache/smd/workspaces.log, so a failure is on disk rather
-# than swallowed.
+# It costs one idle process that wakes on a workspace or window change, and
+# it does nothing at all in between.  Output goes to
+# ~/.cache/smd/workspaces.log, so a failure is on disk rather than swallowed.
 
 set -u
 
@@ -37,48 +36,84 @@ fi
 [ -s "$log" ] && [ "$(wc -c <"$log")" -gt 20000 ] && : >"$log"
 echo "--- $(date '+%F %T') starting workspace buttons (DISPLAY=$DISPLAY)" >>"$log"
 
-current_workspace() {
-	# No jq on this image: the focused workspace is one block of i3's reply.
-	i3-msg -t get_workspaces 2>/dev/null |
-		tr '}' '\n' |
-		grep '"focused":true' |
-		sed -n 's/.*"num":\([0-9][0-9]*\).*/\1/p' |
-		head -n 1
+# The one question the helper asks: which workspace is active, and which ones
+# hold a window.  hunter-workspaces-nav asks i3, answers once and exits, so
+# this subscriber never waits for a reply on its own event stream.
+panel_state() {
+	hunter-workspaces-nav state 2>/dev/null
 }
 
-write_buttons() {
+active_from() {
+	printf '%s\n' "$1" | sed -n 's/^active=//p' | head -n 1
+}
+
+occupied_from() {
+	printf '%s\n' "$1" | sed -n 's/^occupied=//p' | head -n 1
+}
+
+# The icon for the 5-10 button: the active number when it is up there, a dot
+# when something is running there, a quiet grid when nothing is.
+more_icon() {
 	active="$1"
-	changed=0
-	for number in 1 2 3 4; do
-		icon="smd-ws-${number}"
-		[ "$number" = "$active" ] && icon="smd-ws-${number}-active"
-		file="$apps/smd-workspace-${number}.desktop"
-		want="[Desktop Entry]
+	occupied="$2"
+	case "$active" in
+		5|6|7|8|9|10) printf 'smd-ws-%s-active' "$active"; return 0 ;;
+	esac
+	for number in 5 6 7 8 9 10; do
+		case ",$occupied," in
+			*",$number,"*) printf 'smd-ws-more-busy'; return 0 ;;
+		esac
+	done
+	printf 'smd-ws-more'
+}
+
+write_button() {
+	number="$1"
+	icon="$2"
+	name="$3"
+	comment="$4"
+	exec="$5"
+	file="$apps/smd-workspace-${number}.desktop"
+	want="[Desktop Entry]
 Type=Application
-Name=Workspace ${number}
-Comment=Switch to workspace ${number}
-Exec=i3-msg -q \"workspace number ${number}\"
+Name=${name}
+Comment=${comment}
+Exec=${exec}
 Icon=${icon}
 Terminal=false
 StartupNotify=false
 Categories=Utility;"
-		if [ -f "$file" ] && [ "$(cat "$file")" = "$want" ]; then
-			continue
-		fi
-		printf '%s\n' "$want" >"$file" || continue
-		changed=1
+	if [ -f "$file" ] && [ "$(cat "$file")" = "$want" ]; then
+		return 0
+	fi
+	printf '%s\n' "$want" >"$file"
+	changed=1
+}
+
+write_buttons() {
+	active="$1"
+	occupied="$2"
+	changed=0
+	for number in 1 2 3 4; do
+		icon="smd-ws-${number}"
+		[ "$number" = "$active" ] && icon="smd-ws-${number}-active"
+		write_button "$number" "$icon" "Workspace ${number}" \
+			"Switch to workspace ${number}" \
+			"i3-msg -q \"workspace number ${number}\""
 	done
-	[ "$changed" -eq 1 ] && echo "$(date '+%F %T') active workspace ${active:-?}" >>"$log"
+	# 5-10, behind one compact, discoverable control.
+	write_button "more" "$(more_icon "$active" "$occupied")" \
+		"Workspaces 5-10" \
+		"Choose a workspace between 5 and 10" \
+		"hunter-workspaces-nav menu"
+	[ "$changed" -eq 1 ] && echo "$(date '+%F %T') active workspace ${active:-?}, occupied ${occupied:-none}" >>"$log"
 	return 0
 }
 
 event_change() {
-	# Which kind of workspace event this is: focus, init, empty, move, rename
-	# or urgent.  Only a focus change moves the highlight.  i3 also reports
-	# `empty` for the workspace that was just left, and that event's `current`
-	# is the left-behind workspace - acting on it put the highlight back on
-	# the workspace you had just left every time you switched from an empty
-	# one.  `init` is the same question asked once after start-up or reload.
+	# Which kind of event this is: focus, init, empty, move, rename, urgent -
+	# or, for a window event, new, close, focus, move, floating.  Only a
+	# workspace focus change moves the highlight.
 	printf '%s' "$1" |
 		sed -n 's/.*"change": *"\([a-z]*\)".*/\1/p'
 }
@@ -97,7 +132,12 @@ workspace_from_event() {
 		sed -n 's/.*"num": *\([0-9][0-9]*\).*/\1/p'
 }
 
-write_buttons "$(current_workspace)"
+refresh() {
+	state=$(panel_state)
+	write_buttons "$(active_from "$state")" "$(occupied_from "$state")"
+}
+
+refresh
 
 # One event per line.  If i3 is not running yet (the helper can be started
 # before the window manager has its socket), wait for the next start.
@@ -106,10 +146,20 @@ while :; do
 		echo "$(date '+%F %T') no i3-msg, stopping" >>"$log"
 		exit 0
 	fi
-	i3-msg -t subscribe -m '["workspace"]' 2>>"$log" | while read -r event; do
-		# The subscription's own acknowledgement has no change at all; the
-		# empty, move, rename and urgent events name a workspace that is not
-		# the one you are looking at.  Neither may move the highlight.
+	i3-msg -t subscribe -m '["workspace","window"]' 2>>"$log" | while read -r event; do
+		# A window event (a window opened, closed or moved) changes what is
+		# occupied above 4, so the 5-10 button is refreshed - but the
+		# highlight only ever follows a workspace focus change.  i3 also
+		# reports `empty` for the workspace that was just left, and that
+		# event's `current` is the left-behind workspace - acting on it put
+		# the highlight back on the workspace you had just left every time you
+		# switched from an empty one.
+		case $event in
+			*'"container"'*)
+				refresh
+				continue
+				;;
+		esac
 		case $(event_change "$event") in
 			focus|init) ;;
 			*) continue ;;
@@ -121,10 +171,13 @@ while :; do
 			# i3 once is safe here - the stream is not backed up - and the
 			# event is kept in the log, so the shape is known next time.
 			echo "$(date '+%F %T') event without a workspace number, asking i3: $(printf '%s' "$event" | cut -c1-160)" >>"$log"
-			number=$(current_workspace)
+			state=$(panel_state)
+			number=$(active_from "$state")
+			write_buttons "$number" "$(occupied_from "$state")"
+			continue
 		fi
-		[ -n "$number" ] || continue
-		write_buttons "$number"
+		state=$(panel_state)
+		write_buttons "$number" "$(occupied_from "$state")"
 	done
 	# The subscription ended: i3 reloaded, restarted or went away.  If there
 	# is no X server left, this session is over.

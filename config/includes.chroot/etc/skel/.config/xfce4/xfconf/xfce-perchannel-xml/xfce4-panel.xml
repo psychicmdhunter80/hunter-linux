@@ -43,6 +43,7 @@
         <value type="int" value="2"/>
         <value type="int" value="3"/>
         <value type="int" value="4"/>
+        <value type="int" value="13"/>
         <value type="int" value="5"/>
         <value type="int" value="6"/>
         <value type="int" value="7"/>
@@ -123,6 +124,19 @@
         <value type="string" value="smd-workspace-2.desktop"/>
         <value type="string" value="smd-workspace-3.desktop"/>
         <value type="string" value="smd-workspace-4.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+
+    <!-- Workspaces 5-10, behind one compact control.  1.7 raises the desktop
+         to ten workspaces and keeps four of them as direct buttons; this one
+         opens hunter-workspaces-nav's menu, which lists all ten and marks the
+         occupied ones.  Its icon is rewritten by hunter-workspaces: the number
+         itself while 5-10 is the active workspace, an accent dot while
+         something runs up there, a quiet grid when nothing does. -->
+    <property name="plugin-13" type="string" value="launcher">
+      <property name="items" type="array">
+        <value type="string" value="smd-workspace-more.desktop"/>
       </property>
       <property name="show-labels" type="bool" value="false"/>
     </property>

@@ -1,28 +1,33 @@
 #!/usr/bin/env python3
-"""Keep ordinary windows in the balanced layout the owner asked for.
+"""Keep at most two ordinary windows on each of ten workspaces.
 
-One window fills the usable desktop; two are equal halves; the third goes
-below the first on the left, the fourth below the second on the right, so four
-windows form an even 2x2 grid.  Beyond four the columns keep growing
-alternately: left takes the 1st, 3rd, 5th... arrival, right the 2nd, 4th, 6th...
+The rule the owner approved for 1.7.0:
 
-Order is arrival order per workspace, tracked by container id - never by title,
-and never by whichever window happened to be focused last.
+  * the first ordinary window on a workspace fills it;
+  * the second splits it into equal left and right halves, in arrival order,
+    so the first window stays on the left;
+  * a third window is not squeezed in.  It goes, as the first window, to the
+    next empty workspace in numerical order - wrapping through 1..10 - and
+    that workspace is shown, so the program that was just opened is visible
+    where it is.
 
-The helper speaks i3's IPC protocol itself: it subscribes to the window and
-workspace events, asks for the tree, and issues i3's own commands.  Replies and
-events arrive on the same socket, so every read demultiplexes them; treating an
-event as a command reply is what used to kill the helper after its first
-command.
+A window the owner moves by hand into a workspace that already holds two is
+kept there as a floating window and he is told why; when all ten workspaces
+already hold a window and the current one is full, a newly opened program is
+kept floating on the workspace it opened on and he is told that no empty
+workspace is left.  Nothing is ever closed to make room, no other window is
+moved to make room, no eleventh workspace is created, and an existing
+arrangement is never rebuilt: i3 splits a workspace when the second window
+arrives and collapses the split when one leaves, which is already the
+one-then-two layout, so this helper only acts when a window would make a
+third.
 
-A window that moves to another workspace changes the shape of both ends: the
-one it left has a tile fewer, the one it arrived on a tile more, so both are
-rebuilt.  The layout is made by splitting the window that has to share its half
-and moving the new one beside it, so nothing is appended to the workspace and
-no structure is left behind for a later rebuild to nest inside.  Nothing here
-switches the workspace, so a workspace the owner is not looking at is marked
-due and arranged the moment it is shown: the layout goes into the tree, never
-into the view, and never pulls the focus away from what he is working on.
+That is also why the helper never touches the workspace that is not on
+screen: opening a window on the workspace the owner is looking at can move
+that one window, and anything else i3 settles itself without the focus being
+taken away from him.  It issues i3's own commands by container id, so nothing
+here depends on which workspace happens to have the focus, and none of its
+commands produces another one of its own events that it would act on.
 """
 
 import collections
@@ -31,13 +36,16 @@ import json
 import os
 import socket
 import struct
+import subprocess
 import sys
 import time
 
-SCRATCH = "smd-autotile-scratch"
+MAX_WORKSPACES = 10
+MAX_TILED = 2
 
 # Windows that must never be rearranged: the installer and its dialogs, error
 # boxes and password prompts are transitory and a moving target breaks them.
+# They are floating windows on this image, so they are not counted either.
 DENIED_CLASSES = {"calamares", "yad", "zenity", "xmessage", "gcr-prompter",
                   "polkit-gnome-authentication-agent-1", "lxpolkit"}
 LOG_PATH = os.path.expanduser("~/.cache/smd/autotile.log")
@@ -171,47 +179,80 @@ def denied(node):
             or title.lower().startswith(("install smd linux", "calamares")))
 
 
-def find_workspace(tree, name):
+def floating(node):
+    return str(node.get("floating", "")).endswith("_on")
+
+
+def workspace_holding(tree, con_id):
+    """The workspace whose subtree holds con_id, floating windows included."""
+
+    def walk(node, current):
+        for key in ("nodes", "floating_nodes"):
+            for child in node.get(key, []) or []:
+                inner = child if child.get("type") == "workspace" else current
+                if child.get("id") == con_id:
+                    return inner or child
+                hit = walk(child, inner)
+                if hit:
+                    return hit
+        return None
+
+    return walk(tree, None)
+
+
+def find_node(tree, con_id):
     for node in nodes_of(tree):
-        if node.get("type") == "workspace" and node.get("name") == name:
+        if node.get("id") == con_id:
             return node
     return None
 
 
-def focused_workspace(tree):
-    """The workspace holding the focused window.
-
-    i3 marks "focused" only on the focused container; workspaces keep a focus
-    stack instead, so the workspace has to be tracked while descending.
-    """
-
-    def walk(node, current):
-        for child in node.get("nodes", []) or []:
-            inner = child if child.get("type") == "workspace" else current
-            if child.get("focused"):
-                return inner or child
-            hit = walk(child, inner)
-            if hit:
-                return hit
-        return None
-
-    return walk(tree, None)
+def workspace_number(workspace):
+    number = (workspace or {}).get("num")
+    if isinstance(number, int) and 1 <= number <= MAX_WORKSPACES:
+        return number
+    return None
 
 
-def workspace_containing(tree, con_id):
-    """The workspace whose subtree holds con_id."""
+def tiled_windows(workspace):
+    """The ordinary tiled windows on a workspace, floating ones left out."""
+    return [node for node in leaves_of({"nodes": (workspace or {}).get("nodes") or []})
+            if not denied(node)]
 
-    def walk(node, current):
-        for child in node.get("nodes", []) or []:
-            inner = child if child.get("type") == "workspace" else current
-            if child.get("id") == con_id:
-                return inner or child
-            hit = walk(child, inner)
-            if hit:
-                return hit
-        return None
 
-    return walk(tree, None)
+def window_title(node):
+    properties = node.get("window_properties") or {}
+    title = str(properties.get("title") or node.get("name") or "the window")
+    return " ".join(title.split())[:60]
+
+
+def next_empty_workspace(tree, current):
+    """The next workspace in numerical order with no tiled window on it."""
+    held = {}
+    for node in nodes_of(tree):
+        if node.get("type") == "workspace":
+            number = workspace_number(node)
+            if number is not None:
+                held[number] = len(tiled_windows(node))
+    for step in range(1, MAX_WORKSPACES):
+        number = ((current - 1 + step) % MAX_WORKSPACES) + 1
+        if held.get(number, 0) == 0:
+            return number
+    return None
+
+
+def notify(title, body):
+    """Tell the owner in the session he is looking at."""
+    note("notify: %s - %s" % (title, body))
+    for command in (["notify-send", "-a", "SMD Linux", "-i", "smd-menu",
+                     "-t", "12000", title, body],
+                    ["i3-nagbar", "-m", "%s: %s" % (title, body)]):
+        try:
+            subprocess.run(command, timeout=8, check=False,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except (OSError, subprocess.SubprocessError):
+            continue
 
 
 def main():
@@ -233,282 +274,90 @@ def main():
     i3 = I3(path)
     note("connected to %s" % path)
 
-    state = {"order": {}, "busy": False, "pending": set(),
-             "settled": {}, "where": {}, "due": set()}
+    # The window this helper moved itself.  Its own move raises a move event
+    # of its own; recognising it is what keeps the helper from acting on its
+    # own work and from moving the same window twice.
+    own = set()
 
-    def workspace_names():
-        return [n.get("name") for n in nodes_of(i3.tree())
-                if n.get("type") == "workspace" and n.get("name")
-                and n.get("name") != SCRATCH]
-
-
-    def windows_in_tree():
-        return {n.get("id") for n in nodes_of(i3.tree()) if n.get("window")}
-
-    def where_is(con_id):
-        workspace = workspace_containing(i3.tree(), con_id)
-        return workspace.get("name") if workspace else None
-
-    def rescue(name, ids):
-        """Never leave a window parked: anything stray comes back."""
-        for con_id in ids:
-            current = where_is(con_id)
-            if current is None:
-                continue
-            if current != name:
-                i3.command("[con_id=%d] move container to workspace %s"
-                           % (con_id, name))
-                note("  rescued %d from %s" % (con_id, current))
-
-    def expected_layout(order_ids, geometry):
-        """Do the rectangles match the layout this many windows should have?"""
-        boxes = [geometry[i] for i in order_ids]
-        if len(boxes) == 1:
-            return True
-        if len(boxes) == 2:
-            (ax, ay, aw, ah) = boxes[0]
-            (bx, by, bw, bh) = boxes[1]
-            return abs(aw - bw) <= 6 and abs(ay - by) <= 6 and ax != bx
-        if len(boxes) == 3:
-            (ax, ay, aw, ah) = boxes[0]
-            (bx, by, bw, bh) = boxes[1]
-            (cx, cy, cw, ch) = boxes[2]
-            return (abs(cx - ax) <= 6 and cy > ay and abs(cw - aw) <= 6
-                    and bx > ax and abs(bw - aw) <= 6)
-        if len(boxes) == 4:
-            (ax, ay, aw, ah) = boxes[0]
-            (bx, by, bw, bh) = boxes[1]
-            (cx, cy, cw, ch) = boxes[2]
-            (dx, dy, dw, dh) = boxes[3]
-            return (abs(cx - ax) <= 6 and abs(dx - bx) <= 6 and cy > ay
-                    and dy > by and abs(aw - bw) <= 6 and abs(cw - dw) <= 6)
-        return True
-
-    def geometry_of(name):
-        workspace = find_workspace(i3.tree(), name) or {}
-        return {c["id"]: (c["rect"]["x"], c["rect"]["y"],
-                          c["rect"]["width"], c["rect"]["height"])
-                for c in leaves_of(workspace)}
-
-    def reflow(name, attempt=1):
-        tree = i3.tree()
-        workspace = find_workspace(tree, name)
-        # Arrival order lives in this process, not in the tree: the tree order
-        # is not arrival order once windows have been moved around.  It is only
-        # used for the windows that are still here, though: a window moved to
-        # another workspace used to be pulled back to this one on the next
-        # rebuild, because it was still in this workspace's remembered order.
-        here = {node.get("id") for node in leaves_of(workspace or {})}
-        order = [i for i in state["order"].get(name, []) if i in here]
-        if workspace is not None:
-            for node in leaves_of(workspace):
-                con_id = node.get("id")
-                if con_id not in order:
-                    order.append(con_id)
-        if not order:
-            state["order"].pop(name, None)
-            state["settled"].pop(name, None)
-            return
-        state["order"][name] = order
-        for con_id in order:
-            state["where"][con_id] = name
-
-        if workspace is not None and any(c.get("fullscreen_mode")
-                                        for c in leaves_of(workspace)):
-            # A fullscreen window owns the screen; its workspace is left alone
-            # until it comes back, and then the set is rebuilt once.
-            state["settled"].pop(name, None)
-            return
-        if any(denied(c) for c in leaves_of(workspace or {})):
-            note("leaving %s alone: it holds an installer or dialog window" % name)
-            return
-
-        # A workspace is rebuilt only when the set of windows on it changes.
-        # The helper's own commands raise window events of their own, and a
-        # timer cannot separate those from a real window arriving on a slow
-        # machine: the window set can.
-        signature = tuple(order)
-        if attempt == 1 and state["settled"].get(name) == signature:
-            state["due"].discard(name)
-            return
-
-        # Rebuilding a workspace the owner is not looking at would take the
-        # focus away from what he is working on, so it is marked due and
-        # rebuilt the moment it is shown - which is also the first moment its
-        # arrangement can be seen at all.
-        current = focused_workspace(i3.tree()) or {}
-        if current.get("name") != name:
-            state["due"].add(name)
-            note("%s is not on screen: it is arranged when it is shown" % name)
-            return
-        state["due"].discard(name)
-
-        note("reflow %s order=%s attempt=%d" % (name, order, attempt))
-
-        # Nothing switches the workspace here.  The arrangement is made with
-        # commands that name the windows they act on, so it does not need the
-        # view - and asking i3 for the workspace that already has the focus is
-        # not a no-op: with workspace_auto_back_and_forth, which the shipped
-        # config sets, it sends the owner to the workspace he came from every
-        # time anything is arranged.
-
-        if len(order) == 1:
-            # One window fills the workspace on its own, so it only has to be
-            # brought back when it is on another one.  Moving it to the
-            # workspace it is already on is not a no-op - with
-            # workspace_auto_back_and_forth i3 reads it as "go back" and sends
-            # the window to the workspace the owner came from - so it is never
-            # done blindly, and the flag is passed when it is done at all.
-            if where_is(order[0]) != name:
-                i3.command("[con_id=%d] move --no-auto-back-and-forth "
-                           "container to workspace %s" % (order[0], name))
-        else:
-            # The columns are made from the windows themselves: i3 splits a
-            # workspace when a window arrives, so the only thing left to do is
-            # to make the half that has to hold two of them vertical, around
-            # the one that stays on top.  Nothing is appended, so there is no
-            # wrapper container to be left behind and nested into by the next
-            # rebuild - which is what turned two windows into two thirds of the
-            # screen and three into three narrow tiles in one half.
-            parents = {child.get("id"): node
-                       for node in nodes_of(i3.tree())
-                       for child in (node.get("nodes") or [])}
-            for index in range(2, len(order)):
-                top = order[index - 2]
-                mark = "smd-pair-%d" % index
-                holder = parents.get(top) or {}
-                # The half this window belongs in may already be there, left
-                # behind holding this window alone when the other one of the
-                # pair moved away.  Splitting it again would bury the pair one
-                # wrapper deeper on every rebuild, so it is reused: the half is
-                # told to be vertical and the new window is moved beside it.
-                half = (holder.get("type") == "con"
-                        and not holder.get("window")
-                        and len(holder.get("nodes") or []) == 1)
-                i3.command("[con_id=%d] mark --add %s" % (top, mark))
-                i3.command("[con_id=%d] focus" % top)
-                if half:
-                    note("  reusing the half above %d" % top)
-                    i3.command("layout splitv")
-                else:
-                    i3.command("split vertical")
-                i3.command("[con_id=%d] move container to mark %s"
-                           % (order[index], mark))
-                i3.command("unmark %s" % mark)
-                time.sleep(0.15)
-
-        geometry = geometry_of(name)
-        placed = [con_id for con_id in order if con_id in geometry]
-        good = len(placed) == len(order) and expected_layout(order, geometry)
-        note("  placed: %s" % " ".join(
-            "%d@%d,%d+%dx%d" % ((con_id,) + geometry[con_id])
-            for con_id in placed))
-        if good:
-            state["settled"][name] = signature
-            return
-        if attempt < 2:
-            # i3 applies commands through a queue: one retry is allowed, and
-            # only when the result really is wrong.
-            note("  layout not as expected, retrying once")
-            time.sleep(0.4)
-            reflow(name, attempt + 1)
-        else:
-            note("  layout still not as expected")
-            state["settled"][name] = signature
-
-    def wait_for_container(con_id, timeout=2.0):
+    def wait_for_container(con_id, timeout=3.0):
         """A window::new event arrives before i3 has the window in the tree."""
-        if not con_id:
-            return False
         deadline = time.time() + timeout
-        while True:
-            if con_id in windows_in_tree():
+        while time.time() < deadline:
+            if find_node(i3.tree(), con_id):
                 return True
-            if time.time() >= deadline:
-                return False
             time.sleep(0.1)
+        return False
 
-    def handle(name):
-        if not name or name == SCRATCH:
-            return
-        if state["busy"]:
-            state["pending"].add(name)
-            return
-        state["busy"] = True
-        try:
-            reflow(name)
-        except Exception as error:  # noqa: BLE001 - the helper must not die
-            note("error: %s" % error)
-        finally:
-            state["busy"] = False
-        while state["pending"]:
-            queued = state["pending"].pop()
-            state["busy"] = True
-            try:
-                reflow(queued)
-            except Exception as error:  # noqa: BLE001
-                note("error: %s" % error)
-            finally:
-                state["busy"] = False
+    def float_overflow(con_id, number, title, why):
+        """Keep the window, floating and visible, and say so."""
+        i3.command("[con_id=%d] mark --add smd-overflow" % con_id)
+        i3.command("[con_id=%d] floating enable, resize set 66 ppt 70 ppt, "
+                   "move position center" % con_id)
+        notify("Workspace %d is full" % number,
+               "%s is floating there. %s" % (title, why))
 
-    # The helper never takes the focus away from the workspace the owner is
-    # working in: parking happens with "move container to workspace", and a
-    # workspace that needs rebuilding is arranged when it is shown.
-    i3.message(SUBSCRIBE, json.dumps(["window", "workspace"]))
-    note("subscribed to window and workspace events")
-
-    for name in workspace_names():
-        handle(name)
-
-    def handle_event(payload):
-        """One window event: recognise the helper's own and rebuild if needed."""
-        container = payload.get("container") or {}
+    def handle(payload):
         change = payload.get("change")
-        if change in ("focus", "init") and isinstance(payload.get("current"), dict):
-            # A workspace has just been shown: anything left due on it is
-            # arranged now, while it has the focus the rebuild needs.
-            name = payload["current"].get("name")
-            if name and name != SCRATCH:
-                note("event %s on workspace %s" % (change, name))
-                handle(name)
+        if change not in ("new", "move", "floating"):
             return
-        if change in ("new", "close", "fullscreen_mode", "floating"):
-            # A closing window is already gone from the tree and a new one may
-            # not be in it yet, so its workspace is looked up first, then the
-            # one it was last seen on, and the focused workspace last.
-            con_id = (payload.get("container") or {}).get("id")
-            if change == "new" and not wait_for_container(con_id):
-                note("event new: container %s never appeared" % con_id)
-            tree = i3.tree()
-            workspace = (workspace_containing(tree, con_id) if con_id else None) \
-                or ({"name": state["where"][con_id]}
-                    if state["where"].get(con_id) else None) \
-                or focused_workspace(tree)
-            name = workspace.get("name") if workspace else None
-            note("event %s on workspace %s" % (change, name))
-            handle(name)
-        elif change == "move":
-            # Both ends changed shape.  The helper's own moves arrive here as
-            # well, and they change nothing: the workspace they happen on is
-            # already settled for exactly that set of windows.
-            con_id = container.get("id")
-            here = (workspace_containing(i3.tree(), con_id) or {}).get("name")
-            was = state["where"].get(con_id)
-            if not here or here == SCRATCH:
+        container = payload.get("container") or {}
+        con_id = container.get("id")
+        if not con_id:
+            return
+        if change == "new" and not wait_for_container(con_id):
+            note("event new: container %s never appeared" % con_id)
+            return
+        if change == "move":
+            if con_id in own:
+                # The move this helper just made, already accounted for.
+                own.discard(con_id)
                 return
-            state["where"][con_id] = here
-            if was == here:
+        tree = i3.tree()
+        node = find_node(tree, con_id)
+        if node is None or floating(node) or denied(node):
+            return
+        workspace = workspace_holding(tree, con_id)
+        number = workspace_number(workspace)
+        if number is None:
+            return
+        held = tiled_windows(workspace)
+        if len(held) <= MAX_TILED:
+            return
+        title = window_title(node)
+
+        if change == "new":
+            target = next_empty_workspace(tree, number)
+            if target is None:
+                note("workspace %d is full and no workspace is empty: %s "
+                     "stays floating" % (number, title))
+                float_overflow(con_id, number, title,
+                               "All ten workspaces already hold a window, so "
+                               "there is no empty workspace to move it to. "
+                               "Close a window and open it again.")
                 return
-            note("window %s moved from %s to %s" % (con_id, was, here))
-            for name in (here, was):
-                if name and name != SCRATCH:
-                    state["due"].add(name)
-                    handle(name)
-        elif change == "empty":
-            name = (payload.get("container") or {}).get("name")
-            state["order"].pop(name, None)
-            state["settled"].pop(name, None)
-            state["due"].discard(name)
+            own.add(con_id)
+            i3.command("[con_id=%d] move --no-auto-back-and-forth container "
+                       "to workspace number %d" % (con_id, target))
+            # It has to be visible: the point of the overflow is that the
+            # program the owner just opened is the one he sees.
+            i3.command("workspace --no-auto-back-and-forth number %d" % target)
+            i3.command("[con_id=%d] focus" % con_id)
+            note("workspace %d was full: %s opened on workspace %d"
+                 % (number, title, target))
+            return
+
+        # A move (by hand, or the window being tiled again) into a workspace
+        # that already holds two: the consistent exception is the same one as
+        # exhaustion.  Nothing that was already there is moved.
+        note("workspace %d was full: %s stays floating (%s)"
+             % (number, title, change))
+        own.discard(con_id)
+        float_overflow(con_id, number, title,
+                       "A workspace holds two windows, so it was not squeezed "
+                       "in beside them.")
+
+    i3.message(SUBSCRIBE, json.dumps(["window"]))
+    note("subscribed to window events")
 
     while True:
         try:
@@ -520,16 +369,14 @@ def main():
             if not path:
                 return 1
             i3 = I3(path)
-            i3.message(SUBSCRIBE, json.dumps(["window", "workspace"]))
-            for name in workspace_names():
-                handle(name)
+            i3.message(SUBSCRIBE, json.dumps(["window"]))
             continue
         if not isinstance(payload, dict):
             continue
-        # No single event may end the helper: the rest of the session would then
-        # lose its layout silently.
+        # No single event may end the helper: the rest of the session would
+        # then lose its limit silently.
         try:
-            handle_event(payload)
+            handle(payload)
         except Exception as error:  # noqa: BLE001
             note("event error: %s" % error)
 

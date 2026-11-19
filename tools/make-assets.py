@@ -306,15 +306,18 @@ def slide(path, headline, subline):
 
 
 def workspace_icons():
-    """The four numbered workspace buttons, plain and active.
+    """The ten numbered workspace buttons, plain and active, plus 5-10.
 
-    1.6 replaces the miniature window previews with numbers.  The active
-    workspace gets a filled tile in the accent colour, the others a quiet
-    outline, so clicking is obvious without guessing which one is current.
+    1.7 raises the desktop to ten workspaces: 1-4 stay on the panel as direct
+    buttons, and 5-10 sit behind one compact control.  That control shows the
+    number itself - filled in the accent colour - while one of those
+    workspaces is active, a quiet grid when they hold nothing, and an accent
+    dot when something is running up there, so the active number is always
+    visible and an occupied workspace above 4 is never hidden.
     """
     icon_dir = os.path.join(CHROOT, "usr", "share", "icons", "hicolor",
                             "32x32", "apps")
-    for number in ("1", "2", "3", "4"):
+    for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
         for active in (False, True):
             canvas = Canvas(32, 32, alpha=True)
             if active:
@@ -323,12 +326,23 @@ def workspace_icons():
             else:
                 canvas.round_rect(1, 1, 30, 30, 7, MUTED, 0.30)
                 ink = INK
-            scale = 3
+            # Two digits need a smaller face to stay inside the tile: 10 is
+            # the only one, but it is a real workspace and has to be legible.
+            scale = 3 if len(number) == 1 else 2
             width = canvas.text_width(number, scale)
             canvas.text((32 - width) // 2, (32 - 7 * scale) // 2,
                         number, scale, ink, 1.0)
             name = "smd-ws-%s%s.png" % (number, "-active" if active else "")
             canvas.save(os.path.join(icon_dir, name))
+    for busy in (False, True):
+        canvas = Canvas(32, 32, alpha=True)
+        canvas.round_rect(1, 1, 30, 30, 7, MUTED, 0.30)
+        for index in range(3):
+            colour = ACCENT if (busy and index == 2) else INK
+            canvas.round_rect(7 + index * 8, 13, 5, 5, 2, colour,
+                              1.0 if busy else 0.7)
+        canvas.save(os.path.join(icon_dir, "smd-ws-more%s.png"
+                                 % ("-busy" if busy else "")))
 
 
 PLYMOUTH_THEME = '''[Plymouth Theme]
