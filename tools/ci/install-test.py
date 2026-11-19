@@ -1033,12 +1033,18 @@ def main():
                    if labels.strip().endswith("false")
                    else f"FAIL: installed panel still shows window titles "
                         f"({labels.strip()[:40]})")
-            file_pin = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
-                                 "-p /plugins/plugin-12/items -v 2>&1", timeout=60)
+            # The panel keeps a private copy of every launcher and stores only
+            # that copy's name in xfconf, so the files are what to read.
+            pinned = shell.run("grep -rhiE '^(Name|Exec|Icon)=' "
+                               "~/.config/xfce4/panel/launcher-*/ 2>/dev/null "
+                               "| sort -u", timeout=60)
             record("PASS: the File Manager is pinned in the installed panel"
-                   if "thunar.desktop" in file_pin
-                   else f"FAIL: no File Manager launcher in the installed panel "
-                        f"({' '.join(file_pin.split())[:60]})")
+                   if "thunar" in pinned
+                   else "FAIL: no File Manager launcher in the installed panel "
+                        f"({' '.join(pinned.split())[:80]})")
+            record("PASS: Brave is pinned in the installed panel"
+                   if "brave-browser" in pinned
+                   else "FAIL: no Brave launcher in the installed panel")
             buttons = shell.run("ls ~/.local/share/applications/smd-workspace-*.desktop "
                                 "2>/dev/null | wc -l", timeout=60)
             record("PASS: all four workspace buttons exist on the installed desktop"
