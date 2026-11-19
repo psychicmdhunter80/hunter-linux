@@ -3,12 +3,12 @@
 
 Creates, in the directory above this project:
 
-    SMD-Linux-Build-v1.5.0.zip                the build sources, with file modes
-    SMD-Linux-v1.5.0-README.md                user documentation
-    SMD-Linux-v1.5.0-Test-Report.md           test status and measurements
-    SMD-Linux-v1.5.0-RELEASE-NOTES.md         what changed in this release
-    SMD-Linux-v1.5.0-Technical-Reference.md   manifest, provenance, limitations
-    SMD-Linux-v1.5.0-Package-Manifest.txt     the image's installed packages
+    SMD-Linux-Build-v<VERSION>.zip            the build sources, with file modes
+    SMD-Linux-v<VERSION>-README.md                user documentation
+    SMD-Linux-v<VERSION>-Test-Report.md           test status and measurements
+    SMD-Linux-v<VERSION>-RELEASE-NOTES.md         what changed in this release
+    SMD-Linux-v<VERSION>-Technical-Reference.md   manifest, provenance, limitations
+    SMD-Linux-v<VERSION>-Package-Manifest.txt     the image's installed packages
     SHA256SUMS                                 checksums of the files above
 
 File permissions are stored in the archive (0755 for scripts), so the project
@@ -27,14 +27,21 @@ PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = os.path.dirname(PROJECT)
 PROJECT_NAME = os.path.basename(PROJECT)
 
-ZIP_NAME = "SMD-Linux-Build-v1.5.0.zip"
-ISO_NAME = "SMD-Linux-v1.5.0-amd64.iso"
+# The version comes from VERSION, like everything else the release ships.
+VERSION = open(os.path.join(PROJECT, "VERSION"), encoding="utf-8").read().strip()
+if not VERSION:
+    raise SystemExit("VERSION is empty")
+
+ZIP_NAME = "SMD-Linux-Build-v%s.zip" % VERSION
+ISO_NAME = "SMD-Linux-v%s-amd64.iso" % VERSION
 DOCS = {
-    "README.md": "SMD-Linux-v1.5.0-README.md",
-    "Test-Report.md": "SMD-Linux-v1.5.0-Test-Report.md",
-    "RELEASE-NOTES-1.5.0.md": "SMD-Linux-v1.5.0-RELEASE-NOTES.md",
-    "TECHNICAL-REFERENCE-1.5.0.md": "SMD-Linux-v1.5.0-Technical-Reference.md",
-    "PACKAGE-MANIFEST-1.5.0.txt": "SMD-Linux-v1.5.0-Package-Manifest.txt",
+    "README.md": "SMD-Linux-v%s-README.md" % VERSION,
+    "Test-Report.md": "SMD-Linux-v%s-Test-Report.md" % VERSION,
+    "RELEASE-NOTES-%s.md" % VERSION: "SMD-Linux-v%s-RELEASE-NOTES.md" % VERSION,
+    "TECHNICAL-REFERENCE-%s.md" % VERSION:
+        "SMD-Linux-v%s-Technical-Reference.md" % VERSION,
+    "PACKAGE-MANIFEST-%s.txt" % VERSION:
+        "SMD-Linux-v%s-Package-Manifest.txt" % VERSION,
 }
 
 SKIP_DIRS = {".git", ".tmp", "__pycache__", "binary", "chroot", "cache",
@@ -113,7 +120,7 @@ def main():
     if os.path.exists(iso_path):
         files.insert(0, iso_path)
     with open(sums_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write("# SMD Linux 1.5.0 checksums - verify with: sha256sum -c SHA256SUMS\n")
+        handle.write("# SMD Linux %s checksums" % VERSION + " - verify with: sha256sum -c SHA256SUMS\n")
         if os.path.exists(iso_path):
             handle.write("# The first entry is the bootable ISO image.\n")
         else:
