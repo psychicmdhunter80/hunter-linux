@@ -101,28 +101,25 @@ project's own code rather than in the tests: the workspace helper acted on i3's
 remembered window order and so pulled a moved window back, and the boot test's
 window placement used i3 criteria that matched nothing on this image.
 
-## Not done yet - next steps in order
+## What remains open
 
-1. (done) Watch run `44438132258` (the first build, `44437139505`, failed on an
-   artwork byte-comparison that was unsound across zlib builds; the build now
-   regenerates the artwork instead of comparing it).
-2. Download the ISO artefact and record its size and SHA-256.
-3. Run, against that exact ISO: `boot-test.yml` (BIOS and UEFI), the panel and
-   workspace checks (new test still to write - the panel must be photographed at
-   1366x768 and the workspace buttons clicked), `tile-brave.yml`,
-   `voice-apps.yml`, `installer-label.yml`, and `install-test.yml` with the
-   greeter login. A screenshot file-size threshold is not evidence: the panel
-   and desktop checks must read the window properties, the xfconf values and the
-   running processes inside the session.
-4. Item 8 (playback stability) needs real measurement on Craig/Dell hardware:
-   a QEMU guest decodes in software and cannot answer a hardware-decode
-   question. Record what the image contains (Brave Shields, h264ify, Auto
-   Quality for YouTube, no second blocker) and let Hunter measure the same video
-   before and after.
-5. Item 9: there is no wallpaper-changing action in this image to inspect -
-   i3 plus feh, no desktop manager. Recorded as awaiting Hunter's chosen
-   artwork; adding a desktop manager is refused on resource grounds.
-6. Docs: README status table, RELEASE-NOTES-1.6.0.md, Test-Report section,
-   TECHNICAL-REFERENCE-1.6.0.md, package manifest, source ZIP, `SHA256SUMS`,
-   then tag `v1.6.0` at the documentation commit. Keep the build revision
-   separate from the documentation commit in the report.
+The handoff listed two items this release could not close, and both are still
+open for the same reasons:
+
+1. Item 8, playback stability, needs a measurement on Craig's Dell. A QEMU
+   guest decodes video in software and cannot answer a hardware-decode
+   question. The image was left with the settings it had - Brave Shields,
+   h264ify, Auto Quality for YouTube, no second blocker - and the report states
+   what it contains so Hunter can measure the same video before and after.
+2. Item 9, the wallpaper, has no action in this image to inspect: the desktop
+   is i3 plus `feh`, with no desktop manager behind it, so the image exposes no
+   action for changing it. The artwork is the one Hunter supplied; choosing new
+   artwork is his call, and adding a desktop manager for it was refused on
+   resource grounds.
+
+The steps that produced this release, in order, were: confirm the build, record
+the artefact's size and SHA-256, run every suite against that exact image (live
+boot on BIOS and UEFI, panel and workspace checks, Brave tiling, voice typing,
+installer label, package manifest, installation with a greeter login), then
+write the documentation, package the source ZIP and checksums, and tag the
+release at the documentation commit.
