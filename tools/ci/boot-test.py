@@ -1225,37 +1225,41 @@ def main():
             return found[0] if found else None
 
         def open_window(title):
-            shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
-                      "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-            # The window has to exist before it can be moved, and on this
-            # runner that has taken several seconds.  Moving it after a fixed
-            # pause missed the window entirely: it then opened wherever focus
-            # happened to be, and the check below measured two lone windows on
-            # two workspaces - an arrangement that never existed.
-            here = None
-            for _attempt in range(20):
-                time.sleep(2)
-                here = placed(title)
-                if here:
-                    break
-            if not here:
-                record("INFO: %s never appeared in i3" % title)
-                return
-            # The tiling helper reflows a workspace by focusing it, so a new
-            # window can arrive on another workspace entirely; put it where
-            # the layout is being measured, then make sure that is focused.
-            # Moving by con id is what the tree just named, so it cannot miss
-            # the window the way a title match can.
-            for _attempt in range(10):
+            """Launch a titled terminal on workspace 1, or say so honestly.
+
+            The tiling helper rebuilds a workspace by focusing it, so a window
+            launched while a rebuild is in flight lands beside the helper
+            rather than where this test is measuring.  Moving it afterwards
+            fights the helper - it reflows the workspace the window actually
+            arrived on - so the window is closed and launched again on a
+            freshly focused workspace 1 instead.  One that keeps arriving
+            elsewhere is reported as a failure, never measured as a layout.
+            """
+            for attempt in range(1, 4):
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=30)
+                shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
+                          "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
+                here = None
+                for _poll in range(20):
+                    time.sleep(2)
+                    here = placed(title)
+                    if here:
+                        break
+                if not here:
+                    record("INFO: %s never appeared in i3 (attempt %d)"
+                           % (title, attempt))
+                    continue
                 if here[1] == 1:
-                    break
-                shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] move container "
-                          "to workspace 1'" % here[0], timeout=30)
-                time.sleep(2)
-                here = placed(title) or here
-            shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=30)
-            time.sleep(3)
-            record("INFO: %s is on workspace %s" % (title, here[1]))
+                    record("INFO: %s is on workspace 1" % title)
+                    time.sleep(2)
+                    return
+                record("INFO: %s arrived on workspace %s, closing it and "
+                       "launching again (attempt %d)"
+                       % (title, here[1], attempt))
+                shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill'" % here[0],
+                          timeout=30)
+                time.sleep(3)
+            record("FAIL: %s could not be opened on workspace 1" % title)
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree.
