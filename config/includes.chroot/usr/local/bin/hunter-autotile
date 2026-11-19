@@ -512,9 +512,9 @@ def main():
             finally:
                 state["busy"] = False
 
-    # The helper never changes workspace: parking happens with "move
-    # container to workspace", which does not take the focus away from the
-    # workspace the owner is working in.
+    # The helper never takes the focus away from the workspace the owner is
+    # working in: parking happens with "move container to workspace", and a
+    # workspace that needs rebuilding is arranged when it is shown.
     i3.message(SUBSCRIBE, json.dumps(["window", "workspace"]))
     note("subscribed to window and workspace events")
 
