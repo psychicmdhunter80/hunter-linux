@@ -377,6 +377,27 @@ def main():
         shell.run("pkill -f brave-browser; pkill -f calamares; "
                   "pkill -f thunar; sleep 8; free -m", timeout=60)
 
+        # --- the loading screen ----------------------------------------------
+        # It runs from the initramfs and must be gone once the session is up:
+        # a resident splash would be a process on a 2 GB machine for nothing.
+        splash = shell.run(
+            "test -f /usr/share/plymouth/themes/smd/smd.script && echo theme-present "
+            "|| echo theme-missing; echo ---; "
+            "systemctl is-enabled plymouth-start.service 2>&1 | head -1; echo ---; "
+            "pgrep -x plymouthd >/dev/null && echo splash-running || echo splash-gone; "
+            "echo ---; "
+            "journalctl -b --no-pager 2>/dev/null | grep -ci plymouth",
+            timeout=90)
+        bits = splash.split("---")
+        check(results, "the SMD loading screen is installed",
+              "theme-present" in bits[0])
+        check(results, "the loading screen has handed over to the session",
+              "splash-gone" in bits[2])
+        record("INFO: plymouth service: %s" % " ".join(bits[1].split())[:60])
+        record("INFO: boot journal mentions of plymouth: %s" % bits[3].strip()[:10])
+        booted = shell.run("systemd-analyze 2>/dev/null | head -2", timeout=60)
+        record("INFO: boot time: %s" % " | ".join(booted.splitlines())[:120])
+
         # --- wallpaper -------------------------------------------------------
         # feh sets the root pixmap and exits, so the running process proves
         # nothing; the X root window keeps the pixmap it was given.
