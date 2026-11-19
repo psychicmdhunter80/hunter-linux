@@ -177,6 +177,14 @@ def find_workspace(tree, name):
     return None
 
 
+def focused_node(tree):
+    """The container i3 has the focus on, whatever kind it is."""
+    for node in nodes_of(tree):
+        if node.get("focused"):
+            return node
+    return None
+
+
 def focused_workspace(tree):
     """The workspace holding the focused window.
 
@@ -288,6 +296,17 @@ def main():
         json.dump(layout_for(count), handle)
         handle.close()
         i3.command('workspace "%s"' % name)
+        # append_layout puts the layout inside the focused container, so a
+        # rebuild started while a window in a column had the focus nested the
+        # new structure inside that column: three windows ended up as three
+        # narrow tiles in the left half of the screen.  i3 has no way to name
+        # the workspace as the target, so the focus is walked up to it first.
+        for _step in range(6):
+            node = focused_node(i3.tree()) or {}
+            if node.get("type") == "workspace":
+                break
+            i3.command("focus parent")
+            time.sleep(0.15)
         i3.command("append_layout %s" % handle.name)
         os.unlink(handle.name)
 
