@@ -315,6 +315,117 @@ def check_references():
             fail("missing application entry %s" % name)
 
 
+def check_panel_controls():
+    """The panel as 1.6 delivers it: icons, pinned launchers, workspace numbers.
+
+    These are cheap source-level proofs.  They say the configuration the image
+    ships with is the one described; only the running panel can prove what it
+    looks like, and that is the panel test's job.
+    """
+    panel = read(os.path.join(
+        CHROOT, "etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"))
+
+    def require(name, condition):
+        if not condition:
+            fail("panel: %s" % name)
+
+    require("the panel stays visible (auto-hide retired in 1.3)",
+            'name="autohide-behavior" type="uint" value="0"' in panel)
+    require("open windows show icons, not titles",
+            'name="show-labels" type="bool" value="false"' in panel)
+    require("the window tooltip keeps the title",
+            'name="show-tooltips" type="bool" value="true"' in panel)
+    require("Brave stays pinned",
+            'value="brave-browser.desktop"/>' in panel)
+    require("the File Manager is pinned beside Brave",
+            'type="string" value="launcher">' in panel
+            and 'value="thunar.desktop"/>' in panel)
+    require("the S menu is still the first item",
+            'name="plugin-1" type="string" value="whiskermenu"' in panel)
+    require("the status controls are still there",
+            'value="systray"' in panel and 'value="clock"' in panel
+            and 'value="pulseaudio"' in panel and 'value="battery"' in panel)
+
+    # Favourites: browser, file manager, terminal, then the live-only installer.
+    order = [name for name in ("brave-browser.desktop", "thunar.desktop",
+                               "xfce4-terminal.desktop", "hunter-install.desktop")
+             if 'value="%s"/>' % name in panel]
+    require("the favourites keep Browser, File Manager, Terminal, Install",
+            order == ["brave-browser.desktop", "thunar.desktop",
+                      "xfce4-terminal.desktop", "hunter-install.desktop"])
+
+    # Numbered workspace buttons, all four, replacing the pager.
+    require("the miniature workspace previews are gone",
+            'type="string" value="pager"' not in panel)
+    for number in ("1", "2", "3", "4"):
+        require("workspace button %s is present" % number,
+                'value="smd-workspace-%s.desktop"/>' % number in panel)
+
+    # The helper that keeps the buttons in step, and the icons they use.
+    helper = read(os.path.join(CHROOT, "usr/local/bin/hunter-workspaces"))
+    require("the helper switches with i3-msg", 'i3-msg -q' in helper)
+    require("the helper watches i3 workspace events", '"workspace"' in helper)
+    require("the helper writes all four buttons",
+            'for number in 1 2 3 4; do' in helper)
+    i3 = read(os.path.join(CHROOT, "etc/skel/.config/i3/config"))
+    require("the helper starts with the session", "hunter-workspaces" in i3)
+    for number in ("1", "2", "3", "4"):
+        for suffix in ("", "-active"):
+            icon = os.path.join(CHROOT, "usr/share/icons/hicolor/32x32/apps",
+                                "smd-ws-%s%s.png" % (number, suffix))
+            require("icon %s exists" % os.path.basename(icon), os.path.exists(icon))
+
+    # Workspace keys: Alt+1..4 switch, and must not have been re-bound.
+    for number in ("1", "2", "3", "4"):
+        require("Alt+%s switches workspace" % number,
+                "bindsym $mod+%s workspace number %s" % (number, number) in i3)
+    require("Alt+Z voice typing is untouched",
+            "bindsym $mod+z exec --no-startup-id hunter-dictation toggle" in i3)
+
+
+def check_startup_feedback():
+    """The loading screen: present, versioned from VERSION, and not resident."""
+    theme = os.path.join(CHROOT, "usr/share/plymouth/themes/smd")
+    for name in ("smd.plymouth", "smd.script"):
+        if not os.path.exists(os.path.join(theme, name)):
+            fail("the loading screen is missing %s" % name)
+    script = read(os.path.join(theme, "smd.script"))
+    if "SMD Linux is loading" not in script:
+        fail("the loading screen does not say it is loading")
+    version = read(os.path.join(ROOT, "VERSION")).strip()
+    if "VERSION %s" % version not in script:
+        fail("the loading screen does not carry %s" % version)
+    conf = read(os.path.join(CHROOT, "etc/plymouth/plymouthd.conf"))
+    if "Theme=smd" not in conf:
+        fail("plymouth is not set to the SMD theme")
+    if "ShowDelay=0" not in conf:
+        fail("the loading screen would not appear immediately")
+    grub = read(os.path.join(CHROOT, "etc/default/grub"))
+    if "splash" not in grub:
+        fail("the installed system does not ask for the loading screen")
+    packages = read(os.path.join(ROOT, "config/package-lists/hunter-base.list.chroot"))
+    if not re.search(r"^plymouth$", packages, re.M):
+        fail("plymouth is not installed")
+    # It must not become a resident service: nothing may enable it in a unit
+    # of our own, and the post-install script must not leave it running.
+    post = read(os.path.join(CHROOT, "usr/local/sbin/hunter-postinstall"))
+    if re.search(r"plymouth.*systemctl enable", post):
+        fail("the post-install script enables a resident plymouth service")
+
+
+def check_installer_favourite():
+    """The installer is a live-session favourite and nothing more."""
+    post = read(os.path.join(CHROOT, "usr/local/sbin/hunter-postinstall"))
+    if "/usr/share/applications/hunter-install.desktop" not in post:
+        fail("the post-install script does not remove the installer entry")
+    if 'value="hunter-install.desktop"' not in post:
+        fail("the post-install script does not remove the installer favourite")
+    panel = read(os.path.join(
+        CHROOT, "etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"))
+    if panel.count('value="hunter-install.desktop"') != 1:
+        fail("the installer appears more than once in the live favourites")
+
+
 def check_version_labels():
     """Every label the image shows must carry the version auto/config builds.
 
@@ -511,6 +622,9 @@ def main():
     check_voice_typing()
     check_jellyfin()
     version = check_version_labels()
+    check_panel_controls()
+    check_startup_feedback()
+    check_installer_favourite()
 
     print("SMD Linux project verification")
     print("  XML files parsed:        %d" % xml_count)

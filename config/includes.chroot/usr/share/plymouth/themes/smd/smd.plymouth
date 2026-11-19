@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=SMD Linux
+Description=SMD Linux loading screen
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/smd
+ScriptFile=/usr/share/plymouth/themes/smd/smd.script

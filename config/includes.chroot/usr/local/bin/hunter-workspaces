@@ -1,0 +1,95 @@
+#!/bin/sh
+# SMD Linux 1.6 - keep the four numbered workspace buttons in step with i3.
+#
+# The panel used to show miniature previews of the windows on each workspace,
+# which is unreadable at 1366x768 and showed nothing at all for an empty
+# workspace: i3 only reports workspaces that exist, and it discards an empty
+# one as soon as you leave it.  The panel now carries four launcher buttons
+# instead, one per workspace, and this helper keeps them honest:
+#
+#   * it writes the four .desktop files the buttons launch on every start, so
+#     the buttons exist even when only workspace 1 has ever been used;
+#   * it subscribes to i3's workspace events and rewrites only the icon of the
+#     files whose state changed - the current workspace gets the filled tile,
+#     the rest the quiet outline.  The panel watches the .desktop files, so the
+#     highlight follows a switch without restarting anything.
+#
+# It costs one idle process that wakes on a workspace change, and it does
+# nothing at all between switches.
+#
+# Output goes to ~/.cache/smd/workspaces.log, so a failure is on disk rather
+# than swallowed.
+
+set -u
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/smd"
+apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$cache" "$apps" 2>/dev/null || exit 0
+log="$cache/workspaces.log"
+
+# One helper per display; a second copy would rewrite the same files.
+lockname=$(printf '%s' "${DISPLAY:-:0}" | tr ':/' '__')
+exec 9>"$cache/workspaces${lockname}.lock" || exit 0
+if command -v flock >/dev/null 2>&1; then
+	flock -n 9 || exit 0
+fi
+
+[ -s "$log" ] && [ "$(wc -c <"$log")" -gt 20000 ] && : >"$log"
+echo "--- $(date '+%F %T') starting workspace buttons (DISPLAY=$DISPLAY)" >>"$log"
+
+current_workspace() {
+	# No jq on this image: the focused workspace is one block of i3's reply.
+	i3-msg -t get_workspaces 2>/dev/null |
+		tr '}' '\n' |
+		grep '"focused":true' |
+		sed -n 's/.*"num":\([0-9][0-9]*\).*/\1/p' |
+		head -n 1
+}
+
+write_buttons() {
+	active="$1"
+	changed=0
+	for number in 1 2 3 4; do
+		icon="smd-ws-${number}"
+		[ "$number" = "$active" ] && icon="smd-ws-${number}-active"
+		file="$apps/smd-workspace-${number}.desktop"
+		want="[Desktop Entry]
+Type=Application
+Name=Workspace ${number}
+Comment=Switch to workspace ${number}
+Exec=i3-msg -q \"workspace number ${number}\"
+Icon=${icon}
+Terminal=false
+StartupNotify=false
+Categories=Utility;"
+		if [ -f "$file" ] && [ "$(cat "$file")" = "$want" ]; then
+			continue
+		fi
+		printf '%s\n' "$want" >"$file" || continue
+		changed=1
+	done
+	[ "$changed" -eq 1 ] && echo "$(date '+%F %T') active workspace ${active:-?}" >>"$log"
+	return 0
+}
+
+write_buttons "$(current_workspace)"
+
+# One event per line.  If i3 is not running yet (the helper can be started
+# before the window manager has its socket), wait for the next start.
+while :; do
+	if ! command -v i3-msg >/dev/null 2>&1; then
+		echo "$(date '+%F %T') no i3-msg, stopping" >>"$log"
+		exit 0
+	fi
+	i3-msg -t subscribe -m '["workspace"]' 2>>"$log" | while read -r _event; do
+		write_buttons "$(current_workspace)"
+	done
+	# The subscription ended: i3 reloaded, restarted or went away.  If there
+	# is no X server left, this session is over.
+	if ! xset q >/dev/null 2>&1; then
+		echo "$(date '+%F %T') display is gone, stopping" >>"$log"
+		break
+	fi
+	sleep 2
+done
+exit 0

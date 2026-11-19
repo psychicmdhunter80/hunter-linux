@@ -5,6 +5,10 @@
 # install what they need with APT.
 linux-image-amd64
 initramfs-tools
+# 1.6 replaces the bare cursor between the boot menu and the desktop with
+# a loading screen.  plymouth lives in the initramfs and hands over to the
+# session once X is up; it stops there and stays stopped.
+plymouth
 systemd
 systemd-timesyncd
 dbus

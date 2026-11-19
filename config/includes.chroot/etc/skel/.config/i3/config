@@ -39,6 +39,8 @@ hide_edge_borders smart
 # Both scripts are idempotent, so i3 reloads do not stack panels or applets.
 exec_always --no-startup-id hunter-panel
 exec_always --no-startup-id hunter-applets
+# Keeps the panel's four numbered workspace buttons and i3 in step.
+exec_always --no-startup-id hunter-workspaces
 # hunter-applets starts hunter-autotile (the balanced 1 / 2 / 3 / 4 layout); the
 # helper holds a per-session lock, so a restart cannot leave two behind.
 

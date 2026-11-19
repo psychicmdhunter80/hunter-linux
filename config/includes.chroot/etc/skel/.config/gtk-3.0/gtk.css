@@ -1,0 +1,50 @@
+/* SMD Linux 1.6 - the panel, and nothing else.
+ *
+ * Scoped to #XfcePanelWindow so Thunar and the rest of GTK are untouched.
+ * Plain colour and border rules only: no compositor, no shadows, no blur,
+ * nothing that costs a frame on a 2 GB Chromebook.
+ */
+
+#XfcePanelWindow {
+	background-color: #1d232b;
+	border-top: 1px solid #2f3a47;
+}
+
+/* Every panel button: quiet at rest, a visible tile under the pointer, the
+ * accent colour when it is the current window or the current workspace. */
+#XfcePanelWindow button {
+	border-radius: 5px;
+	border: 1px solid transparent;
+	padding: 1px 3px;
+	transition: none;
+}
+
+#XfcePanelWindow button:hover {
+	background-color: alpha(#3d5a80, 0.35);
+	border-color: alpha(#5d7fa8, 0.45);
+}
+
+#XfcePanelWindow button:checked {
+	background-color: #3d5a80;
+	border-color: #5d7fa8;
+}
+
+/* A running window that is not focused stays readable without shouting. */
+#XfcePanelWindow button:active {
+	background-color: alpha(#3d5a80, 0.55);
+}
+
+/* The clock and the status icons keep their own look. */
+#XfcePanelWindow #clock-button,
+#XfcePanelWindow #systray-1 button,
+#XfcePanelWindow #pulseaudio-button,
+#XfcePanelWindow #battery-button {
+	background-color: transparent;
+	border-color: transparent;
+}
+
+#XfcePanelWindow #clock-button:hover,
+#XfcePanelWindow #pulseaudio-button:hover,
+#XfcePanelWindow #battery-button:hover {
+	background-color: alpha(#3d5a80, 0.35);
+}

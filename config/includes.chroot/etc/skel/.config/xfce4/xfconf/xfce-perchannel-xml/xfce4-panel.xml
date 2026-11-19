@@ -39,6 +39,7 @@
         <value type="int" value="1"/>
         <value type="int" value="10"/>
         <value type="int" value="11"/>
+        <value type="int" value="12"/>
         <value type="int" value="2"/>
         <value type="int" value="3"/>
         <value type="int" value="4"/>
@@ -57,6 +58,17 @@
     <property name="plugin-1" type="string" value="whiskermenu">
       <property name="button-icon" type="string" value="smd-menu"/>
       <property name="show-button-title" type="bool" value="false"/>
+      <!-- Browser, then File Manager, then Terminal, then the installer.
+           The installer entry exists only in the live session: it is removed
+           from its .desktop file *and* from this list by the installer's
+           post-install script, so an installed user has no dangling shortcut
+           and no favourite pointing at one. -->
+      <property name="favorites" type="array">
+        <value type="string" value="brave-browser.desktop"/>
+        <value type="string" value="thunar.desktop"/>
+        <value type="string" value="xfce4-terminal.desktop"/>
+        <value type="string" value="hunter-install.desktop"/>
+      </property>
     </property>
 
     <!-- A small transparent gap between the menu button and the browser:
@@ -74,9 +86,23 @@
       </property>
     </property>
 
+    <!-- File Manager, beside Brave: the second thing Hunter opens -->
+    <property name="plugin-12" type="string" value="launcher">
+      <property name="items" type="array">
+        <value type="string" value="thunar.desktop"/>
+      </property>
+    </property>
+
     <!-- Open windows -->
     <property name="plugin-2" type="string" value="tasklist">
-      <property name="show-labels" type="bool" value="true"/>
+      <!-- Icons, not titles: a long page title took half the panel.  The
+           window title is still there in the hover tooltip, and every window
+           keeps its own button. -->
+      <property name="show-labels" type="bool" value="false"/>
+      <property name="show-tooltips" type="bool" value="true"/>
+      <property name="tooltip-lines" type="uint" value="1"/>
+      <property name="flat-buttons" type="bool" value="true"/>
+      <property name="window-scrolling" type="bool" value="false"/>
     </property>
 
     <!-- Spacer, pushes the status items to the right edge -->
@@ -85,9 +111,20 @@
       <property name="style" type="uint" value="0"/>
     </property>
 
-    <!-- Workspaces (i3 provides the EWMH workspace list) -->
-    <property name="plugin-4" type="string" value="pager">
-      <property name="rows" type="uint" value="1"/>
+    <!-- Workspaces: four numbered buttons, always present even when a
+         workspace is empty.  i3 only reports workspaces that exist, and it
+         discards an empty one when you leave it, so the panel's miniature
+         previews could never show all four.  These are four launcher buttons
+         instead; hunter-workspaces rewrites their icon on every i3 workspace
+         event so the current one is filled in. -->
+    <property name="plugin-4" type="string" value="launcher">
+      <property name="items" type="array">
+        <value type="string" value="smd-workspace-1.desktop"/>
+        <value type="string" value="smd-workspace-2.desktop"/>
+        <value type="string" value="smd-workspace-3.desktop"/>
+        <value type="string" value="smd-workspace-4.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
     </property>
 
     <!-- Status area: NetworkManager and Bluetooth applets -->

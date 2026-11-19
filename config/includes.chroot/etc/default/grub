@@ -1,0 +1,10 @@
+# SMD Linux - boot loader defaults for the installed system.
+#
+# `splash` is what asks for the graphical loading screen; the live medium sets
+# it on its own kernel command line (see auto/config).  The live-build default
+# of a 5 second menu is kept, so recovery entries stay reachable.
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="SMD Linux"
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
+GRUB_CMDLINE_LINUX=""

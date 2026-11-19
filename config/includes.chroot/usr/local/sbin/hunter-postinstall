@@ -18,6 +18,16 @@ rm -f /etc/skel/Desktop/hunter-install.desktop
 for desktop in /home/*/Desktop/hunter-install.desktop; do
 	[ -e "${desktop}" ] && rm -f "${desktop}"
 done
+# The live menu also lists the installer in its favourites.  Removing the
+# .desktop file alone would leave a favourite that points at nothing, so the
+# entry is struck out of the panel configuration the new user inherits.
+for panel in /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml              /home/*/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml; do
+	[ -e "${panel}" ] || continue
+	grep -q 'hunter-install.desktop' "${panel}" || continue
+	grep -v 'value="hunter-install.desktop"' "${panel}" >"${panel}.new" &&
+		mv -f "${panel}.new" "${panel}"
+	log "removed the installer favourite from ${panel}"
+done
 
 # 2. Purge the live-boot / live-config / installer packages.  live-config
 #    diverts update-initramfs, so this must happen before the initramfs is
