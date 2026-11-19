@@ -78,8 +78,11 @@ workspace_from_event() {
 	# answers requests on the same socket, so a subscriber that stops reading
 	# while it waits for a reply from the same i3 can wedge the session -
 	# windows then open but nothing responds for as long as it lasts.
+	# The workspace object inside the event starts with its id (id, num, name,
+	# visible, focused, rect, output, urgent), so the number is read past the
+	# id and before the nested rect, whose braces would otherwise swallow it.
 	printf '%s' "$1" |
-		sed -n 's/.*"current":{"num":\([0-9][0-9]*\).*/\1/p'
+		sed -n 's/.*"current":{[^{}]*"num":\([0-9][0-9]*\).*/\1/p'
 }
 
 write_buttons "$(current_workspace)"

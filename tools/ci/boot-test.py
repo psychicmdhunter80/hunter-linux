@@ -23,6 +23,7 @@ import re
 import socket
 import subprocess
 import sys
+import threading
 import time
 
 ISO = sys.argv[1]
@@ -102,19 +103,26 @@ class Channel:
 
 
 class Monitor:
+    """QEMU's monitor.  One command at a time: the boot frames are captured
+    from a second thread while the serial console is driven from the main one."""
+
+    lock = threading.RLock()     # screenshot() calls hmp() under the same lock
+
     def __init__(self):
         self.chan = Channel(MON_PORT)
         self.chan.expect(r"\(qemu\)", timeout=30, keep=False)
 
     def hmp(self, command, wait=1.0):
-        self.chan.send(command + "\n")
-        self.chan.expect(r"\(qemu\)", timeout=60, keep=False)
-        time.sleep(wait)
+        with self.lock:
+            self.chan.send(command + "\n")
+            self.chan.expect(r"\(qemu\)", timeout=60, keep=False)
+            time.sleep(wait)
 
     def screenshot(self, name):
         ppm = os.path.join(WORK, f"screen-{name}.ppm")
         png = os.path.join(WORK, f"screen-{name}.png")
-        self.hmp(f"screendump {ppm}", wait=1.5)
+        with self.lock:
+            self.hmp(f"screendump {ppm}", wait=1.5)
         subprocess.run(["convert", ppm, png], check=False,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if os.path.exists(png):
@@ -208,7 +216,6 @@ class Shell:
 
     def wait_for_x(self, timeout=600):
         deadline = time.time() + timeout
-        frame = 0
         while time.time() < deadline:
             probe = self.run(
                 "DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; "
@@ -217,32 +224,14 @@ class Shell:
             )
             if "READY" in probe:
                 record("PASS: the X display is up")
-                # What was on screen while the machine was booting decides
-                # whether the loading screen is real.  Brightness alone cannot
-                # answer that - a restrained splash is still a splash - so the
-                # spread of the pixels is measured too: a plain black frame has
-                # almost none, anything drawn on it has plenty.
-                for name, mean, spread in boot_frames:
-                    record(f"INFO: boot frame {name}: mean {mean:.0f} "
-                           f"spread {spread:.0f}")
-                drawn = [name for name, _, spread in boot_frames if spread > 100]
-                check(results, "something was drawn while the machine booted",
-                      bool(drawn))
                 return True
-            if frame < 12:
-                name = f"boot-{frame:02d}"
-                try:
-                    path = monitor.screenshot(name)
-                    boot_frames.append((name,) + frame_stats(path))
-                except Exception as error:      # a monitor hiccup is not a result
-                    record(f"WARN: could not capture {name}: {error}")
-                frame += 1
             time.sleep(10)
         record("FAIL: the X display never came up")
         return False
 
 
 boot_frames = []
+frames_done = threading.Event()
 
 
 def frame_stats(path):
@@ -325,16 +314,55 @@ def main():
         return 1
     try:
         monitor = Monitor()
+
+        def capture_boot_screen():
+            """Photograph the screen while the machine is still booting.
+
+            The loading screen lives between the boot menu and the desktop, so
+            it has to be captured before X is up; a frame taken after login
+            only ever shows the greeter or a blanked screen.  Brightness alone
+            cannot say whether anything was drawn - a restrained splash is
+            still a splash - so the spread of the pixels is measured too: a
+            plain black frame has almost none, anything drawn on it has plenty.
+            """
+            for frame in range(40):
+                if frames_done.is_set():
+                    break
+                name = "boot-%02d" % frame
+                try:
+                    path = monitor.screenshot(name)
+                    boot_frames.append((name,) + frame_stats(path) + (time.time(),))
+                except Exception as error:      # a monitor hiccup is not a result
+                    record(f"WARN: could not capture {name}: {error}")
+                frames_done.wait(6)
+
+        grabber = threading.Thread(target=capture_boot_screen, daemon=True)
+        grabber.start()
+
         shell = Shell(Channel(SER_PORT))
         if not shell.login():
+            frames_done.set()
             monitor.screenshot("boot-failed")
             return 1
         check(results, "live system reached a login console", True)
 
         shell.run("cat /proc/cmdline; uname -r; id")
         if not shell.wait_for_x():
+            frames_done.set()
             monitor.screenshot("no-x")
             return 1
+        frames_done.set()
+        grabber.join(timeout=60)
+        ready_at = time.time()
+        for name, mean, spread, when in boot_frames:
+            record(f"INFO: boot frame {name}: mean {mean:.0f} "
+                   f"spread {spread:.0f}, {ready_at - when:.0f} s before X")
+        # Only frames from the boot itself count: the last second before the
+        # desktop is up shows the desktop, which would pass this check without
+        # a loading screen existing at all.
+        drawn = [name for name, _, spread, when in boot_frames
+                 if spread > 100 and when < ready_at - 10]
+        check(results, "something was drawn while the machine booted", bool(drawn))
 
         time.sleep(30)
         monitor.screenshot("01-desktop")
@@ -1178,7 +1206,11 @@ def main():
             time.sleep(4)
 
         def tiles():
-            """Rectangles of the test windows, via i3's own tree."""
+            """Rectangles of the test windows, via i3's own tree.
+
+            The helper's own placeholder windows are named `smd-slot-*`; they
+            are not test windows and must not be counted as one.
+            """
             tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
             try:
                 data = json.loads(tree[tree.index("{"):])
@@ -1188,7 +1220,9 @@ def main():
 
             def walk(node):
                 for child in node.get("nodes", []) + node.get("floating_nodes", []):
-                    if child.get("window") and str(child.get("name", "")).startswith("smd-") \
+                    name = str(child.get("name", ""))
+                    if child.get("window") and name.startswith("smd-") \
+                            and not name.startswith("smd-slot-") \
                             and not str(child.get("floating", "")).startswith("user"):
                         found.append(child["rect"])
                     walk(child)
@@ -1200,60 +1234,77 @@ def main():
             return " ".join("[%d,%d %dx%d]" % (b["x"], b["y"], b["width"],
                                                b["height"]) for b in boxes)
 
-        def settle(timeout=90):
-            """Wait until the layout stops changing, and report how long that took.
+        def shapes(count, boxes):
+            """Is this the arrangement the helper is supposed to produce?"""
+            if len(boxes) != count:
+                return False
+            if count == 1:
+                return boxes[0]["width"] >= 1000 and boxes[0]["height"] >= 700
+            if count == 2:
+                first, second = boxes
+                return (abs(first["width"] - second["width"]) <= 4 and
+                        round(first["y"]) == round(second["y"]) and
+                        round(first["x"]) != round(second["x"]))
+            xs = sorted({round(box["x"]) for b in boxes})
+            if count == 3:
+                if len(xs) != 2:
+                    return False
+                left = [b for b in boxes if round(b["x"]) == xs[0]]
+                right = [b for b in boxes if round(b["x"]) == xs[1]]
+                return (len(left) == 2 and len({round(b["y"]) for b in left}) == 2
+                        and len(right) == 1
+                        and abs(left[0]["width"] - right[0]["width"]) <= 4)
+            return len(xs) == 2 and all(
+                len({round(b["y"]) for b in boxes if round(b["x"]) == x}) == 2
+                for x in xs)
 
-            The helper arranges a new window a moment after it appears; a fixed
-            pause measures the pause, not the result.  How long the layout
-            really takes is recorded, so a slow helper shows up as a number
-            instead of a flaky pass or a misleading failure.
+        def wait_for(count, timeout=120):
+            """Poll until the helper has produced the arrangement for the windows.
+
+            The helper arranges a new window a moment after it appears, and on
+            this runner that moment has been as long as 28 seconds.  A fixed
+            pause measures the pause, not the result: this waits for the real
+            arrangement, records how long it took, and only reports a failure
+            when it never arrives.
             """
             started = time.time()
-            previous = None
-            stable = 0
-            boxes = []
+            boxes = tiles()
+            reported = False
             while time.time() - started < timeout:
                 boxes = tiles()
-                now = describe(boxes)
-                stable = stable + 1 if now == previous else 0
-                previous = now
-                if boxes and stable >= 2:
-                    break
+                if shapes(count, boxes):
+                    record("INFO: the %d-window arrangement was reached after %.0f s"
+                           % (count, time.time() - started))
+                    return boxes, True
+                if not reported and time.time() - started > 20:
+                    reported = True
+                    record("INFO: still waiting for %d windows: %s"
+                           % (count, describe(boxes)))
+                    record("INFO: busy while waiting: " + " ".join(shell.run(
+                        "ps -eo pcpu,comm --sort=-pcpu | head -5", timeout=30).split()))
+                    record("INFO: autotile log while waiting: " + " | ".join(shell.run(
+                        "tail -6 ~/.cache/smd/autotile.log 2>/dev/null").split())[:300])
                 time.sleep(4)
-            took = time.time() - started
-            record("INFO: layout settled after %.0f s" % took)
-            return boxes
+            record("INFO: the %d-window arrangement never arrived: %s"
+                   % (count, describe(boxes)))
+            return boxes, False
 
         # Only the test's own windows may be in the layout: the browser from
         # the earlier check is a normal window too and would take a slot.
         shell.run("pkill -x brave; pkill -x xfce4-terminal; "
                   "pkill -f 'SMD panel'; sleep 3", timeout=60)
         open_window("smd-one")
-        one = settle()
-        check(results, "one window fills the usable desktop",
-              len(one) == 1 and one[0]["width"] >= 1000 and one[0]["height"] >= 700)
+        one, ok1 = wait_for(1)
+        check(results, "one window fills the usable desktop", ok1)
         record("INFO: tiling one: " + describe(one))
 
         open_window("smd-two")
-        two = settle()
-        halves = (len(two) == 2 and
-                  abs(two[0]["width"] - two[1]["width"]) <= 4 and
-                  round(two[0]["y"]) == round(two[1]["y"]) and
-                  round(two[0]["x"]) != round(two[1]["x"]))
-        check(results, "two windows split the screen equally", halves)
+        two, ok2 = wait_for(2)
+        check(results, "two windows split the screen equally", ok2)
         record("INFO: tiling two: " + describe(two))
 
         open_window("smd-three")
-        three = settle()
-        ok3 = False
-        if len(three) == 3:
-            xs = sorted({round(b["x"]) for b in three})
-            if len(xs) == 2:
-                left = [b for b in three if round(b["x"]) == xs[0]]
-                right = [b for b in three if round(b["x"]) == xs[1]]
-                ok3 = (len(left) == 2 and len({round(b["y"]) for b in left}) == 2
-                       and len(right) == 1
-                       and abs(left[0]["width"] - right[0]["width"]) <= 4)
+        three, ok3 = wait_for(3)
         check(results, "the third window sits below the first", ok3)
         record("INFO: tiling three: " + describe(three))
 
@@ -1262,20 +1313,13 @@ def main():
         shell.run("DISPLAY=:0 xdotool search --name '^smd-three$' windowclose",
                   timeout=60)
         time.sleep(6)
-        back = settle()
-        check(results, "closing a window returns to two equal halves",
-              len(back) == 2 and abs(back[0]["width"] - back[1]["width"]) <= 4)
+        back, okback = wait_for(2)
+        check(results, "closing a window returns to two equal halves", okback)
         record("INFO: tiling after close: " + describe(back))
 
         open_window("smd-three")
         open_window("smd-four")
-        four = settle()
-        ok4 = False
-        if len(four) == 4:
-            xs = sorted({round(b["x"]) for b in four})
-            ok4 = len(xs) == 2 and all(
-                len({round(b["y"]) for b in four if round(b["x"]) == x}) == 2
-                for x in xs)
+        four, ok4 = wait_for(4)
         check(results, "four windows form an even 2x2 grid", ok4)
         record("INFO: tiling four: " + describe(four))
 
