@@ -1224,14 +1224,44 @@ def main():
             walk(data, None)
             return found[0] if found else None
 
-        # One workspace for the layouts, chosen by i3 rather than by this test.
-        # The helper rebuilds whichever workspace a window arrives on, and it
-        # focuses that workspace while it works, so a window launched while a
-        # rebuild is in flight lands beside the helper; moving it afterwards
-        # only makes the helper rebuild where it actually arrived.  A window
-        # rule is applied by i3 as the window is mapped, so every test window
-        # lands in the same place with nothing for the helper to undo.
+        # One workspace for the layouts.  The helper rebuilds whichever
+        # workspace a window arrives on and focuses it while it works, so a
+        # window launched during a rebuild lands beside the helper wherever the
+        # focus happens to be.  A window rule cannot fix that: i3 matches it
+        # when the window is mapped, before xfce4-terminal has set the title.
+        # Moving by the container id i3 reports is the one thing that is
+        # deterministic, because i3 serialises commands, so a window that
+        # arrives away from the others is moved here and the result is checked.
         home = 9
+
+        def ws_of(con_id):
+            """Which workspace that container is on, or None if it is gone."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return None
+            found = []
+
+            def walk(node, workspace):
+                for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                    number = (child.get("num") if child.get("type") == "workspace"
+                              else workspace)
+                    if child.get("window") and child.get("id") == con_id:
+                        found.append(number)
+                    walk(child, number)
+
+            walk(data, None)
+            return found[0] if found else None
+
+        def move_home(con_id):
+            for _attempt in range(10):
+                shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] move container "
+                          "to workspace %d'" % (con_id, home), timeout=30)
+                time.sleep(2)
+                if ws_of(con_id) == home:
+                    return True
+            return False
 
         def open_window(title):
             """Launch a titled terminal on workspace 9, or say so honestly."""
@@ -1250,13 +1280,14 @@ def main():
                     record("INFO: %s never appeared in i3 (attempt %d)"
                            % (title, attempt))
                     continue
-                if here[1] == home:
-                    record("INFO: %s is on workspace %s" % (title, here[1]))
+                if here[1] == home or move_home(here[0]):
+                    record("INFO: %s is on workspace %s" % (title, here[1]
+                                                            if here[1] == home
+                                                            else home))
                     time.sleep(2)
                     return
-                record("INFO: %s arrived on workspace %s, closing it and "
-                       "launching again (attempt %d)"
-                       % (title, here[1], attempt))
+                record("INFO: %s would not stay on workspace %s, closing it "
+                       "(attempt %d)" % (title, home, attempt))
                 shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill'" % here[0],
                           timeout=30)
                 time.sleep(3)
@@ -1363,12 +1394,6 @@ def main():
         # switch workspaces and reload i3, so the focused one is whatever they
         # left behind; two windows on different workspaces are two lone
         # windows, each filling its own screen, and no layout to measure.
-        # The rule is left in place: this run has no window checks after the
-        # layouts, and removing it again would need a config reload that would
-        # re-run every exec_always line.
-        shell.run("DISPLAY=:0 i3-msg -q 'for_window "
-                  "[title=\"^smd-(one|two|three|four)$\"] move container to "
-                  "workspace 9'", timeout=60)
         shell.run("DISPLAY=:0 i3-msg -q 'workspace number 9'", timeout=60)
         time.sleep(2)
         here = shell.run("DISPLAY=:0 i3-msg -t get_workspaces", timeout=60)
