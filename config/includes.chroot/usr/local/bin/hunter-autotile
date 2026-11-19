@@ -178,11 +178,15 @@ def find_workspace(tree, name):
 
 
 def focused_node(tree):
-    """The container i3 has the focus on, whatever kind it is."""
-    for node in nodes_of(tree):
-        if node.get("focused"):
-            return node
-    return None
+    """The deepest container i3 has the focus on.
+
+    The focused workspace carries "focused": true as well, so the first match
+    while walking down is the workspace even when a window in it has the focus.
+    Taking that one made the walk up to the workspace end before it started,
+    and the layout was appended inside whatever container the window was in.
+    """
+    focused = [node for node in nodes_of(tree) if node.get("focused")]
+    return focused[-1] if focused else None
 
 
 def focused_workspace(tree):
@@ -337,6 +341,7 @@ def main():
                 break
             i3.command("focus parent")
             time.sleep(0.15)
+        note("  append into %s" % (focused_node(i3.tree()) or {}).get("type"))
         i3.command("append_layout %s" % handle.name)
         os.unlink(handle.name)
 
