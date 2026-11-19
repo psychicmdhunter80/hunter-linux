@@ -10,7 +10,8 @@ exactly here instead of repeating the survey.
 | Branch | `release/1.6.0` (the 1.5.0 delivery is untouched: tag `v1.5.0`, branch `baseline-1.5.0`) |
 | Baseline | `SMD-Linux-v1.5.0-amd64.iso`, 1,134,166,016 bytes, `9820f5fa...fa1952`, tag `v1.5.0` at `84349b0` |
 | Version now | `1.6.0`, written once in `VERSION` |
-| First 1.6.0 build | Actions run `44437139505`, dispatched from `release/1.6.0` |
+| Build revision | `2e18858` (the source the image is built from) |
+| Build attempts | `44437139505` failed in the artwork step; `44438132258` is the live build |
 | Static checks | `python tools/verify-project.py` - all pass |
 
 ## Done in this session
@@ -47,8 +48,9 @@ exactly here instead of repeating the survey.
 
 ## Not done yet - next steps in order
 
-1. Watch run `44437139505`. If it fails, fix and rebuild (the ISOs are built on
-   GitHub Actions; a build is ~2 h).
+1. Watch run `44438132258` (the first build, `44437139505`, failed on an
+   artwork byte-comparison that was unsound across zlib builds; the build now
+   regenerates the artwork instead of comparing it).
 2. Download the ISO artefact and record its size and SHA-256.
 3. Run, against that exact ISO: `boot-test.yml` (BIOS and UEFI), the panel and
    workspace checks (new test still to write - the panel must be photographed at
