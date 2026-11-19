@@ -431,6 +431,102 @@ def main():
         check(results, "the panel is set never to hide",
               hide.strip().endswith("0"))
 
+        # --- 1.6 panel: icons only, pinned launchers, menu favourites --------
+        labels = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                           "-p /plugins/plugin-2/show-labels 2>&1", timeout=60)
+        check(results, "open windows show icons, not titles",
+              labels.strip().endswith("false"))
+        tips = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                         "-p /plugins/plugin-2/show-tooltips 2>&1", timeout=60)
+        check(results, "the window tooltip still carries the title",
+              tips.strip().endswith("true"))
+        pinned = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                           "-p /plugins/plugin-11/items -p /plugins/plugin-12/items "
+                           "-v 2>&1", timeout=60)
+        check(results, "Brave is pinned to the panel",
+              "brave-browser.desktop" in pinned)
+        check(results, "the File Manager is pinned beside Brave",
+              "thunar.desktop" in pinned)
+        favs = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                         "-p /plugins/plugin-1/favorites -v 2>&1", timeout=60)
+        order = [name for name in ("brave-browser", "thunar", "xfce4-terminal",
+                                   "hunter-install") if name in favs]
+        check(results, "the live menu lists Browser, File Manager, Terminal, Install",
+              order == ["brave-browser", "thunar", "xfce4-terminal", "hunter-install"])
+        record("INFO: menu favourites: %s" % favs.strip()[:140])
+
+        # --- 1.6 numbered workspace buttons ---------------------------------
+        helper = shell.run("pgrep -f hunter-workspaces >/dev/null "
+                           "&& echo helper-running || echo helper-missing", timeout=60)
+        check(results, "the workspace helper is running",
+              "helper-running" in helper)
+        written = shell.run("ls ~/.local/share/applications/smd-workspace-*.desktop "
+                            "2>/dev/null | wc -l", timeout=60)
+        check(results, "all four workspace buttons exist",
+              written.strip().splitlines()[-1:] == ["4"])
+
+        def workspace_icons():
+            """The icon each of the four buttons currently carries."""
+            out = shell.run(
+                "for n in 1 2 3 4; do "
+                "printf '%s ' \"$n\"; "
+                "sed -n 's/^Icon=//p' "
+                "~/.local/share/applications/smd-workspace-$n.desktop; "
+                "done", timeout=60)
+            icons = {}
+            for line in out.strip().splitlines():
+                words = line.split()
+                if len(words) == 2:
+                    icons[words[0]] = words[1]
+            return icons
+
+        before = workspace_icons()
+        check(results, "the first workspace starts highlighted",
+              before.get("1") == "smd-ws-1-active" and
+              all(before.get(n) == "smd-ws-%s" % n for n in ("2", "3", "4")))
+
+        # A window on workspace 1 has to stay there when the workspace changes.
+        shell.run("DISPLAY=:0 xfce4-terminal --title='SMD panel check' "
+                  ">/dev/null 2>&1 &", timeout=60)
+        time.sleep(8)
+        window = shell.run("DISPLAY=:0 xdotool search --name 'SMD panel check' "
+                           "2>&1 | head -1", timeout=60).strip().splitlines()
+        window_id = window[-1].strip() if window else ""
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 2'", timeout=60)
+        time.sleep(4)
+        after = workspace_icons()
+        check(results, "switching workspace moves the highlight",
+              after.get("1") == "smd-ws-1" and after.get("2") == "smd-ws-2-active")
+        focused = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>&1", timeout=60)
+        current = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
+                            focused.replace(" ", ""))
+        check(results, "the window manager is on workspace 2",
+              bool(current) and current.group(1) == "2")
+        if window_id:
+            state = shell.run("DISPLAY=:0 xwininfo -id %s | grep 'Map State'" % window_id,
+                              timeout=60)
+            check(results, "a window left on workspace 1 stays there",
+                  "IsUnMapped" in state or "IsUnviewable" in state)
+            record("INFO: window left behind: %s" % " ".join(state.split())[:80])
+        monitor.screenshot("07-panel-workspace-2")
+
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=60)
+        time.sleep(4)
+        back = workspace_icons()
+        check(results, "coming back moves the highlight back",
+              back.get("1") == "smd-ws-1-active" and back.get("2") == "smd-ws-2")
+        # Closing the window must not drag anything in from another workspace.
+        if window_id:
+            shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill' " % window_id, timeout=60)
+        shell.run("pkill -f 'SMD panel check' >/dev/null 2>&1", timeout=60)
+        time.sleep(4)
+        settled = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>&1", timeout=60)
+        current = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
+                            settled.replace(" ", ""))
+        check(results, "closing a window does not switch workspace",
+              bool(current) and current.group(1) == "1")
+        monitor.screenshot("08-panel-1.6")
+
         def panel_state(window_id):
             """(map state, y, height) of the panel window, as X sees it."""
             info = shell.run(f"DISPLAY=:0 xwininfo -id {window_id}", timeout=60)
