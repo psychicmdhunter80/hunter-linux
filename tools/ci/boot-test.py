@@ -620,6 +620,13 @@ def main():
               all(before.get(n) == "smd-ws-%s" % n for n in ("2", "3", "4")))
 
         # A window on workspace 1 has to stay there when the workspace changes.
+        # 1.7 gives a workspace two windows, so the two below are meant to be
+        # alone on workspace 1: anything the earlier checks left open is closed
+        # first, or the third window would correctly overflow to workspace 2.
+        shell.run("pkill -x brave; pkill -x brave-browser; "
+                  "pkill -x xfce4-terminal; sleep 3; "
+                  "DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                  "number 1'", timeout=90)
         shell.run("DISPLAY=:0 xfce4-terminal --title='SMD panel check' "
                   ">/dev/null 2>&1 &", timeout=60)
         # A second window keeps workspace 1 alive when the first one closes,
@@ -1400,6 +1407,36 @@ def main():
                     and first["y"] == second["y"]
                     and first["x"] < second["x"])
 
+        def workspace_rect(number):
+            """The area i3 gives that workspace (the panel excluded)."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return None
+            found = []
+
+            def walk(node):
+                for child in node.get("nodes", []) or []:
+                    if child.get("type") == "workspace" and \
+                            child.get("num") == number:
+                        found.append(child.get("rect") or {})
+                    walk(child)
+
+            walk(data)
+            return found[0] if found else None
+
+        def fills_workspace(number):
+            """Is one window filling exactly the area of that workspace?"""
+            rect = workspace_rect(number)
+            boxes = [b for b in tiles() if b.get("ws") == number]
+            if not rect or len(boxes) != 1:
+                return False
+            return (abs(boxes[0]["x"] - rect.get("x", 0)) <= 2
+                    and abs(boxes[0]["y"] - rect.get("y", 0)) <= 2
+                    and abs(boxes[0]["width"] - rect.get("width", 0)) <= 4
+                    and abs(boxes[0]["height"] - rect.get("height", 0)) <= 4)
+
         def show(number):
             """Show a workspace: i3 does not re-lay-out a hidden one."""
             shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
@@ -1470,8 +1507,7 @@ def main():
         time.sleep(3)
         one = [b for b in tiles() if b.get("ws") == home]
         check(results, "one window fills the usable desktop",
-              len(one) == 1 and one[0]["width"] >= 1300
-              and one[0]["height"] >= 700)
+              wait_shape(home, fills_workspace))
         record("INFO: tiling one: " + describe(one))
 
         second = open_on("smd-two", home)
@@ -1503,18 +1539,21 @@ def main():
         found = placed("smd-four")
         if found:
             close_window(found[0])
-        time.sleep(6)
-        focused, held, _top = state()
-        leftover = [b for b in tiles() if b.get("ws") == 10]
+        time.sleep(3)
         check(results, "closing one window lets its neighbour fill the workspace",
-              len(leftover) == 1 and leftover[0]["width"] >= 1300)
+              wait_shape(10, fills_workspace))
+        show(home)
         check(results, "closing it moves nothing on the other workspaces",
               two_halves(home))
-        record("INFO: after closing the fourth: %s" % describe(leftover))
+        record("INFO: after closing the fourth: %s" % describe(
+            [b for b in tiles() if b.get("ws") == 10]))
 
         # The workspace walk: occupied workspaces only, numerical, wrapping.
         def nav(action):
-            shell.run("hunter-workspaces-nav %s" % action, timeout=60)
+            # The serial console has no DISPLAY of its own; the helper asks i3
+            # through i3-msg, which needs to know which X server to ask.
+            shell.run("DISPLAY=:0 hunter-workspaces-nav %s" % action,
+                      timeout=60)
             time.sleep(2)
             return state()[0]
 
@@ -1532,13 +1571,12 @@ def main():
         # i3 does not re-lay-out a workspace that is not on screen, so each
         # destination is shown before its rectangles are measured - exactly as
         # the owner would show it.
+        before_move = state()[0]
         send_to("smd-three", 6)
-        focused, held, _top = state()
-        check(results, "the move did not take the focus", focused == home)
+        check(results, "the move did not take the focus",
+              state()[0] == before_move)
         check(results, "a window moved to an empty workspace fills it",
-              wait_shape(6, lambda number: len([b for b in tiles()
-                                                if b.get("ws") == number]) == 1
-                         and [b for b in tiles() if b.get("ws") == number][0]["width"] >= 1300))
+              wait_shape(6, fills_workspace))
 
         send_to("smd-two", 6)
         check(results, "a window moved beside one window makes two halves",

@@ -92,15 +92,15 @@ the installer and its live-session-only entry.
 | | |
 | --- | --- |
 | Image | `SMD-Linux-v1.7.0-amd64.iso`, 1,207,959,552 bytes |
-| SHA-256 | `b38d88fa27780e23ba24d9b770d6eec112baa1f57ee964415bef5d2ea03db869` |
-| Build | Actions run `44630204635`, image commit `e2d64f0be21d537b5a0ff6db44e2f67ce7956c10` |
+| SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
+| Build | Actions run `44633739555`, image commit `b5815b83` |
 | Source | `SMD-Linux-Build-v1.7.0.zip`, checksums in `SHA256SUMS` |
-| Live boot (BIOS and UEFI) | run `44631601192` |
-| Window and workspace behaviour | run `44631605492` |
-| Installation test | run `44631609406` |
-| Voice typing and Jellyfin | run `44631612966` |
-| Installer version label | run `44631616005` |
-| Package manifest | run `44631619056` |
+| Live boot (BIOS and UEFI) | run `44635214442` |
+| Window and workspace behaviour | run `44635217637` |
+| Installation test | run `44635222172` |
+| Voice typing and Jellyfin | run `44635226301` |
+| Installer version label | run `44635230275` |
+| Package manifest | run `44635232817` |
 
 What passed, what did not, and which checks still need Craig's own machine are
 in `Test-Report.md`; the mechanism is documented in

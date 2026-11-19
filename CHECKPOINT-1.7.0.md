@@ -9,7 +9,7 @@ restarted, and no earlier release, tag or delivery folder was touched.
 | --- | --- |
 | Branch | `release/1.7.0` |
 | Change commit | `e2d64f0` - "Hold every workspace to two windows and the desktop to ten" |
-| Image build | Actions run `44630204635` from that commit |
+| Image build | Actions run `44633739555` from that commit |
 | Rollback point | tag `v1.6.0` @ `3896657` (the four-window layout) and tag `v1.5.0` @ `84349b0` (the working baseline) - both untouched |
 | Earlier deliveries | `../delivery-1.6.0/`, `../delivery-1.5.0/` and the 1.0-1.4 archives stay as they are |
 
@@ -59,13 +59,13 @@ two live test scripts (`boot-test.py`, `tile-brave.py`) plus `ws-dump.py`.
 | Step | Result |
 | --- | --- |
 | `python tools/verify-project.py` | all static checks pass, labels agree on 1.7.0 |
-| ISO build | run `44630204635` - `<BUILD_RESULT>` |
-| `boot-test` (BIOS + UEFI) | `44631601192` - `<BOOT_RESULT>` |
-| `tile-brave` (image helper, UEFI) | `44631605492` - `<TILING_RESULT>` |
-| `install-test` | `44631609406` - `<INSTALL_RESULT>` |
-| `voice-apps` | `44631612966` - `<VOICE_RESULT>` |
-| `installer-label` | `44631616005` - `<LABEL_RESULT>` |
-| `manifest` | `44631619056` - `<MANIFEST_RESULT>` |
+| ISO build | run `44633739555` - `<BUILD_RESULT>` |
+| `boot-test` (BIOS + UEFI) | `44635214442` - `<BOOT_RESULT>` |
+| `tile-brave` (image helper, UEFI) | `44635217637` - `<TILING_RESULT>` |
+| `install-test` | `44635222172` - `<INSTALL_RESULT>` |
+| `voice-apps` | `44635226301` - `<VOICE_RESULT>` |
+| `installer-label` | `44635230275` - `<LABEL_RESULT>` |
+| `manifest` | `44635232817` - `<MANIFEST_RESULT>` |
 
 ## Still to do
 

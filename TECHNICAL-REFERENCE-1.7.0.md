@@ -14,9 +14,9 @@ download; the files are in the delivery folder described in `README.md`.
 | Base | Debian 13 "trixie", amd64 |
 | Image | `SMD-Linux-v1.7.0-amd64.iso`, 1,207,959,552 bytes (hybrid live ISO, BIOS + UEFI) |
 | Installed packages | 944 (exact list in `PACKAGE-MANIFEST-1.7.0.txt`) |
-| SHA-256 | `b38d88fa27780e23ba24d9b770d6eec112baa1f57ee964415bef5d2ea03db869` |
-| Build | Actions run `44630204635`, job "Build ISO" |
-| Image commit | `e2d64f0be21d537b5a0ff6db44e2f67ce7956c10` (the documentation commit that follows it is recorded in `CHECKPOINT-1.7.0.md`) |
+| SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
+| Build | Actions run `44633739555`, job "Build ISO" |
+| Image commit | `b5815b83` (the documentation commit that follows it is recorded in `CHECKPOINT-1.7.0.md`) |
 | Builder | `debian:trixie` container, `live-build` 1:20250505+deb13u1, Dockerfile in this project |
 | Build inputs | this repository at that commit (source archive `SMD-Linux-Build-v1.7.0.zip`) |
 

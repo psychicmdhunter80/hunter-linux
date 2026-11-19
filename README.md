@@ -42,14 +42,14 @@ configuration and known limitations are in `TECHNICAL-REFERENCE-1.7.0.md`.
 | | |
 | --- | --- |
 | Image | `SMD-Linux-v1.7.0-amd64.iso`, 1,207,959,552 bytes |
-| SHA-256 | `b38d88fa27780e23ba24d9b770d6eec112baa1f57ee964415bef5d2ea03db869` |
-| Build | Actions run `44630204635`, image commit `e2d64f0be21d537b5a0ff6db44e2f67ce7956c10` |
+| SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
+| Build | Actions run `44633739555`, image commit `b5815b83` |
 | Installed packages | 944, listed in `PACKAGE-MANIFEST-1.7.0.txt` |
-| Live boot tests | run `44631601192` - BIOS and UEFI, `<BOOT_COUNTS>` |
-| Installer version label | run `44631616005` - `<LABEL_COUNTS>` |
-| Window and workspace behaviour at 1366x768 | run `44631605492` - `<TILING_COUNTS>` |
-| Voice typing and Jellyfin | run `44631612966` - `<VOICE_COUNTS>` |
-| Installation test | run `44631609406` - `<INSTALL_COUNTS>`; see `Test-Report.md` |
+| Live boot tests | run `44635214442` - BIOS and UEFI, `<BOOT_COUNTS>` |
+| Installer version label | run `44635230275` - `<LABEL_COUNTS>` |
+| Window and workspace behaviour at 1366x768 | run `44635217637` - `<TILING_COUNTS>` |
+| Voice typing and Jellyfin | run `44635226301` - `<VOICE_COUNTS>` |
+| Installation test | run `44635222172` - `<INSTALL_COUNTS>`; see `Test-Report.md` |
 | Source | `SMD-Linux-Build-v1.7.0.zip`, checksums in `SHA256SUMS` |
 
 **Hardware confirmation (Hunter, on Craig):** the four-window layout of 1.6.0

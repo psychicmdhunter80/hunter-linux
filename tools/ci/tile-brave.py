@@ -785,7 +785,10 @@ def main():
             time.sleep(3)
 
         def nav(action):
-            shell.run("hunter-workspaces-nav %s" % action, timeout=60)
+            # The serial console has no DISPLAY of its own; the helper asks i3
+            # through i3-msg, which needs to know which X server to ask.
+            shell.run("DISPLAY=:0 hunter-workspaces-nav %s" % action,
+                      timeout=60)
             time.sleep(2)
             return state()[0]
 
