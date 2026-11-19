@@ -626,6 +626,10 @@ def main():
         shell.run("DISPLAY=:0 i3-msg -q 'workspace number 2'", timeout=60)
         time.sleep(4)
         after = workspace_icons()
+        record("INFO: icons after switching to 2: " + " ".join(
+            "%s=%s" % item for item in sorted(after.items())))
+        record("INFO: workspace button log after the switch: " + " | ".join(
+            shell.run("tail -8 ~/.cache/smd/workspaces.log 2>/dev/null").split())[:400])
         check(results, "switching workspace moves the highlight",
               after.get("1") == "smd-ws-1" and after.get("2") == "smd-ws-2-active")
         focused = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>&1", timeout=60)
@@ -1293,6 +1297,17 @@ def main():
         # the earlier check is a normal window too and would take a slot.
         shell.run("pkill -x brave; pkill -x xfce4-terminal; "
                   "pkill -f 'SMD panel'; sleep 3", timeout=60)
+        # ...and they all have to land on the same workspace.  Earlier checks
+        # switch workspaces and reload i3, so the focused one is whatever they
+        # left behind; two windows on different workspaces are two lone
+        # windows, each filling its own screen, and no layout to measure.
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=60)
+        time.sleep(2)
+        here = shell.run("DISPLAY=:0 i3-msg -t get_workspaces", timeout=60)
+        focused = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
+                            here.replace(" ", ""))
+        record("INFO: the tiling windows open on workspace %s"
+               % (focused.group(1) if focused else "?"))
         open_window("smd-one")
         one, ok1 = wait_for(1)
         check(results, "one window fills the usable desktop", ok1)
