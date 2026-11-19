@@ -1207,7 +1207,15 @@ def main():
         def open_window(title):
             shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                       "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-            time.sleep(4)
+            time.sleep(2)
+            # The tiling helper reflows a workspace by focusing it, so a new
+            # window can arrive on another workspace entirely; put it where
+            # the layout is being measured, then make sure that is focused.
+            shell.run("DISPLAY=:0 i3-msg -q '[title=\"^%s$\"] move container "
+                      "to workspace 1'; "
+                      "DISPLAY=:0 i3-msg -q 'workspace number 1'" % title,
+                      timeout=30)
+            time.sleep(3)
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree.

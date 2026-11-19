@@ -78,11 +78,12 @@ workspace_from_event() {
 	# answers requests on the same socket, so a subscriber that stops reading
 	# while it waits for a reply from the same i3 can wedge the session -
 	# windows then open but nothing responds for as long as it lasts.
-	# The workspace object inside the event starts with its id (id, num, name,
-	# visible, focused, rect, output, urgent), so the number is read past the
-	# id and before the nested rect, whose braces would otherwise swallow it.
+	# Everything from "old" on belongs to the workspace that was left, so it is
+	# dropped first; what remains is the one that was switched to, and its
+	# number is the last "num" in it.
 	printf '%s' "$1" |
-		sed -n 's/.*"current":{[^{}]*"num":\([0-9][0-9]*\).*/\1/p'
+		sed 's/,"old":.*$//' |
+		sed -n 's/.*"num": *\([0-9][0-9]*\).*/\1/p'
 }
 
 write_buttons "$(current_workspace)"
@@ -97,9 +98,14 @@ while :; do
 	i3-msg -t subscribe -m '["workspace"]' 2>>"$log" | while read -r event; do
 		number=$(workspace_from_event "$event")
 		if [ -z "$number" ]; then
-			echo "$(date '+%F %T') could not read the workspace from an event" >>"$log"
-			continue
+			# An event the payload could not answer for (the subscription's own
+			# acknowledgement, or a workspace the event does not name).  Asking
+			# i3 once is safe here - the stream is not backed up - and the
+			# event is kept in the log, so the shape is known next time.
+			echo "$(date '+%F %T') event without a workspace number, asking i3: $(printf '%s' "$event" | cut -c1-160)" >>"$log"
+			number=$(current_workspace)
 		fi
+		[ -n "$number" ] || continue
 		write_buttons "$number"
 	done
 	# The subscription ended: i3 reloaded, restarted or went away.  If there
