@@ -1260,16 +1260,21 @@ def main():
             walk(data, None)
             return found[0] if found else None
 
-        def move_home(title, window_id):
-            """Move the window by title, then read its workspace back.
+        def close_window(window_id):
+            """Close a window the X way; i3 criteria are not usable here."""
+            shell.run("DISPLAY=:0 xdotool windowclose %s" % window_id, timeout=30)
 
-            The title is matched only after the window has been seen in the
-            tree, so it is set by then; matching it at map time is what failed
-            before, and matching a container id silently matches nothing.
+        def move_home(window_id):
+            """Move the window to the measurement workspace, then read it back.
+
+            `i3-msg` commands that carry criteria do nothing on this image
+            while the same command without one works, so the window is focused
+            with xdotool first and the move applies to the focused container.
             """
             for _attempt in range(10):
-                shell.run("DISPLAY=:0 i3-msg -q '[title=\"^%s$\"] move container "
-                          "to workspace %d'" % (title, home), timeout=30)
+                shell.run("DISPLAY=:0 xdotool windowfocus %s; sleep 1; "
+                          "DISPLAY=:0 i3-msg -q 'move container to workspace %d'"
+                          % (window_id, home), timeout=30)
                 time.sleep(2)
                 if ws_of(window_id) == home:
                     return True
@@ -1292,7 +1297,7 @@ def main():
                     record("INFO: %s never appeared in i3 (attempt %d)"
                            % (title, attempt))
                     continue
-                if here[1] == home or move_home(title, here[0]):
+                if here[1] == home or move_home(here[0]):
                     record("INFO: %s is on workspace %s" % (title, here[1]
                                                             if here[1] == home
                                                             else home))
@@ -1300,8 +1305,7 @@ def main():
                     return
                 record("INFO: %s would not stay on workspace %s, closing it "
                        "(attempt %d)" % (title, home, attempt))
-                shell.run("DISPLAY=:0 i3-msg -q '[title=\"^%s$\"] kill'" % title,
-                          timeout=30)
+                close_window(here[0])
                 time.sleep(3)
             record("FAIL: %s could not be opened on workspace %s"
                    % (title, home))
