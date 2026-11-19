@@ -1205,7 +1205,13 @@ def main():
         # Detach every terminal: a background job that inherits the session
         # keeps the channel open and the next command times out.
         def placed(title):
-            """(con_id, workspace number) of the window carrying that title."""
+            """(X11 window id, workspace number) of the window with that title.
+
+            The window id is the one `get_tree` reports as `window`, which is
+            also what `xdotool` and `xwininfo` use; the container id next to it
+            is i3's own, and naming it in a command matches nothing and does
+            nothing at all.
+            """
             tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
             try:
                 data = json.loads(tree[tree.index("{"):])
@@ -1218,7 +1224,7 @@ def main():
                     number = (child.get("num") if child.get("type") == "workspace"
                               else workspace)
                     if child.get("window") and str(child.get("name", "")) == title:
-                        found.append((child.get("id"), number))
+                        found.append((child.get("window"), number))
                     walk(child, number)
 
             walk(data, None)
@@ -1234,8 +1240,8 @@ def main():
         # arrives away from the others is moved here and the result is checked.
         home = 9
 
-        def ws_of(con_id):
-            """Which workspace that container is on, or None if it is gone."""
+        def ws_of(window_id):
+            """Which workspace that window is on, or None if it is gone."""
             tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
             try:
                 data = json.loads(tree[tree.index("{"):])
@@ -1247,19 +1253,25 @@ def main():
                 for child in node.get("nodes", []) + node.get("floating_nodes", []):
                     number = (child.get("num") if child.get("type") == "workspace"
                               else workspace)
-                    if child.get("window") and child.get("id") == con_id:
+                    if child.get("window") and child.get("window") == window_id:
                         found.append(number)
                     walk(child, number)
 
             walk(data, None)
             return found[0] if found else None
 
-        def move_home(con_id):
+        def move_home(title, window_id):
+            """Move the window by title, then read its workspace back.
+
+            The title is matched only after the window has been seen in the
+            tree, so it is set by then; matching it at map time is what failed
+            before, and matching a container id silently matches nothing.
+            """
             for _attempt in range(10):
-                shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] move container "
-                          "to workspace %d'" % (con_id, home), timeout=30)
+                shell.run("DISPLAY=:0 i3-msg -q '[title=\"^%s$\"] move container "
+                          "to workspace %d'" % (title, home), timeout=30)
                 time.sleep(2)
-                if ws_of(con_id) == home:
+                if ws_of(window_id) == home:
                     return True
             return False
 
@@ -1280,7 +1292,7 @@ def main():
                     record("INFO: %s never appeared in i3 (attempt %d)"
                            % (title, attempt))
                     continue
-                if here[1] == home or move_home(here[0]):
+                if here[1] == home or move_home(title, here[0]):
                     record("INFO: %s is on workspace %s" % (title, here[1]
                                                             if here[1] == home
                                                             else home))
@@ -1288,7 +1300,7 @@ def main():
                     return
                 record("INFO: %s would not stay on workspace %s, closing it "
                        "(attempt %d)" % (title, home, attempt))
-                shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill'" % here[0],
+                shell.run("DISPLAY=:0 i3-msg -q '[title=\"^%s$\"] kill'" % title,
                           timeout=30)
                 time.sleep(3)
             record("FAIL: %s could not be opened on workspace %s"
