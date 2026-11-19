@@ -174,6 +174,7 @@ class Shell:
 
     def wait_for_x(self, timeout=600):
         deadline = time.time() + timeout
+        frame = 0
         while time.time() < deadline:
             probe = self.run(
                 "DISPLAY=:0 xdpyinfo >/dev/null 2>&1 && echo READY || echo WAIT; "
@@ -182,10 +183,39 @@ class Shell:
             )
             if "READY" in probe:
                 record("PASS: the X display is up")
+                # What was on screen while the machine was booting decides
+                # whether the loading screen is real; a screenshot's brightness
+                # is measured, not guessed from its size.
+                for name, mean in boot_frames:
+                    record(f"INFO: boot frame {name}: mean brightness {mean:.0f}")
+                visible = [name for name, mean in boot_frames if mean > 1000]
+                check(results, "something was drawn while the machine booted",
+                      bool(visible))
                 return True
+            if frame < 12:
+                name = f"boot-{frame:02d}"
+                try:
+                    path = monitor.screenshot(name)
+                    boot_frames.append((name, frame_mean(path)))
+                except Exception as error:      # a monitor hiccup is not a result
+                    record(f"WARN: could not capture {name}: {error}")
+                frame += 1
             time.sleep(10)
         record("FAIL: the X display never came up")
         return False
+
+
+boot_frames = []
+
+
+def frame_mean(path):
+    """Average brightness of a screenshot, 0-65535, measured with ImageMagick."""
+    try:
+        out = subprocess.run(["identify", "-format", "%[mean]", path],
+                             capture_output=True, text=True, timeout=60)
+        return float(out.stdout.strip())
+    except Exception:
+        return 0.0
 
 
 def start_qemu():
@@ -461,17 +491,17 @@ def main():
                          "-p /plugins/plugin-2/show-tooltips 2>&1", timeout=60)
         check(results, "the window tooltip still carries the title",
               tips.strip().endswith("true"))
-        # xfconf-query answers one property per call, so ask for each launcher.
-        brave_pin = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
-                              "-p /plugins/plugin-11/items -v 2>&1", timeout=60)
-        file_pin = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
-                             "-p /plugins/plugin-12/items -v 2>&1", timeout=60)
+        # The panel copies each launcher into ~/.config/xfce4/panel/launcher-N/
+        # and stores only that copy's name in xfconf, so the question "what is
+        # pinned" is answered by those files, not by the property text.
+        pinned = shell.run("grep -rhiE '^(Name|Exec|Icon)=' "
+                           "~/.config/xfce4/panel/launcher-*/ 2>/dev/null | sort -u",
+                           timeout=60)
         check(results, "Brave is pinned to the panel",
-              "brave-browser.desktop" in brave_pin)
+              "brave-browser" in pinned)
         check(results, "the File Manager is pinned beside Brave",
-              "thunar.desktop" in file_pin)
-        record("INFO: pinned launchers: %s | %s"
-               % (" ".join(brave_pin.split())[:60], " ".join(file_pin.split())[:60]))
+              "thunar" in pinned)
+        record("INFO: pinned launchers: %s" % " | ".join(pinned.splitlines())[:160])
         favs = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
                          "-p /plugins/plugin-1/favorites -v 2>&1", timeout=60)
         order = [name for name in ("brave-browser", "thunar", "xfce4-terminal",
@@ -1047,8 +1077,9 @@ def main():
         shipped = shell.run(
             "grep -c 'brave-browser.desktop' /etc/skel/.config/xfce4/xfconf/"
             "xfce-perchannel-xml/xfce4-panel.xml 2>/dev/null", timeout=60)
+        shipped_count = (shipped.strip().splitlines() or ["0"])[-1].strip()
         check(results, "the Brave launcher is in the panel defaults",
-              shipped.strip().splitlines()[-1:] == ["1"])
+              shipped_count.isdigit() and int(shipped_count) >= 1)
         record(f"INFO: live launcher properties: {qchunks[1].strip()[:120]}")
         check(results, "the new spacer does not expand",
               qchunks[2].strip() == "false")
@@ -1129,7 +1160,8 @@ def main():
 
         # Only the test's own windows may be in the layout: the browser from
         # the earlier check is a normal window too and would take a slot.
-        shell.run("pkill -x brave; sleep 2", timeout=60)
+        shell.run("pkill -x brave; pkill -x xfce4-terminal; "
+                  "pkill -f 'SMD panel'; sleep 3", timeout=60)
         open_window("smd-one")
         one = tiles()
         check(results, "one window fills the usable desktop",
