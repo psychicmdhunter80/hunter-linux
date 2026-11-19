@@ -1285,6 +1285,22 @@ def main():
                 time.sleep(1)
             return False
 
+        def nudge_helper(window_id):
+            """Make the helper rebuild the workspace the window has arrived on.
+
+            It ignores move events on purpose - it moves windows itself, and
+            reacting to its own moves would loop - so a window put on a
+            workspace by something else keeps the size it had until the next
+            window opens or closes.  A fullscreen toggle is a change it does
+            act on, and toggling it twice puts the window back as it was.
+            """
+            shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
+                      "DISPLAY=:0 i3-msg -q 'fullscreen toggle'; sleep 2; "
+                      "DISPLAY=:0 i3-msg -q 'fullscreen toggle'" % window_id,
+                      timeout=60)
+            time.sleep(2)
+            helper_quiet()
+
         def move_home(window_id, there):
             """Move the window to the measurement workspace, then read it back.
 
@@ -1308,7 +1324,8 @@ def main():
                 if ws_of(window_id) == home:
                     time.sleep(2)
                     if ws_of(window_id) == home:
-                        return True
+                        nudge_helper(window_id)
+                        return ws_of(window_id) == home
             return False
 
         def open_window(title):
