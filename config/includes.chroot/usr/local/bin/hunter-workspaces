@@ -72,6 +72,17 @@ Categories=Utility;"
 	return 0
 }
 
+event_change() {
+	# Which kind of workspace event this is: focus, init, empty, move, rename
+	# or urgent.  Only a focus change moves the highlight.  i3 also reports
+	# `empty` for the workspace that was just left, and that event's `current`
+	# is the left-behind workspace - acting on it put the highlight back on
+	# the workspace you had just left every time you switched from an empty
+	# one.  `init` is the same question asked once after start-up or reload.
+	printf '%s' "$1" |
+		sed -n 's/.*"change": *"\([a-z]*\)".*/\1/p'
+}
+
 workspace_from_event() {
 	# The event carries the workspace that was switched to, so the loop below
 	# never has to ask i3 anything.  That matters: i3 delivers events and
@@ -96,6 +107,13 @@ while :; do
 		exit 0
 	fi
 	i3-msg -t subscribe -m '["workspace"]' 2>>"$log" | while read -r event; do
+		# The subscription's own acknowledgement has no change at all; the
+		# empty, move, rename and urgent events name a workspace that is not
+		# the one you are looking at.  Neither may move the highlight.
+		case $(event_change "$event") in
+			focus|init) ;;
+			*) continue ;;
+		esac
 		number=$(workspace_from_event "$event")
 		if [ -z "$number" ]; then
 			# An event the payload could not answer for (the subscription's own

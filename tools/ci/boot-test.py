@@ -1204,18 +1204,58 @@ def main():
 
         # Detach every terminal: a background job that inherits the session
         # keeps the channel open and the next command times out.
+        def placed(title):
+            """(con_id, workspace number) of the window carrying that title."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return None
+            found = []
+
+            def walk(node, workspace):
+                for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                    number = (child.get("num") if child.get("type") == "workspace"
+                              else workspace)
+                    if child.get("window") and str(child.get("name", "")) == title:
+                        found.append((child.get("id"), number))
+                    walk(child, number)
+
+            walk(data, None)
+            return found[0] if found else None
+
         def open_window(title):
             shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                       "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-            time.sleep(2)
+            # The window has to exist before it can be moved, and on this
+            # runner that has taken several seconds.  Moving it after a fixed
+            # pause missed the window entirely: it then opened wherever focus
+            # happened to be, and the check below measured two lone windows on
+            # two workspaces - an arrangement that never existed.
+            here = None
+            for _attempt in range(20):
+                time.sleep(2)
+                here = placed(title)
+                if here:
+                    break
+            if not here:
+                record("INFO: %s never appeared in i3" % title)
+                return
             # The tiling helper reflows a workspace by focusing it, so a new
             # window can arrive on another workspace entirely; put it where
             # the layout is being measured, then make sure that is focused.
-            shell.run("DISPLAY=:0 i3-msg -q '[title=\"^%s$\"] move container "
-                      "to workspace 1'; "
-                      "DISPLAY=:0 i3-msg -q 'workspace number 1'" % title,
-                      timeout=30)
+            # Moving by con id is what the tree just named, so it cannot miss
+            # the window the way a title match can.
+            for _attempt in range(10):
+                if here[1] == 1:
+                    break
+                shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] move container "
+                          "to workspace 1'" % here[0], timeout=30)
+                time.sleep(2)
+                here = placed(title) or here
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=30)
             time.sleep(3)
+            record("INFO: %s is on workspace %s" % (title, here[1]))
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree.
@@ -1230,25 +1270,33 @@ def main():
                 return []
             found = []
 
-            def walk(node):
+            def walk(node, workspace):
                 for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                    number = (child.get("num") if child.get("type") == "workspace"
+                              else workspace)
                     name = str(child.get("name", ""))
                     if child.get("window") and name.startswith("smd-") \
                             and not name.startswith("smd-slot-") \
                             and not str(child.get("floating", "")).startswith("user"):
-                        found.append(child["rect"])
-                    walk(child)
+                        # The workspace travels with the rectangle: two windows
+                        # filling their own screens are two lone windows, not
+                        # a layout, and the evidence has to say so.
+                        found.append(dict(child["rect"], ws=number))
+                    walk(child, number)
 
-            walk(data)
+            walk(data, None)
             return found
 
         def describe(boxes):
-            return " ".join("[%d,%d %dx%d]" % (b["x"], b["y"], b["width"],
-                                               b["height"]) for b in boxes)
+            return " ".join("[ws%s %d,%d %dx%d]" % (b.get("ws"), b["x"], b["y"],
+                                                    b["width"], b["height"])
+                            for b in boxes)
 
         def shapes(count, boxes):
             """Is this the arrangement the helper is supposed to produce?"""
             if len(boxes) != count:
+                return False
+            if count > 1 and len({b.get("ws") for b in boxes}) != 1:
                 return False
             if count == 1:
                 return boxes[0]["width"] >= 1000 and boxes[0]["height"] >= 700
@@ -1257,7 +1305,7 @@ def main():
                 return (abs(first["width"] - second["width"]) <= 4 and
                         round(first["y"]) == round(second["y"]) and
                         round(first["x"]) != round(second["x"]))
-            xs = sorted({round(box["x"]) for b in boxes})
+            xs = sorted({round(b["x"]) for b in boxes})
             if count == 3:
                 if len(xs) != 2:
                     return False
