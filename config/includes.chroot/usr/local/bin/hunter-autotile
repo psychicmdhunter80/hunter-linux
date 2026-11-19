@@ -352,6 +352,25 @@ def main():
         # config sets, it sends the owner to the workspace he came from every
         # time anything is arranged.
 
+        if len(order) > 1:
+            # Start from a flat workspace.  A window left inside the half an
+            # older rebuild made for it would be split again, one wrapper
+            # deeper on every rebuild, until the windows sat in a stack of
+            # containers instead of a row.  Each window but the first is taken
+            # out to a workspace of the helper's own and put straight back:
+            # i3 destroys the container it left behind, the workspace is never
+            # empty, and arrival order is kept because they go back in it.
+            for con_id in order[1:]:
+                i3.command("[con_id=%d] move --no-auto-back-and-forth "
+                           "container to workspace %s" % (con_id, SCRATCH))
+                i3.command("[con_id=%d] move --no-auto-back-and-forth "
+                           "container to workspace %s" % (con_id, name))
+            # The row is what two windows are, and the base of every other
+            # shape.  "layout splith" applies to the focused window's parent,
+            # so something at the top of the workspace has the focus first.
+            i3.command("[con_id=%d] focus" % order[-1])
+            i3.command("layout splith")
+
         if len(order) == 1:
             # One window fills the workspace on its own, so it only has to be
             # brought back when it is on another one.  Moving it to the

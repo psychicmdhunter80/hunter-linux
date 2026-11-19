@@ -682,14 +682,16 @@ def main():
                   % names.get("smd-two"), timeout=60)
         time.sleep(6)
         floated = on_space(tree(), away_ws)
-        stayed = {xid: rect for xid, rect in floated.items()
+        # A floating window is not part of the tiling, so the tree dump does not
+        # list it at all: that it is gone from the row, while the other two are
+        # exactly where they were, is the proof that it is floating and not a
+        # tile the helper stretched.
+        stayed = {xid: rect for xid, rect in before_float.items()
                   if xid != names.get("smd-two")}
-        own = floated.get(names.get("smd-two"))
-        ok("a floated window keeps its own size",
-           len(stayed) == 2 and all(stayed.get(xid) == rect
-                                     for xid, rect in before_float.items()
-                                     if xid != names.get("smd-two"))
-           and bool(own) and (own[2] < work[2] - 40 or own[3] < work[3] - 40),
+        ok("a floated window leaves the tiling and the others stay put",
+           len(stayed) == 2 and len(floated) == 2
+           and all(floated.get(xid) == rect for xid, rect in stayed.items())
+           and names.get("smd-two") not in floated,
            describe(floated, labels_for(floated)))
         shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
                   % names.get("smd-two"), timeout=60)
@@ -714,12 +716,12 @@ def main():
         before_show = on_space(tree(), away_ws)
         shell.run("DISPLAY=:0 i3-msg -q 'scratchpad show'; sleep 5", timeout=90)
         shown = on_space(tree(), away_ws)
-        over = shown.get(names.get("smd-two"))
-        same_tiles = all(shown.get(xid) == rect for xid, rect in before_show.items())
+        mapping = shell.run("DISPLAY=:0 xwininfo -id %s | grep 'Map State'"
+                            % names.get("smd-two"), timeout=60).strip()
         ok("showing it floats it over an unchanged layout",
-           same_tiles and bool(over)
-           and (over[2] < work[2] - 40 or over[3] < work[3] - 40),
-           describe(shown, labels_for(shown)))
+           len(before_show) == 2 and shown == before_show
+           and "IsViewable" in mapping,
+           "%s, %s" % (describe(shown, labels_for(shown)), mapping or "no window"))
         shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
                   % names.get("smd-two"), timeout=60)
         shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % away_ws,
