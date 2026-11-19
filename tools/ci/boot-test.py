@@ -1264,17 +1264,20 @@ def main():
             """Close a window the X way; i3 criteria are not usable here."""
             shell.run("DISPLAY=:0 xdotool windowclose %s" % window_id, timeout=30)
 
-        def move_home(window_id):
+        def move_home(window_id, there):
             """Move the window to the measurement workspace, then read it back.
 
             `i3-msg` commands that carry criteria do nothing on this image
-            while the same command without one works, so the window is focused
-            with xdotool first and the move applies to the focused container.
+            while the same command without one works, so the window is made the
+            focused container first and the move applies to that.  A window on
+            a workspace that is not on screen is unmapped, and xdotool cannot
+            focus it, so the workspace it is on is shown first.
             """
             for _attempt in range(10):
-                shell.run("DISPLAY=:0 xdotool windowfocus %s; sleep 1; "
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; sleep 1; "
+                          "DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                           "DISPLAY=:0 i3-msg -q 'move container to workspace %d'"
-                          % (window_id, home), timeout=30)
+                          % (there, window_id, home), timeout=60)
                 time.sleep(2)
                 if ws_of(window_id) == home:
                     return True
@@ -1297,7 +1300,7 @@ def main():
                     record("INFO: %s never appeared in i3 (attempt %d)"
                            % (title, attempt))
                     continue
-                if here[1] == home or move_home(here[0]):
+                if here[1] == home or move_home(here[0], here[1]):
                     record("INFO: %s is on workspace %s" % (title, here[1]
                                                             if here[1] == home
                                                             else home))
