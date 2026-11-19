@@ -623,6 +623,37 @@ def main():
         window = shell.run("DISPLAY=:0 xdotool search --name 'SMD panel check' "
                            "2>&1 | head -1", timeout=60).strip().splitlines()
         window_id = window[-1].strip() if window else ""
+
+        def report_places(where):
+            """Record which workspace every real window is on, and the helper log."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree 2>/dev/null", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                record("INFO: places %s: i3 tree unreadable" % where)
+                return
+            places = []
+
+            def walk(node, workspace):
+                for child in node.get("nodes", []) + node.get("floating_nodes", []):
+                    number = (child.get("num") if child.get("type") == "workspace"
+                              else workspace)
+                    if child.get("window"):
+                        box = child.get("rect") or {}
+                        places.append("ws%s:%s[%s,%s %sx%s]" % (
+                            number, child.get("name"), box.get("x"),
+                            box.get("y"), box.get("width"), box.get("height")))
+                    walk(child, number)
+
+            walk(data, None)
+            record("INFO: places %s: %s" % (where, " ".join(places)))
+            record("INFO: terminals %s: %s" % (where, " | ".join(
+                shell.run("ps -o pid=,args= -C xfce4-terminal 2>/dev/null") \
+                .strip().splitlines()))) 
+            record("INFO: autotile log %s: %s" % (where, " | ".join(
+                shell.run("tail -30 ~/.cache/smd/autotile.log 2>/dev/null")
+                .split())[:1500]))
+        report_places("after launch")
         shell.run("DISPLAY=:0 i3-msg -q 'workspace number 2'", timeout=60)
         time.sleep(4)
         after = workspace_icons()
@@ -655,6 +686,7 @@ def main():
             shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill' " % window_id, timeout=60)
         shell.run("pkill -f 'SMD panel check' >/dev/null 2>&1", timeout=60)
         time.sleep(4)
+        report_places("after close")
         settled = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>&1", timeout=60)
         current = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
                             settled.replace(" ", ""))
