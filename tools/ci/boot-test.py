@@ -1258,6 +1258,38 @@ def main():
         check(results, "the workspace navigation helper is installed",
               "NAV=ok" in navtool)
 
+        def tiles():
+            """Tiled windows from i3's own tree: workspace, title, id, rect."""
+            tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
+            try:
+                data = json.loads(tree[tree.index("{"):])
+            except (ValueError, KeyError):
+                return []
+            found = []
+
+            def walk(node, workspace):
+                for child in node.get("nodes", []) or []:
+                    number = (child.get("num") if child.get("type") == "workspace"
+                              else workspace)
+                    if child.get("window") and not child.get("nodes"):
+                        found.append(dict(child["rect"], ws=number,
+                                          name=str(child.get("name", "")),
+                                          win=child.get("window")))
+                    walk(child, number)
+
+            walk(data, None)
+            return found
+
+        def describe(boxes):
+            return " ".join("[ws%s %d,%d %dx%d]" % (b.get("ws"), b["x"], b["y"],
+                                                    b["width"], b["height"])
+                            for b in boxes)
+
+        def close_window(window_id):
+            shell.run("DISPLAY=:0 xdotool windowclose %s" % window_id,
+                      timeout=60)
+            time.sleep(3)
+
         def placed(title):
             """(X11 window id, workspace number) of the window with that title."""
             tree = shell.run("DISPLAY=:0 i3-msg -t get_tree", timeout=90)
