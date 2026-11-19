@@ -553,12 +553,26 @@ def main():
         # Both ends have to be right afterwards, and the helper is given
         # nothing except the move itself - no fullscreen toggle, no other
         # test-only trigger.
-        def wait_on(number, count, timeout=90):
+        def three_arrangement(found, first, second, third):
+            """First top-left, second full height on the right, third below."""
+            if not all(w in found for w in (first, second, third)):
+                return False
+            a, b, c = found[first], found[second], found[third]
+            return (c[0] == a[0] and c[1] > a[1] and abs(c[2] - a[2]) <= 4
+                    and b[0] > a[0] and abs(b[2] - a[2]) <= 4)
+
+        def wait_on(number, count, timeout=90, shape=None):
+            """The windows on one workspace, once they are in the wanted shape.
+
+            Counting them is not enough: i3 redistributes the space of a
+            workspace by itself when a window leaves, and the result can have
+            the right number of tiles with the columns the wrong way round.
+            """
             started = time.time()
             found = {}
             while time.time() - started < timeout:
                 found = on_space(tree(), number)
-                if len(found) == count:
+                if len(found) == count and (shape is None or shape(found)):
                     return found, True
                 time.sleep(3)
             return found, False
@@ -572,8 +586,12 @@ def main():
         shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                   "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
                   % (names.get("smd-four"), away_ws), timeout=90)
-        kept, kept_ok = wait_on(here_ws, 3)
-        ok("the windows left behind are tiled again after one moves away",
+        kept, kept_ok = wait_on(
+            here_ws, 3,
+            shape=lambda f: three_arrangement(f, names["smd-one"],
+                                              names["smd-two"],
+                                              names["smd-three"]))
+        ok("the windows left behind keep their arrival order",
            kept_ok, describe(kept, labels_for(kept)))
 
         shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
@@ -600,6 +618,24 @@ def main():
             halves_away = (abs(first[2] - second[2]) <= 4 and first[0] != second[0])
         ok("a second window moved in becomes two equal halves", halves_away,
            describe(pair, labels_for(pair)))
+
+        # A third arrival is where i3's own redistribution and the helper's
+        # arrival order disagree: the one that just arrived belongs below the
+        # first, and only a rebuild puts it there.
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % here_ws,
+                  timeout=60)
+        shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
+                  "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
+                  % (names.get("smd-two"), away_ws), timeout=90)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+                  timeout=60)
+        trio, trio_ok = wait_on(
+            away_ws, 3,
+            shape=lambda f: three_arrangement(f, names["smd-four"],
+                                              names["smd-three"],
+                                              names["smd-two"]))
+        ok("a third window moved in goes below the first, not on top", trio_ok,
+           describe(trio, labels_for(trio)))
         record("INFO: windows now on %s and %s, reflows=%s"
                % (here_ws, away_ws, reflows()))
 

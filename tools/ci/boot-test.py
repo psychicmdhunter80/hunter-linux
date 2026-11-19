@@ -1530,7 +1530,8 @@ def main():
         send("smd-four", away)
         shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home, timeout=30)
         left, okleft = wait_for(3, workspace=home)
-        check(results, "moving a window away re-tiles the ones that stay", okleft)
+        check(results, "moving a window away re-tiles the ones that stay",
+              okleft and shapes(3, left))
         record("INFO: after moving smd-four to workspace %d: %s"
                % (away, describe(left)))
 
@@ -1546,7 +1547,7 @@ def main():
         shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % away, timeout=30)
         pair, okpair = wait_for(2, workspace=away)
         check(results, "a second window moved in shares the screen as halves",
-              okpair)
+              okpair and shapes(2, pair))
         record("INFO: on workspace %d after two arrived: %s"
                % (away, describe(pair)))
 
