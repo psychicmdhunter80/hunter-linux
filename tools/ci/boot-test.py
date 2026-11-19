@@ -440,13 +440,17 @@ def main():
                          "-p /plugins/plugin-2/show-tooltips 2>&1", timeout=60)
         check(results, "the window tooltip still carries the title",
               tips.strip().endswith("true"))
-        pinned = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
-                           "-p /plugins/plugin-11/items -p /plugins/plugin-12/items "
-                           "-v 2>&1", timeout=60)
+        # xfconf-query answers one property per call, so ask for each launcher.
+        brave_pin = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                              "-p /plugins/plugin-11/items -v 2>&1", timeout=60)
+        file_pin = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                             "-p /plugins/plugin-12/items -v 2>&1", timeout=60)
         check(results, "Brave is pinned to the panel",
-              "brave-browser.desktop" in pinned)
+              "brave-browser.desktop" in brave_pin)
         check(results, "the File Manager is pinned beside Brave",
-              "thunar.desktop" in pinned)
+              "thunar.desktop" in file_pin)
+        record("INFO: pinned launchers: %s | %s"
+               % (" ".join(brave_pin.split())[:60], " ".join(file_pin.split())[:60]))
         favs = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
                          "-p /plugins/plugin-1/favorites -v 2>&1", timeout=60)
         order = [name for name in ("brave-browser", "thunar", "xfce4-terminal",
@@ -488,7 +492,12 @@ def main():
         # A window on workspace 1 has to stay there when the workspace changes.
         shell.run("DISPLAY=:0 xfce4-terminal --title='SMD panel check' "
                   ">/dev/null 2>&1 &", timeout=60)
-        time.sleep(8)
+        # A second window keeps workspace 1 alive when the first one closes,
+        # so the check below is about focus moving, not about i3 discarding an
+        # empty workspace.
+        shell.run("DISPLAY=:0 xfce4-terminal --title='SMD panel keep' "
+                  ">/dev/null 2>&1 &", timeout=60)
+        time.sleep(10)
         window = shell.run("DISPLAY=:0 xdotool search --name 'SMD panel check' "
                            "2>&1 | head -1", timeout=60).strip().splitlines()
         window_id = window[-1].strip() if window else ""
@@ -523,8 +532,15 @@ def main():
         settled = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>&1", timeout=60)
         current = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
                             settled.replace(" ", ""))
+        still_there = shell.run("DISPLAY=:0 xdotool search --name 'SMD panel keep' "
+                                "2>&1 | head -1", timeout=60).strip()
         check(results, "closing a window does not switch workspace",
               bool(current) and current.group(1) == "1")
+        check(results, "the other window is still on that workspace",
+              bool(still_there) and still_there != "0")
+        record("INFO: focused workspace after closing: %s"
+               % (current.group(1) if current else "?"))
+        shell.run("pkill -f 'SMD panel keep' >/dev/null 2>&1", timeout=60)
         monitor.screenshot("08-panel-1.6")
 
         def panel_state(window_id):
