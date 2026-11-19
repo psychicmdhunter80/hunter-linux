@@ -19,10 +19,10 @@ A window that moves to another workspace changes the shape of both ends: the
 one it left has a tile fewer, the one it arrived on a tile more, so both are
 rebuilt.  The layout is made by splitting the window that has to share its half
 and moving the new one beside it, so nothing is appended to the workspace and
-no structure is left behind for a later rebuild to nest inside.  Rebuilding a
-workspace takes the focus i3 needs for that, so a workspace the owner is not
-looking at is marked due instead and arranged the moment it is shown - the
-layout never pulls the focus away from what he is working on.
+no structure is left behind for a later rebuild to nest inside.  Nothing here
+switches the workspace, so a workspace the owner is not looking at is marked
+due and arranged the moment it is shown: the layout goes into the tree, never
+into the view, and never pulls the focus away from what he is working on.
 """
 
 import collections
@@ -332,11 +332,10 @@ def main():
             state["due"].discard(name)
             return
 
-        # Building the layout means appending it, and i3 appends to the
-        # workspace that has the focus.  Rebuilding a workspace the owner is
-        # not looking at would take the focus away from what he is working on,
-        # so it is marked due and rebuilt the moment it is shown - which is
-        # also the first moment its arrangement can be seen at all.
+        # Rebuilding a workspace the owner is not looking at would take the
+        # focus away from what he is working on, so it is marked due and
+        # rebuilt the moment it is shown - which is also the first moment its
+        # arrangement can be seen at all.
         current = focused_workspace(i3.tree()) or {}
         if current.get("name") != name:
             state["due"].add(name)
@@ -346,9 +345,12 @@ def main():
 
         note("reflow %s order=%s attempt=%d" % (name, order, attempt))
 
-        # Focus first: an emptied workspace that is not focused is reaped, and
-        # the layout would then be built on another one.
-        i3.command('workspace "%s"' % name)
+        # Nothing switches the workspace here.  The arrangement is made with
+        # commands that name the windows they act on, so it does not need the
+        # view - and asking i3 for the workspace that already has the focus is
+        # not a no-op: with workspace_auto_back_and_forth, which the shipped
+        # config sets, it sends the owner to the workspace he came from every
+        # time anything is arranged.
 
         if len(order) == 1:
             # One window always fills the screen, whatever the tree looks like.
@@ -362,12 +364,26 @@ def main():
             # wrapper container to be left behind and nested into by the next
             # rebuild - which is what turned two windows into two thirds of the
             # screen and three into three narrow tiles in one half.
+            parents = {child.get("id"): node
+                       for node in nodes_of(i3.tree())
+                       for child in (node.get("nodes") or [])}
             for index in range(2, len(order)):
                 top = order[index - 2]
                 mark = "smd-pair-%d" % index
+                holder = parents.get(top) or {}
+                # The half this window belongs in may already be there, left
+                # behind as a vertical container holding it alone when the
+                # other window of the pair moved away.  Splitting it again
+                # would bury the pair one wrapper deeper on every rebuild.
+                half = (holder.get("layout") == "splitv"
+                        and not holder.get("window")
+                        and len(holder.get("nodes") or []) == 1)
                 i3.command("[con_id=%d] mark --add %s" % (top, mark))
-                i3.command("[con_id=%d] focus" % top)
-                i3.command("split vertical")
+                if half:
+                    note("  reusing the empty half above %d" % top)
+                else:
+                    i3.command("[con_id=%d] focus" % top)
+                    i3.command("split vertical")
                 i3.command("[con_id=%d] move container to mark %s"
                            % (order[index], mark))
                 i3.command("unmark %s" % mark)
@@ -448,7 +464,7 @@ def main():
                 note("event %s on workspace %s" % (change, name))
                 handle(name)
             return
-        if change in ("new", "close", "fullscreen_mode"):
+        if change in ("new", "close", "fullscreen_mode", "floating"):
             # A closing window is already gone from the tree and a new one may
             # not be in it yet, so its workspace is looked up first, then the
             # one it was last seen on, and the focused workspace last.

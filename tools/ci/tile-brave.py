@@ -639,6 +639,142 @@ def main():
         record("INFO: windows now on %s and %s, reflows=%s"
                % (here_ws, away_ws, reflows()))
 
+        def two_halves(found):
+            if len(found) != 2:
+                return False
+            first, second = list(found.values())
+            return abs(first[2] - second[2]) <= 4 and first[0] != second[0]
+
+        def back_and_forth(target, forward):
+            """Send one window to the other workspace, then bring it back."""
+            source = away_ws if forward else here_ws
+            goal = here_ws if forward else away_ws
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % source,
+                      timeout=60)
+            shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
+                      "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
+                      % (names.get(target), goal), timeout=90)
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % goal,
+                      timeout=60)
+
+        # The same window moved back and forth twice.  A layout that is only
+        # right the first time is not a layout: each arrival has to settle on
+        # its own, on both workspaces, with nothing but the move itself.
+        for round_number in (1, 2):
+            back_and_forth("smd-two", True)
+            halves, halves_ok = wait_on(here_ws, 2, shape=two_halves)
+            ok("a window moved back keeps two halves behind (round %d)"
+               % round_number, halves_ok, describe(halves, labels_for(halves)))
+            back_and_forth("smd-two", False)
+            rejoined, rejoined_ok = wait_on(
+                away_ws, 3,
+                shape=lambda f: three_arrangement(f, names["smd-four"],
+                                                  names["smd-three"],
+                                                  names["smd-two"]))
+            ok("and rejoins the three in arrival order (round %d)"
+               % round_number, rejoined_ok,
+               describe(rejoined, labels_for(rejoined)))
+
+        # A window the owner floats keeps its own size and leaves the tiled
+        # ones exactly where they were; tiling it again puts it back in place.
+        before_float = on_space(tree(), away_ws)
+        shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating enable'"
+                  % names.get("smd-two"), timeout=60)
+        time.sleep(6)
+        floated = on_space(tree(), away_ws)
+        stayed = {xid: rect for xid, rect in floated.items()
+                  if xid != names.get("smd-two")}
+        own = floated.get(names.get("smd-two"))
+        ok("a floated window keeps its own size",
+           len(stayed) == 2 and all(stayed.get(xid) == rect
+                                     for xid, rect in before_float.items()
+                                     if xid != names.get("smd-two"))
+           and bool(own) and (own[2] < work[2] - 40 or own[3] < work[3] - 40),
+           describe(floated, labels_for(floated)))
+        shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
+                  % names.get("smd-two"), timeout=60)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+                  timeout=60)
+        tiled_again, tiled_ok = wait_on(
+            away_ws, 3,
+            shape=lambda f: three_arrangement(f, names["smd-four"],
+                                              names["smd-three"],
+                                              names["smd-two"]))
+        ok("tiling it again puts it back into the arrangement", tiled_ok,
+           describe(tiled_again, labels_for(tiled_again)))
+
+        # The scratchpad is a workspace of its own: a window sent there must
+        # leave the layout behind, and showing it must not stretch it to a tile.
+        shell.run("DISPLAY=:0 i3-msg -q '[id=%s] move scratchpad'"
+                  % names.get("smd-two"), timeout=60)
+        time.sleep(6)
+        without, without_ok = wait_on(away_ws, 2, shape=two_halves)
+        ok("a window sent to the scratchpad leaves two halves behind",
+           without_ok, describe(without, labels_for(without)))
+        before_show = on_space(tree(), away_ws)
+        shell.run("DISPLAY=:0 i3-msg -q 'scratchpad show'; sleep 5", timeout=90)
+        shown = on_space(tree(), away_ws)
+        over = shown.get(names.get("smd-two"))
+        same_tiles = all(shown.get(xid) == rect for xid, rect in before_show.items())
+        ok("showing it floats it over an unchanged layout",
+           same_tiles and bool(over)
+           and (over[2] < work[2] - 40 or over[3] < work[3] - 40),
+           describe(shown, labels_for(shown)))
+        shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
+                  % names.get("smd-two"), timeout=60)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+                  timeout=60)
+        returned, returned_ok = wait_on(
+            away_ws, 3,
+            shape=lambda f: three_arrangement(f, names["smd-four"],
+                                              names["smd-three"],
+                                              names["smd-two"]))
+        ok("taking it out of the scratchpad tiles it back in order",
+           returned_ok, describe(returned, labels_for(returned)))
+
+        # The tree dump indents every level, so it says how deep the windows
+        # really sit.  A rebuild that wraps what it arranges gets deeper on
+        # every rebuild; these workspaces have now been arranged many times.
+        def indent(line):
+            return (len(line) - len(line.lstrip(" "))) // 2
+
+        def nesting(text, number):
+            """Deepest window below a workspace, and containers left empty."""
+            section = [line for line in text.splitlines()
+                       if re.search(r"\bws=%s\b" % number, line)]
+            if not section:
+                return None, None
+            base = indent(section[0])
+            deepest = 0
+            empties = 0
+            for index, line in enumerate(section):
+                if line.lstrip().startswith("WIN"):
+                    deepest = max(deepest, indent(line) - base)
+                    continue
+                below = []
+                for other in section[index + 1:]:
+                    if indent(other) <= indent(line):
+                        break
+                    below.append(other)
+                if below and not any(o.lstrip().startswith("WIN") for o in below):
+                    empties += 1
+            return deepest, empties
+
+        dump = tree()
+        here_deep, here_empty = nesting(dump, here_ws)
+        away_deep, away_empty = nesting(dump, away_ws)
+        record("INFO: workspace %s nests %s deep with %s empty containers; "
+               "workspace %s nests %s deep with %s empty containers"
+               % (here_ws, here_deep, here_empty,
+                  away_ws, away_deep, away_empty))
+        ok("the windows do not sit inside stacked containers",
+           here_deep is not None and away_deep is not None
+           and here_deep <= 2 and away_deep <= 2,
+           "depth %s and %s" % (here_deep, away_deep))
+        ok("no empty container is left behind",
+           here_empty == 0 and away_empty == 0,
+           "%s and %s" % (here_empty, away_empty))
+
         record("INFO: helper processes at the end: %s" % helpers())
         record("INFO: reflows at the end: %s" % reflows())
         tail = shell.run("tail -12 ~/.cache/smd/autotile.log 2>/dev/null",
