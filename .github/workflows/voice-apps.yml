@@ -39,13 +39,13 @@ jobs:
         run: |
           gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
           ls -lh iso/
-          cd iso && sha256sum -c SMD-Linux-v1.5.0-amd64.iso.sha256
+          cd iso && sha256sum -c SMD-Linux-v*-amd64.iso.sha256
 
       - name: Exercise Voice Typing and the Jellyfin client
         run: |
           chmod +x tools/ci/voice-apps.py
           "$HOME/venv/bin/python" tools/ci/voice-apps.py \
-            iso/SMD-Linux-v1.5.0-amd64.iso out "${{ inputs.mode }}"
+            iso/SMD-Linux-v*-amd64.iso out "${{ inputs.mode }}"
         # Starting the live session, dictating a known recording and opening
         # the client takes about 20 minutes on TCG; a stall must still fail.
         timeout-minutes: 70

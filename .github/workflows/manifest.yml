@@ -31,7 +31,7 @@ jobs:
       - name: Read the image without booting it
         run: |
           set -euo pipefail
-          iso=iso/SMD-Linux-v1.5.0-amd64.iso
+          iso=iso/SMD-Linux-v*-amd64.iso
           mkdir -p /tmp/iso
           sudo mount -o loop,ro "$iso" /tmp/iso
           squash=/tmp/iso/live/filesystem.squashfs
