@@ -321,12 +321,27 @@ def check_version_labels():
     The 1.4 image still called itself 1.3 in the installer because the
     Calamares branding was never bumped; this keeps that from happening again.
     """
-    config = read(os.path.join(ROOT, "auto", "config"))
-    match = re.search(r"--image-name\s+SMD-Linux-v([0-9.]+)", config)
-    if not match:
-        fail("auto/config does not name the image")
+    # VERSION is the one place the release version is written.  Everything
+    # else - the image name, the ISO label, the installer strings, the drawn
+    # artwork - is derived from it, so a stale number in one of them is a
+    # defect in the derivation, not something to fix by hand.
+    version = read(os.path.join(ROOT, "VERSION")).strip()
+    if not re.match(r"^[0-9]+\.[0-9]+(\.[0-9]+)?$", version):
+        fail("VERSION does not hold a version: %r" % version)
         return None
-    version = match.group(1)
+    derived = [
+        ("image name", "auto/config", r'--image-name "SMD-Linux-v\$\{VERSION\}"'),
+        ("ISO label", "auto/config", r'--iso-volume "SMD_LINUX_\$\{VOLUME\}"'),
+        ("ISO application", "auto/config", r'--iso-application "SMD Linux \$\{VERSION\}"'),
+        ("image filename", "build.sh", r'IMAGE_NAME="SMD-Linux-v\$\{VERSION\}-amd64\.iso"'),
+        ("artwork version", "tools/make-assets.py", r'"VERSION"'),
+        ("build workflow name", ".github/workflows/build.yml",
+         r'-amd64\.iso'),
+    ]
+    for name, path, pattern in derived:
+        found = re.search(pattern, read(os.path.join(ROOT, path)))
+        if not found:
+            fail("%s is no longer derived from VERSION in %s" % (name, path))
 
     labels = [
         ("Calamares productName", "etc/calamares/branding/hunter/branding.desc",

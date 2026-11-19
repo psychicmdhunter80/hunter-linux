@@ -31,6 +31,26 @@ jobs:
       - name: Check the sources
         run: python3 tools/verify-project.py
 
+      - name: The artwork matches the version
+        run: |
+          set -euo pipefail
+          # Every picture is generated from VERSION by tools/make-assets.py.
+          # Regenerate into a scratch tree and compare: a checkout whose
+          # committed artwork differs would ship a picture carrying an older
+          # version, which is how the 1.5.0 installer showed 1.4.1 artwork.
+          rm -rf /tmp/assets && mkdir -p /tmp/assets
+          SMD_ASSET_ROOT=/tmp/assets python3 tools/make-assets.py
+          mismatches=0
+          while IFS= read -r generated; do
+            rel=${generated#/tmp/assets/}
+            if ! cmp -s "$generated" "$rel"; then
+              echo "artwork does not match the version: $rel" >&2
+              mismatches=1
+            fi
+          done < <(find /tmp/assets -name '*.png')
+          test "$mismatches" -eq 0
+          echo "artwork matches VERSION=$(tr -d '[:space:]' < VERSION)"
+
       - name: Build the ISO
         run: |
           # Without pipefail the `| tee build.log` below hides a failed build:
@@ -42,12 +62,13 @@ jobs:
           # The container runs as root; give the workspace back to the runner
           # user so later steps can write checksums and upload artefacts.
           sudo chown -R "$(id -u):$(id -g)" .
-          test -f SMD-Linux-v1.5.0-amd64.iso
+          ISO="SMD-Linux-v$(tr -d '[:space:]' < VERSION)-amd64.iso"
+          test -f "$ISO" || { echo "the build did not produce $ISO" >&2; exit 1; }
 
       - name: Check the packed files
         run: |
           set -euo pipefail
-          iso=SMD-Linux-v1.5.0-amd64.iso
+          iso="SMD-Linux-v$(tr -d '[:space:]' < VERSION)-amd64.iso"
           mkdir -p /tmp/iso
           sudo mount -o loop,ro "$iso" /tmp/iso
           squash=/tmp/iso/live/filesystem.squashfs
@@ -93,8 +114,9 @@ jobs:
         run: |
           ls -lh *.iso || true
           if ls *.iso >/dev/null 2>&1; then
-            sha256sum *.iso > SMD-Linux-v1.5.0-amd64.iso.sha256
-            cat SMD-Linux-v1.5.0-amd64.iso.sha256
+            iso="SMD-Linux-v$(tr -d '[:space:]' < VERSION)-amd64.iso"
+            sha256sum "$iso" > "$iso.sha256"
+            cat "$iso.sha256"
             file *.iso
           fi
 
@@ -104,8 +126,8 @@ jobs:
         with:
           name: iso
           path: |
-            SMD-Linux-v1.5.0-amd64.iso
-            SMD-Linux-v1.5.0-amd64.iso.sha256
+            SMD-Linux-v*-amd64.iso
+            SMD-Linux-v*-amd64.iso.sha256
           retention-days: 7
           compression-level: 0
 

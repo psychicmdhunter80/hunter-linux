@@ -13,7 +13,8 @@ set -eu
 cd "$(dirname "$0")"
 PROJECT_DIR="$(pwd)"
 MODE="${1:-auto}"
-IMAGE_NAME="SMD-Linux-v1.5.0-amd64.iso"
+VERSION=$(tr -d '[:space:]' < VERSION)
+IMAGE_NAME="SMD-Linux-v${VERSION}-amd64.iso"
 
 log() { printf '\n==> %s\n' "$*"; }
 
@@ -48,8 +49,8 @@ build_native() {
 	log "building ISO (this downloads ~1.5 GB of Debian packages)"
 	lb build
 
-	if [ -f "SMD-Linux-v1.5.0-amd64.hybrid.iso" ]; then
-		mv -f "SMD-Linux-v1.5.0-amd64.hybrid.iso" "${IMAGE_NAME}"
+	if [ -f "SMD-Linux-v${VERSION}-amd64.hybrid.iso" ]; then
+		mv -f "SMD-Linux-v${VERSION}-amd64.hybrid.iso" "${IMAGE_NAME}"
 	fi
 	[ -f "${IMAGE_NAME}" ] || {
 		echo "error: build finished without producing ${IMAGE_NAME}" >&2

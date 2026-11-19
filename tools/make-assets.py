@@ -18,7 +18,12 @@ import struct
 import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CHROOT = os.path.join(ROOT, "config", "includes.chroot")
+# Where the generated files go.  The build regenerates every asset from this
+# script and refuses to ship a checkout whose committed artwork differs, so the
+# pictures and the version they carry cannot drift apart again (1.5.0 shipped
+# 1.4.1 artwork under a 1.5.0 heading).
+OUT = os.environ.get("SMD_ASSET_ROOT", ROOT)
+CHROOT = os.path.join(OUT, "config", "includes.chroot")
 BRANDING = os.path.join(CHROOT, "etc", "calamares", "branding", "hunter")
 
 
@@ -29,11 +34,11 @@ def release_version():
     file, and 1.4 shipped a wallpaper and an installer picture still carrying
     1.0 because these strings were typed in by hand.
     """
-    with open(os.path.join(ROOT, "auto", "config"), encoding="utf-8") as handle:
-        match = re.search(r"--image-name\s+SMD-Linux-v([0-9.]+)", handle.read())
-    if not match:
-        raise SystemExit("auto/config does not name the image")
-    return match.group(1)
+    with open(os.path.join(ROOT, "VERSION"), encoding="utf-8") as handle:
+        version = handle.read().strip()
+    if not re.match(r"^[0-9]+\.[0-9]+(\.[0-9]+)?$", version):
+        raise SystemExit("VERSION does not hold a version: %r" % version)
+    return version
 
 
 VERSION = release_version()
@@ -303,9 +308,9 @@ def slide(path, headline, subline):
 def main():
     print("SMD Linux %s - generating image assets" % VERSION)
     wallpaper()
-    boot_splash(640, 480, os.path.join(ROOT, "config", "bootloaders", "isolinux",
+    boot_splash(640, 480, os.path.join(OUT, "config", "bootloaders", "isolinux",
                                        "splash.png"))
-    boot_splash(800, 600, os.path.join(ROOT, "config", "bootloaders", "grub-pc",
+    boot_splash(800, 600, os.path.join(OUT, "config", "bootloaders", "grub-pc",
                                        "splash.png"))
     installer_logo(os.path.join(BRANDING, "hunter-logo.png"))
     installer_icon(os.path.join(BRANDING, "hunter-icon.png"))

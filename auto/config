@@ -10,6 +10,12 @@
 set -e
 
 MIRROR="${HUNTER_MIRROR:-http://deb.debian.org/debian/}"
+# The release version has exactly one home: the VERSION file at the top
+# of the project.  Everything else - the image name, the ISO label, the
+# installer strings, the artwork - is derived from it.
+VERSION=$(tr -d '[:space:]' < VERSION)
+[ -n "$VERSION" ] || { echo "error: VERSION is empty" >&2; exit 1; }
+VOLUME=$(printf '%s' "$VERSION" | tr . _)
 
 lb config noauto \
 	--mode debian \
@@ -17,7 +23,7 @@ lb config noauto \
 	--parent-distribution trixie \
 	--architectures amd64 \
 	--binary-images iso-hybrid \
-	--image-name SMD-Linux-v1.5.0 \
+	--image-name "SMD-Linux-v${VERSION}" \
 	--linux-flavours amd64 \
 	--linux-packages linux-image \
 	--bootloaders syslinux,grub-efi \
@@ -36,10 +42,10 @@ lb config noauto \
 	--initsystem systemd \
 	--bootappend-live "boot=live components quiet splash console=ttyS0,115200 hostname=smd username=user autologin" \
 	--bootappend-live-failsafe "boot=live components nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 console=ttyS0,115200 hostname=smd username=user autologin" \
-	--iso-application "SMD Linux 1.5.0" \
+	--iso-application "SMD Linux ${VERSION}" \
 	--iso-preparer "SMD Linux build (live-build)" \
 	--iso-publisher "SMD Linux Project" \
-	--iso-volume "SMD_LINUX_1_5" \
+	--iso-volume "SMD_LINUX_${VOLUME}" \
 	--mirror-bootstrap "${MIRROR}" \
 	--mirror-chroot "${MIRROR}" \
 	--mirror-binary "${MIRROR}" \
