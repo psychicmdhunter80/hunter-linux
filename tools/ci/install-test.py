@@ -1047,10 +1047,16 @@ def main():
                    else "FAIL: no Brave launcher in the installed panel")
             buttons = shell.run("ls ~/.local/share/applications/smd-workspace-*.desktop "
                                 "2>/dev/null | wc -l", timeout=60)
-            record("PASS: all four workspace buttons exist on the installed desktop"
-                   if buttons.strip().splitlines()[-1:] == ["4"]
+            record("PASS: the four workspace buttons and the 5-10 control exist on "
+                   "the installed desktop"
+                   if buttons.strip().splitlines()[-1:] == ["5"]
                    else f"FAIL: the installed desktop has "
-                        f"{buttons.strip()[:10]} workspace buttons")
+                        f"{buttons.strip()[:10]} workspace controls")
+            nav = shell.run("test -x /usr/local/bin/hunter-workspaces-nav "
+                            "&& echo NAV=ok || echo NAV=missing", timeout=60)
+            record("PASS: the occupied-workspace walk is installed"
+                   if "NAV=ok" in nav
+                   else "FAIL: the occupied-workspace walk is missing")
             favs = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
                              "-p /plugins/plugin-1/favorites -v 2>&1", timeout=60)
             record("PASS: the installed menu has no installer favourite"
