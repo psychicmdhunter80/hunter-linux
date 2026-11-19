@@ -1023,6 +1023,45 @@ def main():
             record("PASS: the installed panel is set never to hide"
                    if hide.strip().endswith("0")
                    else f"FAIL: the installed panel is set to hide ({hide.strip()[:40]})")
+
+            # 1.6: icons-only buttons, the pinned launchers, the numbered
+            # workspace buttons - and, most of all, no installer entry left
+            # behind by the installation itself.
+            labels = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                               "-p /plugins/plugin-2/show-labels 2>&1", timeout=60)
+            record("PASS: the installed windows show icons, not titles"
+                   if labels.strip().endswith("false")
+                   else f"FAIL: installed panel still shows window titles "
+                        f"({labels.strip()[:40]})")
+            file_pin = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                                 "-p /plugins/plugin-12/items -v 2>&1", timeout=60)
+            record("PASS: the File Manager is pinned in the installed panel"
+                   if "thunar.desktop" in file_pin
+                   else f"FAIL: no File Manager launcher in the installed panel "
+                        f"({' '.join(file_pin.split())[:60]})")
+            buttons = shell.run("ls ~/.local/share/applications/smd-workspace-*.desktop "
+                                "2>/dev/null | wc -l", timeout=60)
+            record("PASS: all four workspace buttons exist on the installed desktop"
+                   if buttons.strip().splitlines()[-1:] == ["4"]
+                   else f"FAIL: the installed desktop has "
+                        f"{buttons.strip()[:10]} workspace buttons")
+            favs = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                             "-p /plugins/plugin-1/favorites -v 2>&1", timeout=60)
+            record("PASS: the installed menu has no installer favourite"
+                   if "hunter-install" not in favs
+                   else "FAIL: the installer is still a favourite after installation")
+            record("PASS: the installed menu keeps Browser, File Manager, Terminal"
+                   if all(name in favs for name in ("brave-browser", "thunar",
+                                                    "xfce4-terminal"))
+                   else f"FAIL: the installed favourites lost an entry "
+                        f"({' '.join(favs.split())[:80]})")
+            leftover = shell.run("ls /usr/share/applications/hunter-install.desktop "
+                                 "/usr/local/bin/hunter-install 2>/dev/null | wc -l",
+                                 timeout=60)
+            record("PASS: no installer shortcut survives on the installed system"
+                   if leftover.strip().splitlines()[-1:] == ["0"]
+                   else "FAIL: installer files remain on the installed system")
+            record("INFO: installed favourites: %s" % " ".join(favs.split())[:100])
             window = re.search(r"(0x[0-9a-f]+)", pchunks[1]) if len(pchunks) > 1 else None
             if window:
                 info = shell.run(f"DISPLAY=:0 xwininfo -id {window.group(1)}", timeout=60)
