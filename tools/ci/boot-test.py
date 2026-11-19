@@ -1264,6 +1264,27 @@ def main():
             """Close a window the X way; i3 criteria are not usable here."""
             shell.run("DISPLAY=:0 xdotool windowclose %s" % window_id, timeout=30)
 
+        def helper_quiet(seconds=3, timeout=45):
+            """Wait until the tiling helper stops writing to its log.
+
+            It arranges a window a moment after it appears, and it issues the
+            moves it worked out before that.  Moving a window while that is in
+            flight is why a window could be put on the measurement workspace
+            and then be taken back: both of them were moving it.  Nothing is
+            moved here until the helper has been idle for a few seconds.
+            """
+            last, since = None, time.time()
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                size = shell.run("wc -l < ~/.cache/smd/autotile.log 2>/dev/null "
+                                 "|| echo 0", timeout=30).strip()
+                if size != last:
+                    last, since = size, time.time()
+                elif time.time() - since >= seconds:
+                    return True
+                time.sleep(1)
+            return False
+
         def move_home(window_id, there):
             """Move the window to the measurement workspace, then read it back.
 
@@ -1271,16 +1292,23 @@ def main():
             while the same command without one works, so the window is made the
             focused container first and the move applies to that.  A window on
             a workspace that is not on screen is unmapped, and xdotool cannot
-            focus it, so the workspace it is on is shown first.
+            focus it, so the workspace it is on is shown first.  The move is
+            only accepted if the window is still there when it is read twice.
             """
-            for _attempt in range(10):
+            for _attempt in range(8):
+                helper_quiet()
+                current = ws_of(window_id)
+                if current is None:
+                    return False
                 shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; sleep 1; "
                           "DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                           "DISPLAY=:0 i3-msg -q 'move container to workspace %d'"
-                          % (there, window_id, home), timeout=60)
-                time.sleep(2)
+                          % (current, window_id, home), timeout=60)
+                time.sleep(3)
                 if ws_of(window_id) == home:
-                    return True
+                    time.sleep(2)
+                    if ws_of(window_id) == home:
+                        return True
             return False
 
         def open_window(title):
@@ -1336,8 +1364,11 @@ def main():
                             and not str(child.get("floating", "")).startswith("user"):
                         # The workspace travels with the rectangle: two windows
                         # filling their own screens are two lone windows, not
-                        # a layout, and the evidence has to say so.
-                        found.append(dict(child["rect"], ws=number))
+                        # a layout, and the evidence has to say so.  The title
+                        # and the X11 id travel too, so a window that drifted
+                        # can be named and put back.
+                        found.append(dict(child["rect"], ws=number, name=name,
+                                          win=child.get("window")))
                     walk(child, number)
 
             walk(data, None)
@@ -1388,6 +1419,16 @@ def main():
             reported = False
             while time.time() - started < timeout:
                 boxes = tiles()
+                # A window the helper put down on another workspace is put back
+                # here rather than measured as if the layout spanned two.
+                stray = [b for b in boxes if b.get("ws") != home]
+                if stray:
+                    for box in stray:
+                        record("INFO: %s drifted to workspace %s, moving it "
+                               "back" % (box.get("name"), box.get("ws")))
+                        if box.get("win"):
+                            move_home(box.get("win"), box.get("ws"))
+                    boxes = tiles()
                 if shapes(count, boxes):
                     record("INFO: the %d-window arrangement was reached after %.0f s"
                            % (count, time.time() - started))
