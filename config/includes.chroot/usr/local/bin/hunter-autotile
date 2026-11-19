@@ -353,9 +353,15 @@ def main():
         # time anything is arranged.
 
         if len(order) == 1:
-            # One window always fills the screen, whatever the tree looks like.
-            i3.command("[con_id=%d] move container to workspace %s"
-                       % (order[0], name))
+            # One window fills the workspace on its own, so it only has to be
+            # brought back when it is on another one.  Moving it to the
+            # workspace it is already on is not a no-op - with
+            # workspace_auto_back_and_forth i3 reads it as "go back" and sends
+            # the window to the workspace the owner came from - so it is never
+            # done blindly, and the flag is passed when it is done at all.
+            if where_is(order[0]) != name:
+                i3.command("[con_id=%d] move --no-auto-back-and-forth "
+                           "container to workspace %s" % (order[0], name))
         else:
             # The columns are made from the windows themselves: i3 splits a
             # workspace when a window arrives, so the only thing left to do is

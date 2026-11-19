@@ -654,7 +654,7 @@ def main():
                 shell.run("tail -30 ~/.cache/smd/autotile.log 2>/dev/null")
                 .split())[:1500]))
         report_places("after launch")
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 2'", timeout=60)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number 2'", timeout=60)
         time.sleep(4)
         after = workspace_icons()
         record("INFO: icons after switching to 2: " + " ".join(
@@ -676,7 +676,7 @@ def main():
             record("INFO: window left behind: %s" % " ".join(state.split())[:80])
         monitor.screenshot("07-panel-workspace-2")
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 1'", timeout=60)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number 1'", timeout=60)
         time.sleep(4)
         back = workspace_icons()
         check(results, "coming back moves the highlight back",
@@ -1335,7 +1335,7 @@ def main():
                 if current is None:
                     return False
                 if current != home:
-                    shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; "
+                    shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'; "
                               "sleep 1; "
                               "DISPLAY=:0 xdotool windowactivate --sync %s; "
                               "sleep 1; "
@@ -1343,7 +1343,7 @@ def main():
                               "workspace %d'" % (current, window_id, home),
                               timeout=60)
                     time.sleep(2)
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home,
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home,
                           timeout=30)
                 time.sleep(3)
                 if ws_of(window_id) == home:
@@ -1355,7 +1355,7 @@ def main():
         def open_window(title):
             """Launch a titled terminal on workspace 9, or say so honestly."""
             for attempt in range(1, 4):
-                shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home,
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home,
                           timeout=30)
                 shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                           "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
@@ -1503,7 +1503,7 @@ def main():
         # switch workspaces and reload i3, so the focused one is whatever they
         # left behind; two windows on different workspaces are two lone
         # windows, each filling its own screen, and no layout to measure.
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number 9'", timeout=60)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number 9'", timeout=60)
         time.sleep(2)
         here = shell.run("DISPLAY=:0 i3-msg -t get_workspaces", timeout=60)
         focused = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
@@ -1552,7 +1552,7 @@ def main():
                               if b.get("name") == window_name), None)
             if not window_id:
                 return False
-            shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'; sleep 1; "
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'; sleep 1; "
                       "DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                       "DISPLAY=:0 i3-msg -q 'move container to workspace "
                       "number %d'" % (home, window_id, target), timeout=60)
@@ -1560,23 +1560,23 @@ def main():
             return True
 
         send("smd-four", away)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home, timeout=30)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home, timeout=30)
         left, okleft = wait_for(3, workspace=home)
         check(results, "moving a window away re-tiles the ones that stay",
               okleft and shapes(3, left))
         record("INFO: after moving smd-four to workspace %d: %s"
                % (away, describe(left)))
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % away, timeout=30)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % away, timeout=30)
         alone, okalone = wait_for(1, workspace=away)
         check(results, "the workspace it moved to shows it filling the screen",
               okalone)
         record("INFO: on workspace %d after the move: %s"
                % (away, describe(alone)))
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % home, timeout=30)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % home, timeout=30)
         send("smd-three", away)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %d'" % away, timeout=30)
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %d'" % away, timeout=30)
         pair, okpair = wait_for(2, workspace=away)
         check(results, "a second window moved in shares the screen as halves",
               okpair and shapes(2, pair))

@@ -581,7 +581,7 @@ def main():
         away_ws = 7 if here_ws != 7 else 6
         record("INFO: the four windows are on workspace %s, moving to %s"
                % (here_ws, away_ws))
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % here_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % here_ws,
                   timeout=60)
         shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                   "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
@@ -594,7 +594,7 @@ def main():
         ok("the windows left behind keep their arrival order",
            kept_ok, describe(kept, labels_for(kept)))
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % away_ws,
                   timeout=60)
         arrived, arrived_ok = wait_on(away_ws, 1)
         fills_away = False
@@ -604,12 +604,12 @@ def main():
         ok("the workspace it arrives on shows it filling the screen",
            arrived_ok and fills_away, describe(arrived, labels_for(arrived)))
 
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % here_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % here_ws,
                   timeout=60)
         shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                   "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
                   % (names.get("smd-three"), away_ws), timeout=90)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % away_ws,
                   timeout=60)
         pair, pair_ok = wait_on(away_ws, 2)
         halves_away = False
@@ -622,12 +622,12 @@ def main():
         # A third arrival is where i3's own redistribution and the helper's
         # arrival order disagree: the one that just arrived belongs below the
         # first, and only a rebuild puts it there.
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % here_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % here_ws,
                   timeout=60)
         shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                   "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
                   % (names.get("smd-two"), away_ws), timeout=90)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % away_ws,
                   timeout=60)
         trio, trio_ok = wait_on(
             away_ws, 3,
@@ -649,12 +649,12 @@ def main():
             """Send one window to the other workspace, then bring it back."""
             source = away_ws if forward else here_ws
             goal = here_ws if forward else away_ws
-            shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % source,
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % source,
                       timeout=60)
             shell.run("DISPLAY=:0 xdotool windowactivate --sync %s; sleep 1; "
                       "DISPLAY=:0 i3-msg -q 'move container to workspace number %s'"
                       % (names.get(target), goal), timeout=90)
-            shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % goal,
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % goal,
                       timeout=60)
 
         # The same window moved back and forth twice.  A layout that is only
@@ -693,7 +693,7 @@ def main():
            describe(floated, labels_for(floated)))
         shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
                   % names.get("smd-two"), timeout=60)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % away_ws,
                   timeout=60)
         tiled_again, tiled_ok = wait_on(
             away_ws, 3,
@@ -722,7 +722,7 @@ def main():
            describe(shown, labels_for(shown)))
         shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
                   % names.get("smd-two"), timeout=60)
-        shell.run("DISPLAY=:0 i3-msg -q 'workspace number %s'" % away_ws,
+        shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number %s'" % away_ws,
                   timeout=60)
         returned, returned_ok = wait_on(
             away_ws, 3,
