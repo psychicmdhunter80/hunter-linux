@@ -123,12 +123,21 @@ class Monitor:
         return png
 
 
+monitor = None
+
+
+class GuestGone(Exception):
+    """The guest stopped answering its serial console."""
+
+
 class Shell:
     """A login shell on the guest's serial console."""
 
     def __init__(self, chan):
         self.chan = chan
         self.counter = 0
+        self.stopped = ""          # the command that found the guest unresponsive
+        self.timeouts = 0
 
     def login(self, timeout=900):
         matched, _ = self.chan.expect(r"login:", timeout=timeout)
@@ -167,10 +176,35 @@ class Shell:
         if not match:
             note(f"$ {command}\n<bounded timeout after {timeout}s>")
             record(f"WARN: command timed out: {command}")
+            self.timeouts += 1
+            # A command that hangs leaves the shell busy, so every later
+            # command queues behind it and times out too.  Interrupt once, and
+            # if the shell has really stopped answering, stop the run instead of
+            # reporting a cascade of failures that the guest never produced.
+            if self.timeouts >= 3 or not self.answered():
+                self.stopped = command
+                raise GuestGone(command)
             return ""
+        self.timeouts = 0
         text = re.sub(r"\r", "", match.group(1)).strip()
         note(f"$ {command}\n{text}")
         return text
+
+    def answered(self, timeout=40):
+        """Interrupt whatever is running, then check the shell still replies.
+
+        The terminal echoes typed input even while a foreground command is
+        wedged, so the probe is split in two halves: the echoed line never
+        contains the joined marker and only a live shell prints it back.
+        """
+        self.chan.send("\x03")
+        time.sleep(2)
+        self.counter += 1
+        mark = f"HUNTERPING{self.counter}PONG"
+        self.chan.send(f'echo "{mark[:9]}""{mark[9:]}"\r')
+        match, _ = self.chan.expect(re.escape(mark) + r"\s*\r?\n",
+                                    timeout=timeout)
+        return bool(match)
 
     def wait_for_x(self, timeout=600):
         deadline = time.time() + timeout
@@ -184,19 +218,22 @@ class Shell:
             if "READY" in probe:
                 record("PASS: the X display is up")
                 # What was on screen while the machine was booting decides
-                # whether the loading screen is real; a screenshot's brightness
-                # is measured, not guessed from its size.
-                for name, mean in boot_frames:
-                    record(f"INFO: boot frame {name}: mean brightness {mean:.0f}")
-                visible = [name for name, mean in boot_frames if mean > 1000]
+                # whether the loading screen is real.  Brightness alone cannot
+                # answer that - a restrained splash is still a splash - so the
+                # spread of the pixels is measured too: a plain black frame has
+                # almost none, anything drawn on it has plenty.
+                for name, mean, spread in boot_frames:
+                    record(f"INFO: boot frame {name}: mean {mean:.0f} "
+                           f"spread {spread:.0f}")
+                drawn = [name for name, _, spread in boot_frames if spread > 100]
                 check(results, "something was drawn while the machine booted",
-                      bool(visible))
+                      bool(drawn))
                 return True
             if frame < 12:
                 name = f"boot-{frame:02d}"
                 try:
                     path = monitor.screenshot(name)
-                    boot_frames.append((name, frame_mean(path)))
+                    boot_frames.append((name,) + frame_stats(path))
                 except Exception as error:      # a monitor hiccup is not a result
                     record(f"WARN: could not capture {name}: {error}")
                 frame += 1
@@ -208,14 +245,20 @@ class Shell:
 boot_frames = []
 
 
-def frame_mean(path):
-    """Average brightness of a screenshot, 0-65535, measured with ImageMagick."""
+def frame_stats(path):
+    """(average brightness, spread) of a screenshot, 0-65535, via ImageMagick.
+
+    A frame that is a single flat colour - the black screen this check exists
+    to catch - has a mean of 0 and a spread of 0.  Anything drawn, however
+    dark the theme is, spreads the pixels out.
+    """
     try:
-        out = subprocess.run(["identify", "-format", "%[mean]", path],
+        out = subprocess.run(["identify", "-format", "%[mean] %[standard-deviation]", path],
                              capture_output=True, text=True, timeout=60)
-        return float(out.stdout.strip())
+        mean, spread = out.stdout.split()
+        return float(mean), float(spread)
     except Exception:
-        return 0.0
+        return 0.0, 0.0
 
 
 def start_qemu():
@@ -272,6 +315,7 @@ def check(results_text, label, ok):
 
 
 def main():
+    global monitor
     for path in (STEPS, RESULT):
         if os.path.exists(path):
             os.unlink(path)
@@ -279,7 +323,6 @@ def main():
     qemu = start_qemu()
     if qemu is None:
         return 1
-    monitor = None
     try:
         monitor = Monitor()
         shell = Shell(Channel(SER_PORT))
@@ -1132,8 +1175,7 @@ def main():
         def open_window(title):
             shell.run("setsid env DISPLAY=:0 xfce4-terminal --title=%s "
                       "</dev/null >/dev/null 2>&1 &" % title, timeout=30)
-            # The helper settles a moment after the window appears.
-            time.sleep(13)
+            time.sleep(4)
 
         def tiles():
             """Rectangles of the test windows, via i3's own tree."""
@@ -1158,18 +1200,42 @@ def main():
             return " ".join("[%d,%d %dx%d]" % (b["x"], b["y"], b["width"],
                                                b["height"]) for b in boxes)
 
+        def settle(timeout=90):
+            """Wait until the layout stops changing, and report how long that took.
+
+            The helper arranges a new window a moment after it appears; a fixed
+            pause measures the pause, not the result.  How long the layout
+            really takes is recorded, so a slow helper shows up as a number
+            instead of a flaky pass or a misleading failure.
+            """
+            started = time.time()
+            previous = None
+            stable = 0
+            boxes = []
+            while time.time() - started < timeout:
+                boxes = tiles()
+                now = describe(boxes)
+                stable = stable + 1 if now == previous else 0
+                previous = now
+                if boxes and stable >= 2:
+                    break
+                time.sleep(4)
+            took = time.time() - started
+            record("INFO: layout settled after %.0f s" % took)
+            return boxes
+
         # Only the test's own windows may be in the layout: the browser from
         # the earlier check is a normal window too and would take a slot.
         shell.run("pkill -x brave; pkill -x xfce4-terminal; "
                   "pkill -f 'SMD panel'; sleep 3", timeout=60)
         open_window("smd-one")
-        one = tiles()
+        one = settle()
         check(results, "one window fills the usable desktop",
               len(one) == 1 and one[0]["width"] >= 1000 and one[0]["height"] >= 700)
         record("INFO: tiling one: " + describe(one))
 
         open_window("smd-two")
-        two = tiles()
+        two = settle()
         halves = (len(two) == 2 and
                   abs(two[0]["width"] - two[1]["width"]) <= 4 and
                   round(two[0]["y"]) == round(two[1]["y"]) and
@@ -1178,7 +1244,7 @@ def main():
         record("INFO: tiling two: " + describe(two))
 
         open_window("smd-three")
-        three = tiles()
+        three = settle()
         ok3 = False
         if len(three) == 3:
             xs = sorted({round(b["x"]) for b in three})
@@ -1196,14 +1262,14 @@ def main():
         shell.run("DISPLAY=:0 xdotool search --name '^smd-three$' windowclose",
                   timeout=60)
         time.sleep(6)
-        back = tiles()
+        back = settle()
         check(results, "closing a window returns to two equal halves",
               len(back) == 2 and abs(back[0]["width"] - back[1]["width"]) <= 4)
         record("INFO: tiling after close: " + describe(back))
 
         open_window("smd-three")
         open_window("smd-four")
-        four = tiles()
+        four = settle()
         ok4 = False
         if len(four) == 4:
             xs = sorted({round(b["x"]) for b in four})
@@ -1215,6 +1281,8 @@ def main():
 
         record("INFO: autotile log: " + " | ".join(
             shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:400])
+        record("INFO: workspace button log: " + " | ".join(
+            shell.run("tail -6 ~/.cache/smd/workspaces.log 2>/dev/null").split())[:300])
         shell.run("DISPLAY=:0 xdotool search --name '^smd-' windowclose; "
                   "pkill -f xfce4-terminal", timeout=60)
 
@@ -1227,6 +1295,16 @@ def main():
         # A failing check must fail the job: green CI with a FAIL line in the
         # log is how several regressions were missed.
         return 1 if any(line.startswith("FAIL:") for line in results) else 0
+    except GuestGone as gone:
+        # One honest line instead of forty that only echo the first: the run
+        # could not finish because the guest stopped answering.
+        record(f"FAIL: the guest stopped answering the serial console "
+               f"while running: {gone}")
+        try:
+            monitor.screenshot("guest-gone")
+        except Exception:
+            pass
+        return 1
     finally:
         if monitor:
             try:

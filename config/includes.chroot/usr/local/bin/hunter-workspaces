@@ -72,6 +72,16 @@ Categories=Utility;"
 	return 0
 }
 
+workspace_from_event() {
+	# The event carries the workspace that was switched to, so the loop below
+	# never has to ask i3 anything.  That matters: i3 delivers events and
+	# answers requests on the same socket, so a subscriber that stops reading
+	# while it waits for a reply from the same i3 can wedge the session -
+	# windows then open but nothing responds for as long as it lasts.
+	printf '%s' "$1" |
+		sed -n 's/.*"current":{"num":\([0-9][0-9]*\).*/\1/p'
+}
+
 write_buttons "$(current_workspace)"
 
 # One event per line.  If i3 is not running yet (the helper can be started
@@ -81,8 +91,13 @@ while :; do
 		echo "$(date '+%F %T') no i3-msg, stopping" >>"$log"
 		exit 0
 	fi
-	i3-msg -t subscribe -m '["workspace"]' 2>>"$log" | while read -r _event; do
-		write_buttons "$(current_workspace)"
+	i3-msg -t subscribe -m '["workspace"]' 2>>"$log" | while read -r event; do
+		number=$(workspace_from_event "$event")
+		if [ -z "$number" ]; then
+			echo "$(date '+%F %T') could not read the workspace from an event" >>"$log"
+			continue
+		fi
+		write_buttons "$number"
 	done
 	# The subscription ended: i3 reloaded, restarted or went away.  If there
 	# is no X server left, this session is over.
