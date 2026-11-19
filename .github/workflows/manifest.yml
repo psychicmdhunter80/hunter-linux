@@ -31,7 +31,11 @@ jobs:
       - name: Read the image without booting it
         run: |
           set -euo pipefail
-          iso=iso/SMD-Linux-v*-amd64.iso
+          # The version is not written here: the glob is expanded once, by the
+          # shell, into the one ISO this build run produced.
+          set -- iso/SMD-Linux-v*-amd64.iso
+          iso=$1
+          test -f "$iso"
           mkdir -p /tmp/iso
           sudo mount -o loop,ro "$iso" /tmp/iso
           squash=/tmp/iso/live/filesystem.squashfs
