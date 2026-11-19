@@ -352,25 +352,6 @@ def main():
         # config sets, it sends the owner to the workspace he came from every
         # time anything is arranged.
 
-        if len(order) > 1:
-            # Start from a flat workspace.  A window left inside the half an
-            # older rebuild made for it would be split again, one wrapper
-            # deeper on every rebuild, until the windows sat in a stack of
-            # containers instead of a row.  Each window but the first is taken
-            # out to a workspace of the helper's own and put straight back:
-            # i3 destroys the container it left behind, the workspace is never
-            # empty, and arrival order is kept because they go back in it.
-            for con_id in order[1:]:
-                i3.command("[con_id=%d] move --no-auto-back-and-forth "
-                           "container to workspace %s" % (con_id, SCRATCH))
-                i3.command("[con_id=%d] move --no-auto-back-and-forth "
-                           "container to workspace %s" % (con_id, name))
-            # The row is what two windows are, and the base of every other
-            # shape.  "layout splith" applies to the focused window's parent,
-            # so something at the top of the workspace has the focus first.
-            i3.command("[con_id=%d] focus" % order[-1])
-            i3.command("layout splith")
-
         if len(order) == 1:
             # One window fills the workspace on its own, so it only has to be
             # brought back when it is on another one.  Moving it to the
@@ -397,17 +378,19 @@ def main():
                 mark = "smd-pair-%d" % index
                 holder = parents.get(top) or {}
                 # The half this window belongs in may already be there, left
-                # behind as a vertical container holding it alone when the
-                # other window of the pair moved away.  Splitting it again
-                # would bury the pair one wrapper deeper on every rebuild.
-                half = (holder.get("layout") == "splitv"
+                # behind holding this window alone when the other one of the
+                # pair moved away.  Splitting it again would bury the pair one
+                # wrapper deeper on every rebuild, so it is reused: the half is
+                # told to be vertical and the new window is moved beside it.
+                half = (holder.get("type") == "con"
                         and not holder.get("window")
                         and len(holder.get("nodes") or []) == 1)
                 i3.command("[con_id=%d] mark --add %s" % (top, mark))
+                i3.command("[con_id=%d] focus" % top)
                 if half:
-                    note("  reusing the empty half above %d" % top)
+                    note("  reusing the half above %d" % top)
+                    i3.command("layout splitv")
                 else:
-                    i3.command("[con_id=%d] focus" % top)
                     i3.command("split vertical")
                 i3.command("[con_id=%d] move container to mark %s"
                            % (order[index], mark))

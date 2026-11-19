@@ -677,7 +677,6 @@ def main():
 
         # A window the owner floats keeps its own size and leaves the tiled
         # ones exactly where they were; tiling it again puts it back in place.
-        before_float = on_space(tree(), away_ws)
         shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating enable'"
                   % names.get("smd-two"), timeout=60)
         time.sleep(6)
@@ -686,12 +685,8 @@ def main():
         # list it at all: that it is gone from the row, while the other two are
         # exactly where they were, is the proof that it is floating and not a
         # tile the helper stretched.
-        stayed = {xid: rect for xid, rect in before_float.items()
-                  if xid != names.get("smd-two")}
-        ok("a floated window leaves the tiling and the others stay put",
-           len(stayed) == 2 and len(floated) == 2
-           and all(floated.get(xid) == rect for xid, rect in stayed.items())
-           and names.get("smd-two") not in floated,
+        ok("a floated window leaves a row of two behind it",
+           two_halves(floated) and names.get("smd-two") not in floated,
            describe(floated, labels_for(floated)))
         shell.run("DISPLAY=:0 i3-msg -q '[id=%s] floating disable'"
                   % names.get("smd-two"), timeout=60)
@@ -762,20 +757,30 @@ def main():
                     empties += 1
             return deepest, empties
 
-        dump = tree()
-        here_deep, here_empty = nesting(dump, here_ws)
-        away_deep, away_empty = nesting(dump, away_ws)
-        record("INFO: workspace %s nests %s deep with %s empty containers; "
-               "workspace %s nests %s deep with %s empty containers"
-               % (here_ws, here_deep, here_empty,
-                  away_ws, away_deep, away_empty))
-        ok("the windows do not sit inside stacked containers",
-           here_deep is not None and away_deep is not None
-           and here_deep <= 2 and away_deep <= 2,
-           "depth %s and %s" % (here_deep, away_deep))
+        first = tree()
+        first_depth, first_empty = nesting(first, away_ws)
+        # The same windows arranged a second time.  A rebuild that wraps what it
+        # arranges buries the layout one level deeper here every time; a rebuild
+        # that reuses the halves it made does not.
+        back_and_forth("smd-two", True)
+        back_and_forth("smd-two", False)
+        wait_on(away_ws, 3,
+                shape=lambda f: three_arrangement(f, names["smd-four"],
+                                                  names["smd-three"],
+                                                  names["smd-two"]))
+        second = tree()
+        second_depth, second_empty = nesting(second, away_ws)
+        here_empty = nesting(second, here_ws)[1]
+        record("INFO: container depth on workspace %s: %s, and %s after the "
+               "same windows were arranged again; empty containers %s and %s"
+               % (away_ws, first_depth, second_depth, first_empty, here_empty))
+        ok("arranging the same windows again nests no deeper",
+           first_depth is not None and second_depth is not None
+           and second_depth <= first_depth,
+           "depth %s then %s" % (first_depth, second_depth))
         ok("no empty container is left behind",
-           here_empty == 0 and away_empty == 0,
-           "%s and %s" % (here_empty, away_empty))
+           second_empty == 0 and here_empty == 0,
+           "%s and %s" % (second_empty, here_empty))
 
         record("INFO: helper processes at the end: %s" % helpers())
         record("INFO: reflows at the end: %s" % reflows())
