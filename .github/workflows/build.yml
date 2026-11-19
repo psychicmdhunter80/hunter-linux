@@ -31,25 +31,19 @@ jobs:
       - name: Check the sources
         run: python3 tools/verify-project.py
 
-      - name: The artwork matches the version
+      - name: Generate the artwork from VERSION
         run: |
           set -euo pipefail
           # Every picture is generated from VERSION by tools/make-assets.py.
-          # Regenerate into a scratch tree and compare: a checkout whose
-          # committed artwork differs would ship a picture carrying an older
-          # version, which is how the 1.5.0 installer showed 1.4.1 artwork.
-          rm -rf /tmp/assets && mkdir -p /tmp/assets
-          SMD_ASSET_ROOT=/tmp/assets python3 tools/make-assets.py
-          mismatches=0
-          while IFS= read -r generated; do
-            rel=${generated#/tmp/assets/}
-            if ! cmp -s "$generated" "$rel"; then
-              echo "artwork does not match the version: $rel" >&2
-              mismatches=1
-            fi
-          done < <(find /tmp/assets -name '*.png')
-          test "$mismatches" -eq 0
-          echo "artwork matches VERSION=$(tr -d '[:space:]' < VERSION)"
+          # Generating them here - rather than trusting whatever picture was
+          # committed - is what stops the installer from showing artwork for an
+          # older release, which is what 1.5.0 did.  Comparing bytes against the
+          # checkout is no substitute: PNGs compress slightly differently on
+          # different zlib builds, so it fails on identical pictures.
+          python3 tools/make-assets.py
+          version="$(tr -d '[:space:]' < VERSION)"
+          grep -q "VERSION ${version}"             config/includes.chroot/usr/share/plymouth/themes/smd/smd.script             || { echo "the loading screen does not carry ${version}" >&2; exit 1; }
+          echo "artwork generated for ${version}"
 
       - name: Build the ISO
         run: |

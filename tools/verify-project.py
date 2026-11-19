@@ -448,6 +448,8 @@ def check_version_labels():
         ("artwork version", "tools/make-assets.py", r'"VERSION"'),
         ("build workflow name", ".github/workflows/build.yml",
          r'-amd64\.iso'),
+        ("artwork generated during the build", ".github/workflows/build.yml",
+         r'python3 tools/make-assets\.py'),
     ]
     for name, path, pattern in derived:
         found = re.search(pattern, read(os.path.join(ROOT, path)))
