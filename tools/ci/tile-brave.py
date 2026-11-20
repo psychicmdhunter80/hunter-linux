@@ -753,6 +753,29 @@ def main():
         record("INFO: autotile log: " + " | ".join(
             shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:500])
 
+        # --- the scratchpad, which is i3's own and must keep working --------
+        switch(2)
+        term("scratchpad test", 2)
+        shell.run("DISPLAY=:0 i3-msg -q '[title=\"scratchpad test\"] "
+                  "move scratchpad'; sleep 4", timeout=60)
+        hidden = state()
+        ok("a window sent to the scratchpad leaves its workspace",
+           hidden[1].get(2, (0, 0))[0] == 1,
+           "held=%s" % sorted(hidden[1].items()))
+        shell.run("DISPLAY=:0 i3-msg -q 'scratchpad show'; sleep 4", timeout=60)
+        shown = state()
+        ok("showing it floats over the workspace without taking a slot",
+           shown[1].get(2, (0, 0))[0] == 1
+           and shown[1].get(2, (0, 0))[1] >= 1,
+           "focused=%s held=%s" % (shown[0], sorted(shown[1].items())))
+        ok("and no other workspace was used to hold it",
+           shown[2] <= 10 and set(shown[1]) <= {2, 5, 7},
+           "highest=%s held=%s" % (shown[2], sorted(shown[1].items())))
+        close_title("scratchpad test")
+        back = state()
+        ok("closing it leaves the workspace as it was",
+           back[1].get(2, (0, 0)) == (1, 0), "held=%s" % sorted(back[1].items()))
+
         # --- navigation and the ten-workspace limit, ordinary launches -----
         shell.run("pkill -x brave; pkill -x brave-browser; sleep 3; "
                   "pkill -x xfce4-terminal; sleep 2", timeout=90)
