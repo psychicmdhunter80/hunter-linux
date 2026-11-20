@@ -265,7 +265,7 @@ one control for 5-10 that shows the active number.
 | Build | Actions run `44633739555`, image commit `b5815b83` |
 | Installed packages | 944 |
 | Live boot tests | run `44637676331` - BIOS and UEFI, 240 passed, 0 failed on each |
-| Window and workspace behaviour | run `<TILING_RUN>` - `<TILING_COUNTS>` |
+| Window and workspace behaviour | run `44651347027` - `67 passed, 0 failed` |
 | Installer version label | run `44635230275` - 12 passed, 0 failed |
 | Voice typing and Jellyfin | run `44635226301` - 38 passed, 0 failed |
 | Installation test | run `44640100443` - `108 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there` |
@@ -292,13 +292,15 @@ no workspace above ten exists. The panel section additionally checks that the
 5-10 control exists, that its list names all ten workspaces, and that its icon
 shows `6` while workspace 6 is active.
 
-The Brave test (run `<TILING_RUN>`) repeats the rule with the browser the owner
+The Brave test (run `44651347027`) repeats the rule with the browser the owner
 uses at 1366x768: one fills; two are ordered halves; the third and fourth
 overflow to and split the next empty workspace; an application opened on a
 chosen empty workspace stays there; closing expands the neighbour; a second tab
 is not a second window; an ordinary dialog floats and takes no slot; a floating
 window frees its slot and tiling it again makes halves; fullscreen keeps both
-windows on their workspace; moves into empty, partial and full destinations;
+windows on their workspace; a window sent to the scratchpad frees its slot and
+shows again floating over the current workspace; moves into empty, partial and
+full destinations;
 the overflow window is marked `smd-overflow` and the notification is on screen;
 navigation through gaps and around the ends; one occupied workspace and none;
 all ten workspaces; exhaustion with the program kept floating; repeated
@@ -317,9 +319,10 @@ command now carries its own criteria (`b5815b8`), and the delivered image is
 built from that commit; the failing run `44631605492` is kept in the history as
 the evidence, not as a result.
 
-**Harness corrections, not passes.** Three earlier runs (`44631601192`,
-`44631605492`, `44635214442`) were failed by the tests themselves, and are
-listed here so they cannot be mistaken for functional passes:
+**Harness corrections, not passes.** Six earlier runs (`44631601192`,
+`44631605492`, `44635214442`, `44637679979`, `44649119152`, `44650149891`) were
+failed by the tests themselves, and are listed here so they cannot be mistaken
+for functional passes:
 
 * the Brave test measured a destination workspace while i3 had it hidden
   (`rect=0,0+0x0`), where i3 does not re-lay-out - it now shows the workspace
@@ -333,7 +336,18 @@ listed here so they cannot be mistaken for functional passes:
   workspace 2 - it now compares against the workspace i3 reports and starts
   that section from an empty workspace;
 * the workspace walk was invoked without `DISPLAY` on the serial console, where
-  `i3-msg` cannot find the socket, so every step stayed put.
+  `i3-msg` cannot find the socket, so every step stayed put;
+* the workspace dump added two generators with `+`, which Python 3 refuses, so
+  from the first window onwards it printed nothing and each later launch waited
+  45 seconds for a title it could never read - the two lists are concatenated
+  now, and that failed run (`44637679979`) is not evidence of empty workspaces;
+* the installed-session check still expected four workspace launcher files,
+  which is what 1.6 wrote; 1.7 writes five (1-4 and the 5-10 control) and it now
+  counts five and looks for the navigation helper;
+* the scratchpad block first read a workspace whose window had been closed, and
+  called two helpers defined further down the file, so two runs stopped before
+  the check (`44649119152`, `44650149891`) - it now hides one half of a full
+  workspace and reads the counts it actually started from (`571a3f4`).
 
 The image was rebuilt once, for the criteria fix. Builds `44630204635` and the
 runs above are superseded and are not part of this delivery.

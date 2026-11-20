@@ -95,9 +95,9 @@ the installer and its live-session-only entry.
 | SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
 | Build | Actions run `44633739555`, image commit `b5815b83` |
 | Source | `SMD-Linux-Build-v1.7.0.zip`, checksums in `SHA256SUMS` |
-| Live boot (BIOS and UEFI) | run `44635214442` |
-| Window and workspace behaviour | run `44635217637` |
-| Installation test | run `44635222172` |
+| Live boot (BIOS and UEFI) | run `44637676331` |
+| Window and workspace behaviour | run `44651347027` |
+| Installation test | run `44640100443` |
 | Voice typing and Jellyfin | run `44635226301` |
 | Installer version label | run `44635230275` |
 | Package manifest | run `44635232817` |

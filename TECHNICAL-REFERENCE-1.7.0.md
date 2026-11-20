@@ -1,8 +1,9 @@
 # SMD Linux 1.7.0 - technical reference
 
-**Status: candidate.** This documents a built, tested image that has not yet
-been accepted on Craig's hardware. Nothing here is a claim about a public
-download; the files are in the delivery folder described in `README.md`.
+**Status: built, packaged and tested in virtual machines.** The image has not
+yet been accepted on Craig's hardware, and nothing here is a claim about a
+public download; the delivered files are in `../delivery-1.7.0/`, described in
+`README.md`.
 
 ---
 

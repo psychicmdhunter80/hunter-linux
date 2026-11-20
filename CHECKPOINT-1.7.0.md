@@ -59,27 +59,27 @@ two live test scripts (`boot-test.py`, `tile-brave.py`) plus `ws-dump.py`.
 | Step | Result |
 | --- | --- |
 | `python tools/verify-project.py` | all static checks pass, labels agree on 1.7.0 |
-| ISO build | run `44633739555` - `<BUILD_RESULT>` |
-| `boot-test` (BIOS + UEFI) | `44635214442` - `<BOOT_RESULT>` |
-| `tile-brave` (image helper, UEFI) | `44635217637` - `<TILING_RESULT>` |
-| `install-test` | `44635222172` - `<INSTALL_RESULT>` |
-| `voice-apps` | `44635226301` - `<VOICE_RESULT>` |
-| `installer-label` | `44635230275` - `<LABEL_RESULT>` |
-| `manifest` | `44635232817` - `<MANIFEST_RESULT>` |
+| ISO build | run `44633739555` - `success, 944 packages` |
+| `boot-test` (BIOS + UEFI) | `44637676331` - `240 passed, 0 failed on each firmware` |
+| `tile-brave` (image helper, UEFI) | `44651347027` - `67 passed, 0 failed` |
+| `install-test` | `44640100443` - `108 passed, 0 failed` |
+| `voice-apps` | `44635226301` - `38 passed, 0 failed` |
+| `installer-label` | `44635230275` - `12 passed, 0 failed` |
+| `manifest` | `44635232817` - `944 packages, artifact downloaded` |
 
-## Still to do
+## Delivery state
 
-1. Fill the measured identity (ISO size, SHA-256, package count, run IDs) into
-   `README.md`, `RELEASE-NOTES-1.7.0.md`, `TECHNICAL-REFERENCE-1.7.0.md` and
-   the `Test-Report.md` section.
-2. `python tools/package-release.py`, copy the ISO, archive, documents and
-   `SHA256SUMS` into `../delivery-1.7.0/` with `test-evidence/`, and run
-   `sha256sum -c`.
-3. Tag `v1.7.0` at the documentation commit, push branch and tag.
-4. Craig's hardware checks (speakers/headphones, tearing, printed top-row keys,
-   Wi-Fi, suspend/locking, battery percentage) and his confirmation of the
-   two-window rule on the real machine are still outstanding and are not
-   claimed as passed.
+1. The measured identity (ISO size, SHA-256, package count, run IDs) is filled
+   into `README.md`, `RELEASE-NOTES-1.7.0.md`, `TECHNICAL-REFERENCE-1.7.0.md`
+   and the `Test-Report.md` section.
+2. `python tools/package-release.py` wrote the source archive and documents;
+   they, the ISO and `test-evidence/` are in `../delivery-1.7.0/`, where
+   `sha256sum -c SHA256SUMS` reports every file OK.
+3. Tag `v1.7.0` is on this documentation commit.
+4. Still outstanding, and not claimed as passed: Craig's hardware checks
+   (speakers/headphones, tearing, printed top-row keys, Wi-Fi, suspend/locking,
+   battery percentage) and his confirmation of the two-window rule on the real
+   machine, plus the Dell's own hardware checks.
 
 ## If interrupted
 

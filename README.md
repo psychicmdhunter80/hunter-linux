@@ -45,11 +45,11 @@ configuration and known limitations are in `TECHNICAL-REFERENCE-1.7.0.md`.
 | SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
 | Build | Actions run `44633739555`, image commit `b5815b83` |
 | Installed packages | 944, listed in `PACKAGE-MANIFEST-1.7.0.txt` |
-| Live boot tests | run `44635214442` - BIOS and UEFI, `<BOOT_COUNTS>` |
-| Installer version label | run `44635230275` - `<LABEL_COUNTS>` |
-| Window and workspace behaviour at 1366x768 | run `44635217637` - `<TILING_COUNTS>` |
-| Voice typing and Jellyfin | run `44635226301` - `<VOICE_COUNTS>` |
-| Installation test | run `44635222172` - `108 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there`; see `Test-Report.md` |
+| Live boot tests | run `44637676331` - BIOS and UEFI, `240 passed, 0 failed on each` |
+| Installer version label | run `44635230275` - `12 passed, 0 failed` |
+| Window and workspace behaviour at 1366x768 | run `44651347027` - `67 passed, 0 failed` |
+| Voice typing and Jellyfin | run `44635226301` - `38 passed, 0 failed` |
+| Installation test | run `44640100443` - `108 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there`; see `Test-Report.md` |
 | Source | `SMD-Linux-Build-v1.7.0.zip`, checksums in `SHA256SUMS` |
 
 **Hardware confirmation (Hunter, on Craig):** the four-window layout of 1.6.0
