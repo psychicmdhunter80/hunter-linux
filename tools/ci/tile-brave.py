@@ -754,31 +754,32 @@ def main():
             shell.run("tail -8 ~/.cache/smd/autotile.log 2>/dev/null").split())[:500])
 
         # --- the scratchpad, which is i3's own and must keep working --------
-        switch(2)
-        shell.run("setsid env DISPLAY=:0 xfce4-terminal --title='scratchpad test' "
-                  "</dev/null >/dev/null 2>&1 &", timeout=60)
-        started = time.time()
-        while time.time() - started < 45 and "scratchpad test" not in windows():
-            time.sleep(2)
-        shell.run("DISPLAY=:0 i3-msg -q '[title=\"scratchpad test\"] "
-                  "move scratchpad'; sleep 4", timeout=60)
+        # Workspace 5 holds its two halves, so hiding one of them must free a
+        # slot, showing it again must float it over the same workspace, and
+        # hiding it again must leave exactly the state it started in.
+        switch(5)
+        before = state()[1].get(5, (0, 0))
+        shell.run("DISPLAY=:0 i3-msg -q '[title=\"smd-six\"] move scratchpad'; "
+                  "sleep 4", timeout=60)
         hidden = state()
         ok("a window sent to the scratchpad leaves its workspace",
-           hidden[1].get(2, (0, 0))[0] == 1,
-           "held=%s" % sorted(hidden[1].items()))
+           hidden[1].get(5, (0, 0)) == (before[0] - 1, 0),
+           "was=%s now=%s" % (before, sorted(hidden[1].items())))
         shell.run("DISPLAY=:0 i3-msg -q 'scratchpad show'; sleep 4", timeout=60)
         shown = state()
         ok("showing it floats over the workspace without taking a slot",
-           shown[1].get(2, (0, 0))[0] == 1
-           and shown[1].get(2, (0, 0))[1] >= 1,
+           shown[0] == 5 and shown[1].get(5, (0, 0)) == (before[0] - 1, 1),
            "focused=%s held=%s" % (shown[0], sorted(shown[1].items())))
         ok("and no other workspace was used to hold it",
            shown[2] <= 10 and set(shown[1]) <= {2, 5, 7},
            "highest=%s held=%s" % (shown[2], sorted(shown[1].items())))
-        close_title("scratchpad test")
+        shell.run("DISPLAY=:0 i3-msg -q '[title=\"smd-six\"] move scratchpad'; "
+                  "sleep 4", timeout=60)
         back = state()
-        ok("closing it leaves the workspace as it was",
-           back[1].get(2, (0, 0)) == (1, 0), "held=%s" % sorted(back[1].items()))
+        ok("hiding it again leaves the workspace exactly as it was",
+           back[1].get(5, (0, 0)) == (before[0] - 1, 0)
+           and back[0] == 5,
+           "focused=%s held=%s" % (back[0], sorted(back[1].items())))
 
         # --- navigation and the ten-workspace limit, ordinary launches -----
         shell.run("pkill -x brave; pkill -x brave-browser; sleep 3; "
