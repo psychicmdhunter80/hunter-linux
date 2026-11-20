@@ -755,7 +755,11 @@ def main():
 
         # --- the scratchpad, which is i3's own and must keep working --------
         switch(2)
-        term("scratchpad test", 2)
+        shell.run("setsid env DISPLAY=:0 xfce4-terminal --title='scratchpad test' "
+                  "</dev/null >/dev/null 2>&1 &", timeout=60)
+        started = time.time()
+        while time.time() - started < 45 and "scratchpad test" not in windows():
+            time.sleep(2)
         shell.run("DISPLAY=:0 i3-msg -q '[title=\"scratchpad test\"] "
                   "move scratchpad'; sleep 4", timeout=60)
         hidden = state()
