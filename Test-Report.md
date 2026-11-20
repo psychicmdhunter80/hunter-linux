@@ -245,6 +245,112 @@ run assertions.
 
 ## 6d. Version 1.3 - dark theme, installer entry, resources
 
+## SMD Linux 1.7.0
+
+1.7.0 changes how windows are placed and how many workspaces there are. A
+workspace holds **two** ordinary windows - the first fills it, the second makes
+equal left/right halves - and a **third** opens on the **next empty workspace**
+(numerically, wrapping through 1-10) instead of being squeezed in. A window
+moved into a full workspace, and a program opened when all ten workspaces hold a
+window, stay **floating** on the workspace they reached, marked and announced;
+nothing is closed or moved to make room. `Ctrl+Alt+Right/Left` walk the
+**occupied** workspaces in numerical order; the panel keeps `1 2 3 4` and gains
+one control for 5-10 that shows the active number.
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.7.0-amd64.iso` |
+| Size | 1,207,959,552 bytes (1.13 GiB) |
+| SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
+| Build | Actions run `44633739555`, image commit `b5815b83` |
+| Installed packages | 944 |
+| Live boot tests | run `44637676331` - BIOS and UEFI, 240 passed, 0 failed on each |
+| Window and workspace behaviour | run `<TILING_RUN>` - `<TILING_COUNTS>` |
+| Installer version label | run `44635230275` - 12 passed, 0 failed |
+| Voice typing and Jellyfin | run `44635226301` - 38 passed, 0 failed |
+| Installation test | run `44640100443` - `108 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there` |
+| Package manifest | run `44635232817` - 944 packages read from the image |
+| Static checks | `python tools/verify-project.py` - all pass, every label at 1.7.0 |
+
+Every result above names the same artefact: run `44633739555` built this ISO,
+and each test job fetched that run's artifact and booted that image. The
+SHA-256 was recomputed locally from the delivered file and matches.
+
+### What the live tests actually measured
+
+The boot test covers both firmwares. Its window section launches ordinary
+`xfce4-terminal` windows on workspace 9 and checks, in order: one window fills
+the workspace (compared with the rectangle i3 reports, not a hardcoded size);
+a second makes equal halves with the first on the left; a third opens on
+workspace 10 and is the window on screen; a fourth splits workspace 10; closing
+one lets the neighbour fill its workspace and leaves the other workspace
+untouched; `Ctrl+Alt+Right` walks 9 -> 10 -> 9 and `Ctrl+Alt+Left` walks back;
+a move into an empty workspace fills it without taking the focus; a move beside
+one window makes halves; a move into a full workspace leaves the window
+floating with a notification and does not move the two windows already there;
+no workspace above ten exists. The panel section additionally checks that the
+5-10 control exists, that its list names all ten workspaces, and that its icon
+shows `6` while workspace 6 is active.
+
+The Brave test (run `<TILING_RUN>`) repeats the rule with the browser the owner
+uses at 1366x768: one fills; two are ordered halves; the third and fourth
+overflow to and split the next empty workspace; an application opened on a
+chosen empty workspace stays there; closing expands the neighbour; a second tab
+is not a second window; an ordinary dialog floats and takes no slot; a floating
+window frees its slot and tiling it again makes halves; fullscreen keeps both
+windows on their workspace; moves into empty, partial and full destinations;
+the overflow window is marked `smd-overflow` and the notification is on screen;
+navigation through gaps and around the ends; one occupied workspace and none;
+all ten workspaces; exhaustion with the program kept floating; repeated
+launch/close cycles; twenty idle seconds without a re-layout; one helper
+process and no error in its log.
+
+### What the live tests found
+
+**A real defect, fixed before delivery.** The overflow exception issued
+`[con_id=N] floating enable, resize set 66 ppt 70 ppt, move position center` as
+one command chain. i3 applies a criteria prefix to a single command, so the
+resize reached the focused window - a tiled window - and turned a pair of
+halves into a **66/33 split** while the intended window floated. The live run
+showed exactly that (`smd-one[0,0 1366x740]`, `smd-four[683,0 683x740]`). Each
+command now carries its own criteria (`b5815b8`), and the delivered image is
+built from that commit; the failing run `44631605492` is kept in the history as
+the evidence, not as a result.
+
+**Harness corrections, not passes.** Three earlier runs (`44631601192`,
+`44631605492`, `44635214442`) were failed by the tests themselves, and are
+listed here so they cannot be mistaken for functional passes:
+
+* the Brave test measured a destination workspace while i3 had it hidden
+  (`rect=0,0+0x0`), where i3 does not re-lay-out - it now shows the workspace
+  and polls for the shape;
+* it counted the `xfce4-notifyd` bubble as a floating window and as a
+  "`was full`" line, so a correct notification failed a check - the bubble is
+  now counted separately as evidence, and the workspace walk ignores it;
+* the boot test compared the window against a hardcoded 1366x768 although it
+  runs at 1280x800, and its panel section left the earlier Brave window on
+  workspace 1, where the two-window rule correctly sent the third window to
+  workspace 2 - it now compares against the workspace i3 reports and starts
+  that section from an empty workspace;
+* the workspace walk was invoked without `DISPLAY` on the serial console, where
+  `i3-msg` cannot find the socket, so every step stayed put.
+
+The image was rebuilt once, for the criteria fix. Builds `44630204635` and the
+runs above are superseded and are not part of this delivery.
+
+### What is still Craig's to check
+
+The automated results are virtual machines. These remain open, and none of them
+is claimed here: loudness through the real speakers and headphones, playback
+and tearing on the Bay Trail panel, the printed top-row keys, Wi-Fi against real
+access points, suspend and lid, the battery percentage, dictation accuracy in a
+real room, and **his confirmation of the two-window rule on Craig itself**
+(at 1366x768 in a virtual machine it is proven; that is not his panel).
+The `xfce4-notifyd` bubble is proven to appear as a window on the workspace,
+but a screenshot of the bubble is not part of the automated evidence.
+
+---
+
 ## SMD Linux 1.6.0
 
 1.6.0 changes what you see and what you can reach, not how the desktop works.

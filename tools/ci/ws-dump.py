@@ -93,8 +93,8 @@ def main():
                         lines.append("WS %d tiled=%d floating=%d name=%s"
                                      % (number, len(tiled), len(floaters),
                                         child.get("name", number)))
-                        for window, kind in ((w, 1) for w in tiled) + \
-                                ((w, 0) for w in floaters):
+                        for window, kind in [(w, 1) for w in tiled] + \
+                                [(w, 0) for w in floaters]:
                             properties = window.get("window_properties") or {}
                             lines.append("WIN ws=%d tiled=%d id=%s class=%s name=%s"
                                          % (number, kind, window.get("window"),
