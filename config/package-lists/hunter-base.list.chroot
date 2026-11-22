@@ -9,6 +9,11 @@ initramfs-tools
 # a loading screen.  plymouth lives in the initramfs and hands over to the
 # session once X is up; it stops there and stays stopped.
 plymouth
+# The text label modules (label-pango, label-freetype) live in a separate
+# package.  Without it Image.Text in the theme draws nothing and the screen
+# shows only the gradient - plymouthd logged "Could not load module
+# .../label-pango.so" in run 44977852165.
+plymouth-label
 systemd
 systemd-timesyncd
 dbus

@@ -61,7 +61,11 @@ count=0
 for initrd in /boot/initrd.img-*; do
 	[ -f "$initrd" ] || continue
 	count=$((count + 1))
-	for want in plymouthd "themes/$THEME/smd.script" plymouth; do
+	# The theme writes its wording with Image.Text, which needs one of the
+	# label modules from plymouth-label.  Without it the splash is a blank
+	# gradient: the old check could not tell that from a drawn loading screen.
+	for want in plymouthd "themes/$THEME/smd.script" plymouth \
+	    label-pango.so libpango-1.0.so; do
 		if ! lsinitramfs "$initrd" | grep -q "$want"; then
 			echo "error: $initrd does not contain $want" >&2
 			exit 1

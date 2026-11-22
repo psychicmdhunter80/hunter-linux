@@ -244,6 +244,33 @@ boot_frames = []
 frames_done = threading.Event()
 
 
+def frame_signature(path):
+    """(bluish background?, bright wording pixels) for one boot frame.
+
+    The SMD theme paints a navy gradient and near-white text; the boot menu is
+    neutral grey.  Both values come from the picture itself, so a gradient
+    with no words - which is what a missing label plugin produces - does not
+    pass as a loading screen.
+    """
+    try:
+        out = subprocess.run(
+            ["convert", path, "-format", "%[fx:(b-r)>0.015]", "info:"],
+            capture_output=True, text=True, timeout=60)
+        bluish = out.stdout.strip().endswith("1")
+    except Exception:
+        bluish = False
+    try:
+        out = subprocess.run(
+            ["convert", path, "-crop", "50%x30%+25%+30%", "+repage",
+             "-colorspace", "Gray", "-threshold", "70%",
+             "-format", "%[fx:mean*w*h]", "info:"],
+            capture_output=True, text=True, timeout=60)
+        words = int(float(out.stdout))
+    except Exception:
+        words = 0
+    return bluish, words
+
+
 def frame_stats(path):
     """(average brightness, spread) of a screenshot, 0-65535, via ImageMagick.
 
@@ -382,18 +409,30 @@ def main():
         # thousands) and a splash is dark with a little drawn on it; counting
         # both as "something was drawn" is exactly how 1.7.0 passed while the
         # screen was black from the menu to the desktop.
-        drawn = [name for name, mean, spread, when in boot_frames
-                 if spread > 100 and 4 <= mean <= 4000 and when < ready_at - 10]
-        menu_only = [name for name, mean, spread, when in boot_frames
-                     if spread > 100 and mean > 4000 and when < ready_at - 10]
-        black = [name for name, mean, spread, when in boot_frames
-                 if spread <= 100 and when < ready_at - 10]
-        record("INFO: boot frames: %d drawn like a loading screen, %d like the "
-               "boot menu, %d blank" % (len(drawn), len(menu_only), len(black)))
-        check(results, "a loading screen was drawn while the machine booted",
+        # The SMD theme is a bluish gradient with near-white wording in the
+        # middle.  Brightness alone cannot identify it: the boot menu is dark
+        # with white text too, and 1.7.1's gradient-only splash had the same
+        # mean as a menu frame.  So require the theme's colour *and* the drawn
+        # words, which is also what would have caught the missing label plugin.
+        drawn, menu_only, black = [], [], []
+        for name, mean, spread, when in boot_frames:
+            if when >= ready_at - 10:
+                continue
+            if spread <= 100 and mean < 4:
+                black.append(name)
+                continue
+            bluish, words = frame_signature(os.path.join(WORK, "screen-%s.png" % name))
+            if bluish and words >= 300:
+                drawn.append(name)
+            elif mean > 4000 and spread > 100:
+                menu_only.append(name)
+        record("INFO: boot frames: %d drawn like the SMD loading screen, %d "
+               "bright like the boot menu, %d blank"
+               % (len(drawn), len(menu_only), len(black)))
+        check(results, "the SMD loading screen with its wording was drawn",
               bool(drawn))
         check(results, "the boot menu alone does not count as loading feedback",
-              bool(drawn) or not menu_only)
+              bool(drawn))
 
         if DIAG:
             # --- diagnosis: frame timeline, display state, plymouth internals --
