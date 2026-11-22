@@ -260,9 +260,12 @@ def frame_signature(path):
     except Exception:
         bluish = False
     try:
+        # Bright pixels over the whole frame: the title, the version, the
+        # "SMD Linux is loading..." line and the dots.  -crop offsets are in
+        # pixels, not percent, so a "centred" crop written with +25%/+30%
+        # measured the top-left corner and reported zero (run 44979089475).
         out = subprocess.run(
-            ["convert", path, "-crop", "50%x30%+25%+30%", "+repage",
-             "-colorspace", "Gray", "-threshold", "70%",
+            ["convert", path, "-colorspace", "Gray", "-threshold", "70%",
              "-format", "%[fx:mean*w*h]", "info:"],
             capture_output=True, text=True, timeout=60)
         words = int(float(out.stdout))
@@ -734,19 +737,17 @@ def main():
                             "2>/dev/null | wc -l", timeout=60)
         check(results, "all ten workspace buttons exist",
               written.strip().splitlines()[-1:] == ["10"])
-        # Ten files are not ten buttons: a launcher with ten items draws one
-        # button and an overflow arrow.  Each workspace must be its own
-        # single-item launcher plugin.
-        shape = shell.run(
-            "for n in 20 21 22 23 24 25 26 27 28 29; do "
-            "printf '%s=' \"$n\"; "
-            "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-$n/items "
-            "2>/dev/null | grep -c '^smd-workspace-'; done", timeout=60)
-        counts = [line.split("=")[-1].strip() for line in shape.splitlines()
-                  if "=" in line]
-        check(results, "each workspace is a single-item launcher button",
-              counts == ["1"] * 10)
-        record("INFO: workspace launcher item counts: %s" % counts)
+        # Ten files are not ten buttons: a launcher with several items draws
+        # one button and an overflow arrow.  Each workspace must be its own
+        # launcher plugin.  (The items themselves are stored by XFCE under
+        # internal ids, so the panel's own plugin list is what is checked here;
+        # the static check in verify-project.py asserts one item per plugin.)
+        ids = shell.run("DISPLAY=:0 xfconf-query -c xfce4-panel "
+                        "-p /panels/panel-1/plugin-ids | tr '\\n' ' '", timeout=60)
+        loaded = ids.split()
+        check(results, "the panel loaded all ten workspace launchers",
+              all(str(number) in loaded for number in range(20, 30)))
+        record("INFO: panel plugin ids: %s" % ids.strip()[:200])
         record("INFO: panel workspace footprint: ten 32px slots = 320px at the "
                "measured 22-24px tile width (screenshot screen-01-desktop)")
         # The text menu that used to hide 5-10 is gone; the command behind it
