@@ -1032,6 +1032,11 @@ def main():
                          if entry.startswith("SMD cycle %d c@" % cycle)]
                 ok("cycle %d: the third window left workspace 1" % cycle,
                    bool(third) and "@ws1:" not in third[0], third[:1])
+                # The third window lands on the next empty workspace and takes
+                # the focus there, so the walk starts from wherever that was,
+                # not from workspace 1 (run 44979093917 assumed 1 and failed on
+                # a correct walk).
+                before = focus()
                 shell.run("DISPLAY=:0 xdotool key --clearmodifiers ctrl+alt+Right",
                           timeout=60)
                 time.sleep(4)
@@ -1039,9 +1044,11 @@ def main():
                 shell.run("DISPLAY=:0 xdotool key --clearmodifiers ctrl+alt+Left",
                           timeout=60)
                 time.sleep(4)
-                ok("cycle %d: the occupied walk skipped the empty workspace and "
-                   "came back" % cycle, stop not in (None, "1") and focus() == "1",
-                   "stopped on %s, back on %s" % (stop, focus()))
+                ok("cycle %d: the occupied walk moved off the empty workspace "
+                   "and came back" % cycle,
+                   before not in (None, stop) and focus() == before,
+                   "started on %s, stopped on %s, back on %s"
+                   % (before, stop, focus()))
                 shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
                           "number 9'", timeout=60)
                 time.sleep(3)
