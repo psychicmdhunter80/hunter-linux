@@ -16,13 +16,24 @@ before it stays exactly as delivered.
 
 ## What was found
 
-The 1.7.0 loading screen never ran. `/live/initrd.img` on the delivered ISO
-contained the string `plymouth` zero times, while `plymouth 24.004.60-5` was in
-the package manifest - the initramfs had been generated in the middle of the
-package run, and Debian's plymouth hook exits when no theme has been made the
-default. With `quiet` on the command line the result was a black screen for
-about 53 seconds, which the boot test did not catch because it accepted the
-boot menu as "something drawn".
+The loading screen is packaged correctly and always was: decompressing the
+1.7.0 initramfs properly (uncompressed early cpio + gzip payload) shows
+`plymouthd`, the DRM renderer, `script.so`, the `smd` theme and
+`Theme=smd` inside it. The screen is nevertheless black for about a minute,
+which the old boot check could not see because it accepted the boot menu as
+"something drawn".
+
+**Startup feedback is NOT fixed.** On the 1.7.1 image the initramfs reports 29
+plymouth entries, the theme and 631 display-driver entries, and no splash
+pixels appear in the VM. Either QEMU's screendump misses DRM scanout, or
+plymouth still falls back to text. Next diagnostic step: capture the boot with
+`-display gtk`/VNC and `screendump` at 1-second intervals on both BIOS and
+UEFI, and check `/sys/class/drm` plus `journalctl -b` from the guest, to tell
+those two apart before changing anything else.
+
+An earlier note in this file claimed the initramfs contained no plymouth. That
+was wrong - it came from grepping the compressed payload as text - and has been
+corrected in the release notes and technical reference.
 
 ## What was changed
 
@@ -46,10 +57,15 @@ boot menu as "something drawn".
 | --- | --- |
 | `tools/verify-project.py` | all static checks pass |
 | Build `44971257028` | success; the hook logged `contains the smd loading screen` |
-| Boot test (BIOS + UEFI) | run `44972060560` |
-| Policy regression (`tile-brave`, image helper) | run `44972119208` |
-| Stability (15 min idle) | run `44972170532` |
-| Install test | run `44972121242` |
+| Boot test (BIOS + UEFI) | run `44972060560` - **fails** on the splash assertion (expected: the splash does not draw) and on panel checks that failed only because the test parsed `active=1\r` wrongly; parser fixed in `a86764e` |
+| Boot test rerun (UEFI, fixed parser) | run `44973642663` - running when this checkpoint was written |
+| Policy regression (`tile-brave`, image helper) | run `44972119208` - **success** |
+| Stability (15 min idle) | run `44972170532` - running |
+| Install test | run `44972121242` - running |
+
+Nothing is tagged and nothing has been moved into a delivery folder yet: the
+startup item is blocked, so `v1.7.1` must not be created until it is settled or
+the release is explicitly labelled as not fixing startup.
 
 ## If interrupted
 
