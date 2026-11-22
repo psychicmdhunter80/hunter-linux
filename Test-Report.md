@@ -1195,7 +1195,7 @@ is unchanged from 1.7.0.
 | Live boot tests | run `44980323313` - BIOS and UEFI, **128 passed, 0 failed** on each |
 | Installation test | run `44979098657` - **54 passed, 0 failed**, installed disk booted |
 | Diagnostic boot | run `44980208086` - Plymouth debug on the serial line, splash frames measured |
-| Stability | run `44981903097` - five interaction cycles plus fifteen minutes idle |
+| Stability | run `45038334087` - five interaction cycles plus 15.3 minutes idle, **94 passed, 0 failed** |
 
 Every result below names the same artefact: run `44978338982` built this ISO and
 each test job fetched that run's artifact. Two earlier candidates are kept and
@@ -1242,6 +1242,35 @@ wide on a 32 px pitch, spanning x=829-1140 = **312 px**; 320 px at 1366x768.
 Workspace 1 shows the active accent, 2-10 the quiet empty tile. The boot test
 loads all ten launcher plugins and 128/0 asserts pass.
 
+### Stability measurements
+
+Run `45038334087` used the ISO from `44978338982` and the helper from the same
+source tree (`git diff 1c03f74..1cd9186 -- config/` is empty, so the measured
+helper is the one shipped in the image). It ran five launch/overflow/switch/
+move cycles, then watched a settled desktop holding one witness window for
+**30 samples over 921 s (15.3 min)**. Result: **94 passed, 0 failed**.
+
+| Check while idle | Result |
+| --- | --- |
+| Layout | unchanged; no re-layout in 30 samples |
+| Focus | stayed on workspace 1 |
+| Helper count | one throughout; none appeared or died |
+| Self-triggered rearrangements | none; the helper log stayed at 21 lines |
+| i3 responsiveness | every `get_version` answered inside the threshold |
+| `hunter-autotile` CPU | 0.0 % peak; 1.2 s of CPU in total, identical before and after |
+| `hunter-autotile` memory | 12,852 kB, flat |
+| `hunter-workspaces` CPU / memory | 0.0 %; 1,524 kB, flat |
+
+CPU is the difference in `/proc/<pid>/stat` utime+stime ticks between samples
+over the 30 s interval, not `ps`'s lifetime average, which would hide an idle
+spike. The check requires at least one sample from every helper that was
+running: with no samples the boolean guard is false and the assertion fails, so
+the empty-sample pass that `44981903097` produced cannot recur.
+
+This is a virtual-machine measurement under TCG. It says the desktop and its
+helpers are quiescent when nothing is happening; it is not a claim about Craig's
+hardware.
+
 ### Failures kept in the record
 
 * `44979089475` - boot test failed the splash because its crop used pixel
@@ -1255,6 +1284,16 @@ loads all ten launcher plugins and 128/0 asserts pass.
   walk was correct (from 5, right to 10, left back to 5); the test assumed the
   walk starts on workspace 1 and that the third window always lands on 2. Fixed
   to measure from the actual starting workspace and rerun as `44981903097`.
+* `44981903097` - the stability job passed, but its helper CPU/RSS sampler read
+  nothing: `hunter-autotile` is a Python script, so the process name is
+  `python3` and `ps -C hunter-autotile` matched no process. The cheapness check
+  then passed on an empty list. The sampler now resolves the pid from the
+  command line and the check rejects an empty sample.
+* `44984337056` - the corrected sampler died before the idle window with
+  `TypeError: %c requires int or char`: the `ps -o %cpu=,rss=` format string was
+  passed through Python's `%` operator, which consumed the literal `%c`. No
+  measurement was produced, so this run counts as failed. Replaced by
+  `/proc` counters differenced across samples and rerun as `45038334087`.
 * `44979098657` reports `INFO: installer removed from the installed system: no`
   for the Calamares binary. That is informational: `hunter-postinstall` removes
   the launcher and favourite, not the package, as in 1.7.0.

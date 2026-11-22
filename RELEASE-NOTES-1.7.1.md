@@ -127,6 +127,22 @@ workspace 2 and that the walk starts on 1. With workspace 2 already occupied by
 an earlier check, the third window correctly went to 5. The assertion now
 measures from the workspace the walk starts on; the behaviour is unchanged.
 
+The measured pass is run `45038334087`: **94 assertions, 0 failures**. Five
+interaction cycles, then **30 samples over 921 s (15.3 min)** of a settled
+desktop holding one witness window. Layout, focus and helper count never
+changed, the helper log did not grow, and the window manager answered every
+query.
+
+| While idle | CPU | Memory |
+| --- | --- | --- |
+| `hunter-autotile` | 0.0 % (1.2 s of CPU in total, unchanged across the window) | 12,852 kB, flat |
+| `hunter-workspaces` | 0.0 % | 1,524 kB, flat |
+
+CPU is differenced from `/proc/<pid>/stat` between samples rather than read as
+a lifetime average, and a check with no samples now fails instead of passing on
+nothing. The helper measured is the one in this image: `git diff` between the
+image commit and the test commit touches nothing under `config/`.
+
 ## 4. Nothing else changed
 
 * The two-window rule, ten workspaces, occupied-workspace walk, direct
@@ -147,7 +163,7 @@ measures from the workspace the walk starts on; the behaviour is unchanged.
 | Startup feedback | **fixed in the VM** and proven from Plymouth's log; Craig's hardware still pending |
 | Boot test | run `44980323313` - BIOS and UEFI, 128 passed, 0 failed each |
 | Installation test | run `44979098657` - 54 passed, 0 failed, installed disk booted |
-| Stability | run `44981903097` - fifteen-minute observation, result in `Test-Report.md` |
+| Stability | run `45038334087` - **94 passed, 0 failed**; 15.3 min idle, helper 0.0 % CPU, memory flat |
 | Package manifest | run `44980929191` - 945 packages |
 
 See `Test-Report.md` for the run-by-run evidence of this exact image and

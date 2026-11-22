@@ -13,7 +13,7 @@ and `../delivery-1.7.0/` stay as they are.
 | --- | --- |
 | Distribution | SMD Linux 1.7.1 |
 | Base | Debian 13 "trixie", amd64 |
-| Image | `SMD-Linux-v1.7.1-amd64.iso` (hybrid live ISO, BIOS + UEFI) |
+| Image | `SMD-Linux-v1.7.1-amd64.iso`, 1,217,560,576 bytes (hybrid live ISO, BIOS + UEFI) |
 | SHA-256 | `2f01b48302287b5c55a3780f6981ec58af75985afc5766204e4447763b4a96bb` |
 | Build | Actions run `44978338982`, commit `1c03f74` |
 | Builder | `debian:trixie` container, `live-build` 1:20250505+deb13u1, Dockerfile in this repository |
@@ -32,7 +32,7 @@ verified image is the one whose SHA-256 is above. Two earlier candidates,
 | Startup feedback | theme packaged, splashed nothing on screen | serial-console and label-plugin faults fixed; gradient, wording and activity dots visible, measured (section 3) |
 | Panel workspaces | four buttons plus a text menu for 5-10 | ten buttons, each showing empty / occupied / current / both |
 | Test rigor | "something was drawn while booting" | a splash-shaped frame is required, plus initramfs contents |
-| Stability evidence | 20 seconds idle | repeated interaction cycles plus 15 minutes idle |
+| Stability evidence | 20 seconds idle | repeated interaction cycles plus 15.3 minutes idle, with measured helper CPU and memory |
 | Window policy | — | unchanged |
 
 ## 3. Boot, loading screen and installer configuration
@@ -212,7 +212,7 @@ keeps its slot, fullscreen only toggles i3's own state. `hunter-autotile`,
 | `build` | static checks; artwork regenerated from `VERSION`; the image builds; the initramfs hook verifies its own output |
 | `boot-test` (`mode=both`) | live boot under BIOS and UEFI; a bluish splash frame with bright wording (run `44980323313`: 128 passed, 0 failed on each firmware); initramfs contains plymouth, theme and the label plugin; all ten workspace launcher plugins loaded; panel bottom edge; wallpaper; applications |
 | `tile-brave` (`helper=image`) | the two-window policy with real Brave windows at 1366x768 |
-| `tile-brave` with `stability=1` | repeated cycles plus 15 minutes of idle observation: focus, layout, helper count, self-triggered rearrangements, i3 responsiveness, helper CPU/memory |
+| `tile-brave` with `stability=1` | repeated cycles plus 15 minutes of idle observation: focus, layout, helper count, self-triggered rearrangements, i3 responsiveness, helper CPU/memory (run `45038334087`: 94 passed, 0 failed; `hunter-autotile` 0.0 % CPU and 12,852 kB flat over 15.3 min, `hunter-workspaces` 0.0 % and 1,524 kB) |
 | `install-test` | install to a disposable disk, detach the ISO, boot the disk, log in, check the installed desktop (run `44979098657`: 54 passed, 0 failed) |
 | `voice-apps`, `installer-label`, `manifest` | dictation and the Jellyfin client; installer labelling; the package list |
 

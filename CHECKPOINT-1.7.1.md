@@ -13,6 +13,7 @@
 | Image build | Actions run `44978338982` |
 | ISO | `SMD-Linux-v1.7.1-amd64.iso`, SHA-256 `2f01b48302287b5c55a3780f6981ec58af75985afc5766204e4447763b4a96bb`, 945 packages |
 | Live in | `../delivery-1.7.1/` (the older `3b2183b4...` candidate is in `superseded/`) |
+| Release tag | `v1.7.1` on this commit |
 
 ## What was wrong and what fixed it
 
@@ -54,25 +55,26 @@ the existing `hunter-workspaces` subscriber; no new process.
 | Boot test (`44980323313`, mode=both) | **128 passed, 0 failed** on BIOS and UEFI; splash wording drawn, handover, initramfs contents, ten launchers loaded |
 | Installation test (`44979098657`, uefi) | **54 passed, 0 failed**; installed disk booted without the ISO |
 | Package manifest (`44980929191`) | 945 packages |
-| Stability (`44981903097`, 15 min idle) | **passed**: 14m40s idle, no layout drift, no helper appeared or died, i3 responsive, one helper at the end |
-| Stability rerun (`44984337056`) | running: measures helper CPU/RSS by pid and requires real idle samples (the earlier sampler matched nothing and passed on no data) |
+| Stability (`44981903097`, 15 min idle) | passed its idle checks, but the CPU/RSS sampler matched no process and the cheapness check passed on an empty sample |
+| Stability rerun (`44984337056`) | **failed**: the corrected sampler hit `TypeError: %c requires int or char` on a literal `%c` before the idle window; no measurement taken |
+| Stability final (`45038334087`) | **passed**: 94 asserts, 0 failed; 30 samples over 921 s (15.3 min), no layout/focus/helper drift, `hunter-autotile` 0.0 % CPU and 12,852 kB flat, `hunter-workspaces` 0.0 % and 1,524 kB |
 
 Harness defects fixed and rerun, kept in `Test-Report.md`: splash crop used
 pixel offsets for percentages; launcher items counted by desktop name instead
-of panel plugin; occupied-walk assertion assumed it started on workspace 1.
+of panel plugin; occupied-walk assertion assumed it started on workspace 1; the
+helper CPU/RSS sampler matched no process and then crashed on a literal `%c`.
+The final sampler reads `/proc` counters, differences them across each sample
+and fails when it has no samples at all.
 
 ## What is left
 
-1. Read `44984337056` and put its measured CPU/RSS before/after idle into the
-   release notes, technical reference and test report.
-2. Verify the ISO in `../delivery-1.7.1/` against its SHA-256, run
-   `python tools/package-release.py`, and move its outputs next to the ISO.
-3. Only then tag `v1.7.1`. Craig's hardware confirmation is separate and still
-   pending; nothing here is a hardware result.
+1. Craig's hardware confirmation of the startup screen. It is separate from
+   every result above, which are all virtual-machine results.
+2. Nothing else. The superseded `3b2183b4...` candidate stays marked in
+   `superseded/`; `../delivery-1.7.0/` is untouched.
 
 ## If interrupted
 
 `git checkout release/1.7.0` restores the source. The image is complete and
-verified apart from the helper-usage measurement; no image rebuild is needed
-for test or document changes. Reuse `run_id=44978338982` for any test on this
-ISO.
+verified; no image rebuild is needed for test or document changes. Reuse
+`run_id=44978338982` for any test on this ISO.

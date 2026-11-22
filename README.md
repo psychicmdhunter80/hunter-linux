@@ -41,13 +41,13 @@ known limitations are in `TECHNICAL-REFERENCE-1.7.1.md`.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.7.1-amd64.iso` |
+| Image | `SMD-Linux-v1.7.1-amd64.iso`, 1,217,560,576 bytes (1.13 GiB) |
 | SHA-256 | `2f01b48302287b5c55a3780f6981ec58af75985afc5766204e4447763b4a96bb` |
 | Build | Actions run `44978338982`, image commit `1c03f74` |
 | Installed packages | 945, listed in `PACKAGE-MANIFEST-1.7.1.txt` |
 | Live boot tests | run `44980323313` - BIOS and UEFI, `128 passed, 0 failed on each` |
 | Startup screen | fixed and measured; see `RELEASE-NOTES-1.7.1.md` and the diagnostic run `44980208086` |
-| Window and workspace behaviour at 1366x768 | boot test `44980323313` and stability run `44981903097`; see `Test-Report.md` |
+| Window and workspace behaviour at 1366x768 | boot test `44980323313` and stability run `45038334087` (94 passed, 0 failed); see `Test-Report.md` |
 | Installation test | run `44979098657` - `54 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there` |
 | Source | `SMD-Linux-Build-v1.7.1.zip`, checksums in `SHA256SUMS` |
 
