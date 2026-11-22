@@ -49,12 +49,12 @@ set gfxpayload=keep
 search --no-floppy --fs-uuid --set=root ${root_uuid}
 
 menuentry 'SMD Linux' {
-	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet console=ttyS0,115200n8 console=tty0
+	linux /boot/${kernel_name} root=UUID=${root_uuid} ro quiet plymouth.ignore-serial-consoles console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }
 
 menuentry 'SMD Linux (recovery mode)' {
-	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single console=ttyS0,115200n8 console=tty0
+	linux /boot/${kernel_name} root=UUID=${root_uuid} ro single plymouth.ignore-serial-consoles console=ttyS0,115200n8 console=tty0
 	initrd ${initrd}
 }
 EOF

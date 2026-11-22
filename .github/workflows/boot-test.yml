@@ -65,7 +65,7 @@ jobs:
         env:
           PANEL_DIAG: ${{ inputs.panel_diag }}
           BOOT_DIAG: ${{ inputs.diag }}
-          BOOT_APPEND: ${{ inputs.diag == '1' && 'findiso=/dev/sr0 plymouth.debug=stream:/dev/ttyS0 ignore_loglevel' || '' }}
+          BOOT_APPEND: ${{ inputs.diag == '1' && 'plymouth.debug=stream:/dev/ttyS0 plymouth.ignore-serial-consoles' || '' }}
         run: |
           chmod +x tools/ci/boot-test.py
           if [ "${{ inputs.diag }}" = "1" ]; then

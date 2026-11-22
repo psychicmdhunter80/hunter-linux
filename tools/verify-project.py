@@ -358,6 +358,17 @@ def check_panel_controls():
     # text menu for 5-10 is gone (1.7.1).
     require("the built-in pager previews are gone",
             'type="string" value="pager"' not in panel)
+
+    # Plymouth forces its text "details" plugin onto the serial console when
+    # one is on the kernel command line, which leaves the display black from
+    # the boot menu to the desktop (run 44976432340).  The flag keeps the
+    # serial console for diagnosis while letting the graphical theme draw.
+    config = read("auto/config")
+    require("the live command line lets plymouth use the display",
+            "plymouth.ignore-serial-consoles" in config)
+    bootloader = read("config/includes.chroot/usr/local/sbin/hunter-bootloader")
+    require("the installed command line lets plymouth use the display",
+            bootloader.count("plymouth.ignore-serial-consoles") == 2)
     for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
         require("workspace button %s is present" % number,
                 'value="smd-workspace-%s.desktop"/>' % number in panel)
