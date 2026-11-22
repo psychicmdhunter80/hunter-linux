@@ -36,6 +36,16 @@ WEB_PORT = 4602
 LIVE_USER = os.environ.get("LIVE_USER", "user")
 LIVE_PASS = os.environ.get("LIVE_PASS", "live")
 
+# Diagnostic mode: one boot, frames every second, and the questions that a
+# passing/failing assertion cannot answer - which renderer plymouth chose,
+# whether the theme drew, and what the kernel did with the display.  It boots
+# the ISO's own kernel and initramfs so the kernel command line can carry
+# plymouth.debug, without rebuilding or altering the image under test.
+DIAG = os.environ.get("BOOT_DIAG") == "1"
+BOOT_KERNEL = os.environ.get("BOOT_KERNEL", "")
+BOOT_INITRD = os.environ.get("BOOT_INITRD", "")
+BOOT_APPEND = os.environ.get("BOOT_APPEND", "")
+
 os.makedirs(WORK, exist_ok=True)
 RESULT = os.path.join(WORK, "result.txt")
 STEPS = os.path.join(WORK, "steps.txt")
@@ -291,6 +301,14 @@ def start_qemu():
     else:
         args += ["-boot", "d"]
 
+    if BOOT_KERNEL and BOOT_INITRD:
+        # The ISO's own kernel and initramfs, with an extra command line: the
+        # only way to ask plymouth to log to the serial port without changing
+        # the released image.
+        args += ["-kernel", BOOT_KERNEL, "-initrd", BOOT_INITRD,
+                 "-append", ("boot=live components quiet splash "
+                             "console=ttyS0,115200 hostname=smd username=user "
+                             "autologin " + BOOT_APPEND).strip()]
     args += ["-cdrom", ISO]
     log = open(os.path.join(WORK, "qemu.log"), "w", encoding="utf-8")
     process = subprocess.Popen(args, stdout=log, stderr=log)
@@ -325,7 +343,7 @@ def main():
             still a splash - so the spread of the pixels is measured too: a
             plain black frame has almost none, anything drawn on it has plenty.
             """
-            for frame in range(40):
+            for frame in range(150 if DIAG else 40):
                 if frames_done.is_set():
                     break
                 name = "boot-%02d" % frame
@@ -334,7 +352,7 @@ def main():
                     boot_frames.append((name,) + frame_stats(path) + (time.time(),))
                 except Exception as error:      # a monitor hiccup is not a result
                     record(f"WARN: could not capture {name}: {error}")
-                frames_done.wait(6)
+                frames_done.wait(1 if DIAG else 6)
 
         grabber = threading.Thread(target=capture_boot_screen, daemon=True)
         grabber.start()
@@ -376,6 +394,51 @@ def main():
               bool(drawn))
         check(results, "the boot menu alone does not count as loading feedback",
               bool(drawn) or not menu_only)
+
+        if DIAG:
+            # --- diagnosis: frame timeline, display state, plymouth internals --
+            start_wall = boot_frames[0][3] if boot_frames else time.time()
+            for name, mean, spread, when in boot_frames:
+                record("DIAG frame %s t=%.1fs mean=%.0f spread=%.0f"
+                       % (name, when - start_wall, mean, spread))
+            record("DIAG boot: " + " | ".join(shell.run(
+                "cat /proc/cmdline; uname -r; systemd-analyze 2>/dev/null "
+                "| head -2; cat /proc/fb 2>/dev/null; "
+                "ls /sys/class/drm/ 2>/dev/null | tr '\\n' ' '; "
+                "ls /dev/dri 2>/dev/null | tr '\\n' ' '", timeout=90).split())[:600])
+            sudo = "printf '%%s\\n' '%s' | sudo -S -p '' " % LIVE_PASS
+            record("DIAG journal: " + " | ".join(shell.run(
+                sudo + "journalctl -b -o short-monotonic --no-pager 2>/dev/null "
+                "| grep -iE 'plymouth|drm|fb0|bochs|simpledrm|vesafb|efifb|fbcon|'"
+                "'Console: switching' | head -50", timeout=120).split())[:2000])
+            record("DIAG dmesg: " + " | ".join(shell.run(
+                sudo + "dmesg 2>/dev/null | grep -iE 'drm|fb0|bochs|simpledrm|"
+                "vesafb|efifb|fbcon' | head -30", timeout=90).split())[:1200])
+            record("DIAG plymouth files: " + " | ".join(shell.run(
+                sudo + "ls -l /var/log/plymouth-debug.log /run/plymouth 2>&1; "
+                "pgrep -a plymouthd || echo no-plymouthd", timeout=60).split())[:500])
+
+            # Whether plymouth can draw at all on this display, with X out of
+            # the way.  A blank frame here, with the debug log below it, tells
+            # a renderer/theme failure apart from a boot-ordering problem.
+            shell.run(sudo + "systemctl stop lightdm", timeout=180)
+            time.sleep(3)
+            shell.run(sudo + "pkill -x plymouthd; rm -f /tmp/pd.log; "
+                      "plymouthd --debug --debug-file=/tmp/pd.log --mode=boot "
+                      "--pid-file=/tmp/pd.pid", timeout=60)
+            time.sleep(2)
+            shown = shell.run(sudo + "plymouth --show-splash; echo rc=$?",
+                              timeout=60)
+            record("DIAG show-splash: " + " ".join(shown.split())[:200])
+            time.sleep(3)
+            monitor.screenshot("diag-splash")
+            shell.run(sudo + "plymouth --quit", timeout=60)
+            record("DIAG plymouth debug: " + " | ".join(shell.run(
+                sudo + "grep -iE 'renderer|drm|frame-buffer|theme|device|'"
+                "'failed|error|open' /tmp/pd.log 2>/dev/null | head -60",
+                timeout=60).split())[:2400])
+            record("PASS: diagnostic run finished")
+            return 0
 
         time.sleep(30)
         monitor.screenshot("01-desktop")
@@ -632,6 +695,19 @@ def main():
                             "2>/dev/null | wc -l", timeout=60)
         check(results, "all ten workspace buttons exist",
               written.strip().splitlines()[-1:] == ["10"])
+        # Ten files are not ten buttons: a launcher with ten items draws one
+        # button and an overflow arrow.  Each workspace must be its own
+        # single-item launcher plugin.
+        shape = shell.run(
+            "for n in 20 21 22 23 24 25 26 27 28 29; do "
+            "printf '%s=' \"$n\"; "
+            "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-$n/items "
+            "2>/dev/null | wc -l; done", timeout=60)
+        counts = [line.split("=")[-1].strip() for line in shape.splitlines()
+                  if "=" in line]
+        check(results, "each workspace is a single-item launcher button",
+              counts == ["1"] * 10)
+        record("INFO: workspace launcher item counts: %s" % counts)
         # The text menu that used to hide 5-10 is gone; the command behind it
         # still answers, and still names all ten workspaces.
         listing = shell.run("hunter-workspaces-nav menu --print 2>&1", timeout=60)
@@ -662,7 +738,11 @@ def main():
             # match on "$" never succeeds: everything was reported as active
             # None, occupied empty, and the icon comparison failed even when
             # the panel was right.  Match the value, not the line ending.
-            text = shell.run("hunter-workspaces-nav state 2>&1", timeout=60)
+            # DISPLAY matters: without it i3-msg has no socket, the helper
+            # answers nothing, and every icon comparison below failed while
+            # the panel itself was correct (seen in run 44973642663).
+            text = shell.run("DISPLAY=:0 hunter-workspaces-nav state 2>&1",
+                             timeout=60)
             active = re.search(r"active=(\d*)", text)
             occupied = re.search(r"occupied=([0-9,]*)", text)
             here = int(active.group(1)) if active and active.group(1) else None

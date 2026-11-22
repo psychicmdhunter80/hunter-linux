@@ -1110,7 +1110,11 @@ def main():
                          timeout=60)
         record("INFO: helper log tail: " + " | ".join(tail.split()))
         ok("exactly one tiling helper is running", helpers() == "1", helpers())
-        shell.run("DISPLAY=:0 xdotool windowclose %s; "
+        # Closing several ids in one xdotool call fails as soon as one has
+        # already disappeared, which made a clean 15-minute stability run
+        # exit 1 in its cleanup.  Close each id on its own and ignore misses.
+        shell.run("for id in %s; do DISPLAY=:0 xdotool windowclose \"$id\" "
+                  "2>/dev/null || true; done; "
                   "pkill -x brave; pkill -f /tmp/hunter-autotile"
                   % " ".join(str(w) for w in names.values()), timeout=60)
         return 0 if passed else 1

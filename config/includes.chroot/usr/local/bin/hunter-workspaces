@@ -80,7 +80,11 @@ Categories=Utility;"
 	if [ -f "$file" ] && [ "$(cat "$file")" = "$want" ]; then
 		return 0
 	fi
-	printf '%s\n' "$want" >"$file"
+	# Write beside the target and rename: a launcher plugin watches the file
+	# and reloads it, and must never see a half-written .desktop (which would
+	# briefly show a blank button).
+	tmp="$file.new.$$"
+	printf '%s\n' "$want" >"$tmp" && mv -f "$tmp" "$file" || rm -f "$tmp"
 	changed=1
 }
 

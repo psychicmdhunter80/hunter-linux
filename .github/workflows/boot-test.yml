@@ -18,6 +18,11 @@ on:
         required: false
         default: "0"
         type: string
+      diag:
+        description: Diagnose the boot screen (1s frames, plymouth debug, then stop)
+        required: false
+        default: "0"
+        type: string
 
 jobs:
   boot:
@@ -46,11 +51,26 @@ jobs:
           ls -lh iso/
           cd iso && sha256sum -c SMD-Linux-v*-amd64.iso.sha256
 
+      - name: Extract the ISO's own kernel and initramfs (diagnosis)
+        if: inputs.diag == '1'
+        run: |
+          sudo mkdir -p /mnt/smd
+          sudo mount -o loop,ro iso/SMD-Linux-v*-amd64.iso /mnt/smd
+          cp /mnt/smd/live/vmlinuz-* kernel
+          cp /mnt/smd/live/initrd.img-* initrd
+          sudo umount /mnt/smd
+          ls -lh kernel initrd
+
       - name: Boot and test the live system
         env:
           PANEL_DIAG: ${{ inputs.panel_diag }}
+          BOOT_DIAG: ${{ inputs.diag }}
+          BOOT_APPEND: ${{ inputs.diag == '1' && 'findiso=/dev/sr0 plymouth.debug=stream:/dev/ttyS0 ignore_loglevel' || '' }}
         run: |
           chmod +x tools/ci/boot-test.py
+          if [ "${{ inputs.diag }}" = "1" ]; then
+            export BOOT_KERNEL="$PWD/kernel" BOOT_INITRD="$PWD/initrd"
+          fi
           python3 tools/ci/boot-test.py iso/SMD-Linux-v*-amd64.iso \
             "${{ matrix.mode }}" "out-${{ matrix.mode }}"
         timeout-minutes: 60

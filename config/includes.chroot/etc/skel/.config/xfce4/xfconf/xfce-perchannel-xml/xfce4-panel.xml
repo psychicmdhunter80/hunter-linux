@@ -42,7 +42,16 @@
         <value type="int" value="12"/>
         <value type="int" value="2"/>
         <value type="int" value="3"/>
-        <value type="int" value="4"/>
+        <value type="int" value="20"/>
+        <value type="int" value="21"/>
+        <value type="int" value="22"/>
+        <value type="int" value="23"/>
+        <value type="int" value="24"/>
+        <value type="int" value="25"/>
+        <value type="int" value="26"/>
+        <value type="int" value="27"/>
+        <value type="int" value="28"/>
+        <value type="int" value="29"/>
         <value type="int" value="5"/>
         <value type="int" value="6"/>
         <value type="int" value="7"/>
@@ -114,23 +123,73 @@
     <!-- Workspaces: all ten as numbered buttons, always present even when a
          workspace is empty.  i3 only reports workspaces that exist, and it
          discards an empty one when you leave it, so the panel's built-in
-         pager could never show all ten.  These are launcher buttons instead;
-         hunter-workspaces rewrites their icon on every i3 workspace and
-         window event, so each one shows whether that workspace holds a window
-         and which one you are on.  Ten 32px buttons keep the panel around
-         220px narrower than the windows area at 1366x768 - measured in
-         tools/ci/boot-test.py - so no window button has to be pushed off. -->
-    <property name="plugin-4" type="string" value="launcher">
+         pager could never show all ten.
+
+         Each workspace is its own launcher plugin with exactly one item.  A
+         single launcher holding ten items does NOT draw ten buttons: xfce4-panel
+         uses the first item as the button and hides the rest behind an arrow
+         (see the 4.20 launcher documentation).  1.7.1 shipped that mistake -
+         one button and an overflow arrow - which the 8 August verification
+         caught in a screenshot.  One launcher per workspace is what actually
+         produces ten buttons.  hunter-workspaces rewrites each .desktop icon
+         on every i3 workspace and window event, so a button shows whether its
+         workspace holds a window and which one is current. -->
+    <property name="plugin-20" type="string" value="launcher">
       <property name="items" type="array">
         <value type="string" value="smd-workspace-1.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-21" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-2.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-22" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-3.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-23" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-4.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-24" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-5.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-25" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-6.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-26" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-7.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-27" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-8.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-28" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-9.desktop"/>
+      </property>
+      <property name="show-labels" type="bool" value="false"/>
+    </property>
+    <property name="plugin-29" type="string" value="launcher">
+      <property name="items" type="array">
         <value type="string" value="smd-workspace-10.desktop"/>
       </property>
       <property name="show-labels" type="bool" value="false"/>

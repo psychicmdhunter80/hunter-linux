@@ -366,6 +366,20 @@ def check_panel_controls():
             'name="plugin-13"' not in panel)
     require("the ten workspace buttons stay in one place",
             panel.count('value="smd-workspace-') == 10)
+    # A launcher with several items draws ONE button and hides the rest behind
+    # an arrow (xfce4-panel 4.20).  1.7.1 shipped ten items in one launcher and
+    # therefore showed a single workspace button; each workspace now has its
+    # own single-item launcher, which is what draws ten buttons.
+    for number in range(20, 30):
+        marker = '<property name="plugin-%d" type="string" value="launcher">' % number
+        start = panel.find(marker)
+        require("workspace launcher %d is a launcher plugin" % number, start >= 0)
+        following = panel.find('<property name="plugin-', start + len(marker))
+        block = panel[start:following if following > 0 else len(panel)]
+        require("workspace launcher %d holds exactly one button" % number,
+                block.count('value="smd-workspace-') == 1)
+    require("no launcher hides several workspaces behind an arrow",
+            panel.count('value="smd-workspace-') == 10)
 
     # The helper that keeps the buttons in step, and the icons they use.
     helper = read(os.path.join(CHROOT, "usr/local/bin/hunter-workspaces"))
