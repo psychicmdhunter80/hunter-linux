@@ -658,9 +658,13 @@ def main():
 
         def actual_state():
             """(active, occupied) as i3 reports them, asking the shipped helper."""
+            # The serial console hands back CRLF line endings, so an anchored
+            # match on "$" never succeeds: everything was reported as active
+            # None, occupied empty, and the icon comparison failed even when
+            # the panel was right.  Match the value, not the line ending.
             text = shell.run("hunter-workspaces-nav state 2>&1", timeout=60)
-            active = re.search(r"^active=(\d*)$", text, re.M)
-            occupied = re.search(r"^occupied=([0-9,]*)$", text, re.M)
+            active = re.search(r"active=(\d*)", text)
+            occupied = re.search(r"occupied=([0-9,]*)", text)
             here = int(active.group(1)) if active and active.group(1) else None
             held = [int(number) for number in (occupied.group(1) if occupied else "").split(",")
                     if number]
