@@ -354,33 +354,42 @@ def check_panel_controls():
             order == ["brave-browser.desktop", "thunar.desktop",
                       "xfce4-terminal.desktop", "hunter-install.desktop"])
 
-    # Workspace controls: 1-4 directly, 5-10 behind one compact button.
-    require("the miniature workspace previews are gone",
+    # Workspace controls: every one of the ten is a button of its own, and the
+    # text menu for 5-10 is gone (1.7.1).
+    require("the built-in pager previews are gone",
             'type="string" value="pager"' not in panel)
-    for number in ("1", "2", "3", "4"):
+    for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
         require("workspace button %s is present" % number,
                 'value="smd-workspace-%s.desktop"/>' % number in panel)
-    require("workspaces 5-10 have a control of their own",
-            'value="smd-workspace-more.desktop"/>' in panel and
-            'name="plugin-13"' in panel)
+    require("the 5-10 text menu is gone from the panel",
+            'smd-workspace-more.desktop' not in panel and
+            'name="plugin-13"' not in panel)
+    require("the ten workspace buttons stay in one place",
+            panel.count('value="smd-workspace-') == 10)
 
     # The helper that keeps the buttons in step, and the icons they use.
     helper = read(os.path.join(CHROOT, "usr/local/bin/hunter-workspaces"))
     require("the helper switches with i3-msg", 'i3-msg -q' in helper)
     require("the helper watches i3 workspace events", '"workspace"' in helper)
-    require("the helper writes the four direct buttons",
-            'for number in 1 2 3 4; do' in helper)
-    require("the helper writes the 5-10 button through the menu",
-            "hunter-workspaces-nav menu" in helper)
+    require("the helper writes all ten buttons",
+            'for number in 1 2 3 4 5 6 7 8 9 10; do' in helper)
+    require("the helper marks an occupied workspace",
+            'icon="$icon-occupied"' in helper)
+    require("the helper marks the current workspace",
+            'icon="$icon-active"' in helper)
+    require("the panel no longer opens a text menu for 5-10",
+            "hunter-workspaces-nav menu" not in helper)
+    require("the helper still only reacts to i3, never polls",
+            'i3-msg -t subscribe' in helper)
     i3 = read(os.path.join(CHROOT, "etc/skel/.config/i3/config"))
     require("the helper starts with the session", "hunter-workspaces" in i3)
     icons = os.path.join(CHROOT, "usr/share/icons/hicolor/32x32/apps")
     for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
-        for suffix in ("", "-active"):
+        for suffix in ("", "-occupied", "-active", "-occupied-active"):
             icon = os.path.join(icons, "smd-ws-%s%s.png" % (number, suffix))
             require("icon %s exists" % os.path.basename(icon), os.path.exists(icon))
-    for name in ("smd-ws-more.png", "smd-ws-more-busy.png"):
-        require("icon %s exists" % name, os.path.exists(os.path.join(icons, name)))
+    require("the old 5-10 control's icons are gone",
+            not os.path.exists(os.path.join(icons, "smd-ws-more.png")))
 
     # Workspace keys: all ten switch directly, and must not have been re-bound.
     for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
@@ -444,6 +453,21 @@ def check_startup_feedback():
     post = read(os.path.join(CHROOT, "usr/local/sbin/hunter-postinstall"))
     if re.search(r"plymouth.*systemctl enable", post):
         fail("the post-install script enables a resident plymouth service")
+    # 1.7.1: installed is not enough - the 1.7.0 initramfs contained no
+    # plymouth at all because it had been built before the package landed.
+    hook_path = "config/hooks/live/0390-smd-plymouth.hook.chroot"
+    if not os.path.exists(os.path.join(ROOT, hook_path)):
+        fail("the initramfs is never rebuilt after plymouth is installed")
+        return
+    hook = read(os.path.join(ROOT, hook_path))
+    for needle, why in (
+            ("plymouth-set-default-theme", "the theme is never made default"),
+            ("update-initramfs -u", "the initramfs is never rebuilt"),
+            ("lsinitramfs", "nothing checks that the initramfs holds the splash"),
+            ("FRAMEBUFFER=y", "no framebuffer fallback is requested"),
+            ("amdgpu", "the display drivers are not loaded early")):
+        if needle not in hook:
+            fail("the initramfs hook is incomplete: %s" % why)
 
 
 def check_installer_favourite():

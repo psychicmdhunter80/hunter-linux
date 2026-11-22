@@ -360,9 +360,22 @@ def main():
         # Only frames from the boot itself count: the last second before the
         # desktop is up shows the desktop, which would pass this check without
         # a loading screen existing at all.
-        drawn = [name for name, _, spread, when in boot_frames
-                 if spread > 100 and when < ready_at - 10]
-        check(results, "something was drawn while the machine booted", bool(drawn))
+        # The boot menu is bright (the screenshot's average is in the
+        # thousands) and a splash is dark with a little drawn on it; counting
+        # both as "something was drawn" is exactly how 1.7.0 passed while the
+        # screen was black from the menu to the desktop.
+        drawn = [name for name, mean, spread, when in boot_frames
+                 if spread > 100 and 4 <= mean <= 4000 and when < ready_at - 10]
+        menu_only = [name for name, mean, spread, when in boot_frames
+                     if spread > 100 and mean > 4000 and when < ready_at - 10]
+        black = [name for name, mean, spread, when in boot_frames
+                 if spread <= 100 and when < ready_at - 10]
+        record("INFO: boot frames: %d drawn like a loading screen, %d like the "
+               "boot menu, %d blank" % (len(drawn), len(menu_only), len(black)))
+        check(results, "a loading screen was drawn while the machine booted",
+              bool(drawn))
+        check(results, "the boot menu alone does not count as loading feedback",
+              bool(drawn) or not menu_only)
 
         time.sleep(30)
         monitor.screenshot("01-desktop")
@@ -496,6 +509,35 @@ def main():
               "splash-gone" in bits[2])
         record("INFO: plymouth service: %s" % " ".join(bits[1].split())[:60])
         record("INFO: boot journal mentions of plymouth: %s" % bits[3].strip()[:10])
+        journal = shell.run("journalctl -b --no-pager 2>/dev/null "
+                            "| grep -i plymouth | head -6", timeout=120)
+        record("INFO: plymouth journal: %s" % " | ".join(
+            journal.strip().splitlines())[:400])
+
+        # 1.7.1: installed is not enough - the loading screen has to be in the
+        # initramfs.  1.7.0 had plymouth in the package list and none of it in
+        # /live/initrd.img, which is why the screen stayed black.
+        initrd = shell.run(
+            "medium=$(ls -d /run/live/medium /lib/live/mount/medium "
+            "2>/dev/null | head -1); "
+            "img=$(ls $medium/live/initrd.img-* 2>/dev/null | head -1); "
+            "echo medium=$medium; echo img=$img; echo ---; "
+            "if [ -n \"$img\" ]; then "
+            "lsinitramfs \"$img\" 2>/dev/null | grep -ci plymouth; "
+            "lsinitramfs \"$img\" 2>/dev/null "
+            "| grep -c 'themes/smd/smd.script'; "
+            "lsinitramfs \"$img\" 2>/dev/null | grep -ci 'amdgpu\\|i915'; "
+            "fi", timeout=240)
+        halves = initrd.split("---")
+        record("INFO: initramfs location: %s" % " ".join(halves[0].split())[:120])
+        counts = halves[1].split() if len(halves) > 1 else []
+        record("INFO: initramfs counts (plymouth, theme, display drivers): %s"
+               % (" ".join(counts[:3]) or "none"))
+        found = [int(value) for value in counts[:3] if value.isdigit()]
+        check(results, "the loading screen is inside the initramfs",
+              len(found) == 3 and found[0] > 0 and found[1] > 0)
+        check(results, "the display drivers are in the initramfs for early KMS",
+              len(found) == 3 and found[2] > 0)
         booted = shell.run("systemd-analyze 2>/dev/null | head -2", timeout=60)
         record("INFO: boot time: %s" % " | ".join(booted.splitlines())[:120])
 
@@ -588,21 +630,21 @@ def main():
               "helper-running" in helper)
         written = shell.run("ls ~/.local/share/applications/smd-workspace-*.desktop "
                             "2>/dev/null | wc -l", timeout=60)
-        check(results, "the four workspace buttons and the 5-10 control exist",
-              written.strip().splitlines()[-1:] == ["5"])
-        # 1.7: workspaces 5-10 are reachable from the panel through one
-        # control; the list it opens names all ten, so nothing is hidden.
+        check(results, "all ten workspace buttons exist",
+              written.strip().splitlines()[-1:] == ["10"])
+        # The text menu that used to hide 5-10 is gone; the command behind it
+        # still answers, and still names all ten workspaces.
         listing = shell.run("hunter-workspaces-nav menu --print 2>&1", timeout=60)
         listed = [line.split()[0] for line in listing.strip().splitlines()
                   if line.split()]
-        check(results, "the 5-10 control lists all ten workspaces",
+        check(results, "the workspace list still names all ten",
               listed == [str(number) for number in range(1, 11)])
-        record("INFO: workspace menu: %s" % listing.strip()[:200])
+        record("INFO: workspace list: %s" % listing.strip()[:200])
 
         def workspace_icons():
-            """The icon each of the four buttons currently carries."""
+            """The icon each of the ten buttons currently carries."""
             out = shell.run(
-                "for n in 1 2 3 4; do "
+                "for n in 1 2 3 4 5 6 7 8 9 10; do "
                 "printf '%s ' \"$n\"; "
                 "sed -n 's/^Icon=//p' "
                 "~/.local/share/applications/smd-workspace-$n.desktop; "
@@ -614,10 +656,35 @@ def main():
                     icons[words[0]] = words[1]
             return icons
 
+        def actual_state():
+            """(active, occupied) as i3 reports them, asking the shipped helper."""
+            text = shell.run("hunter-workspaces-nav state 2>&1", timeout=60)
+            active = re.search(r"^active=(\d*)$", text, re.M)
+            occupied = re.search(r"^occupied=([0-9,]*)$", text, re.M)
+            here = int(active.group(1)) if active and active.group(1) else None
+            held = [int(number) for number in (occupied.group(1) if occupied else "").split(",")
+                    if number]
+            return here, held
+
+        def expected_icons(here, held):
+            """What each button should say: occupancy bar, highlight, or both."""
+            wanted = {}
+            for number in range(1, 11):
+                icon = "smd-ws-%d" % number
+                if number in held:
+                    icon += "-occupied"
+                if number == here:
+                    icon += "-active"
+                wanted[str(number)] = icon
+            return wanted
+
         before = workspace_icons()
+        here, held = actual_state()
+        record("INFO: i3 says active %s, occupied %s" % (here, held))
+        check(results, "the panel shows which workspaces hold windows",
+              before == expected_icons(here, held))
         check(results, "the first workspace starts highlighted",
-              before.get("1") == "smd-ws-1-active" and
-              all(before.get(n) == "smd-ws-%s" % n for n in ("2", "3", "4")))
+              before.get("1", "").endswith("-active") and here == 1)
 
         # A window on workspace 1 has to stay there when the workspace changes.
         # 1.7 gives a workspace two windows, so the two below are meant to be
@@ -676,8 +743,11 @@ def main():
             "%s=%s" % item for item in sorted(after.items())))
         record("INFO: workspace button log after the switch: " + " | ".join(
             shell.run("tail -8 ~/.cache/smd/workspaces.log 2>/dev/null").split())[:400])
+        here, held = actual_state()
         check(results, "switching workspace moves the highlight",
-              after.get("1") == "smd-ws-1" and after.get("2") == "smd-ws-2-active")
+              after == expected_icons(here, held) and here == 2)
+        check(results, "a workspace left holding a window still shows it",
+              after.get("1", "").startswith("smd-ws-1-occupied") and 1 in held)
         focused = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>&1", timeout=60)
         current = re.search(r'"num":(\d+),"name":"[^"]*","visible":true,"focused":true',
                             focused.replace(" ", ""))
@@ -691,23 +761,28 @@ def main():
             record("INFO: window left behind: %s" % " ".join(state.split())[:80])
         monitor.screenshot("07-panel-workspace-2")
 
-        # The active workspace number has to stay visible above 4 too: the
-        # 5-10 button carries the number itself while one of them is active.
+        # Every workspace is a button of its own now, so an empty workspace
+        # above 4 has to be selectable and highlighted like the first four.
         shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
                   "number 6'", timeout=60)
         time.sleep(4)
-        more_icon = shell.run("sed -n 's/^Icon=//p' ~/.local/share/applications/"
-                              "smd-workspace-more.desktop 2>/dev/null",
-                              timeout=60).strip()
-        check(results, "the 5-10 button shows the active workspace number",
-              more_icon == "smd-ws-6-active")
-        record("INFO: 5-10 button icon on workspace 6: %s" % (more_icon or "none"))
+        sixth = workspace_icons()
+        here, held = actual_state()
+        check(results, "a workspace above 4 highlights when it is selected",
+              sixth.get("6") == "smd-ws-6-active" and here == 6)
+        check(results, "the whole row still agrees with i3 on workspace 6",
+              sixth == expected_icons(here, held))
+        record("INFO: icons on workspace 6: " + " ".join(
+            "%s=%s" % item for item in sorted(sixth.items())))
 
         shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth number 1'", timeout=60)
         time.sleep(4)
         back = workspace_icons()
+        here, held = actual_state()
         check(results, "coming back moves the highlight back",
-              back.get("1") == "smd-ws-1-active" and back.get("2") == "smd-ws-2")
+              back.get("1", "").endswith("-active") and here == 1)
+        check(results, "an occupied workspace stays marked occupied",
+              back.get("1") == "smd-ws-1-occupied-active" and 1 in held)
         # Closing the window must not drag anything in from another workspace.
         if window_id:
             shell.run("DISPLAY=:0 i3-msg -q '[con_id=%s] kill' " % window_id, timeout=60)

@@ -5,7 +5,7 @@ Window.SetBackgroundTopColor(0.078, 0.094, 0.114);
 Window.SetBackgroundBottomColor(0.125, 0.157, 0.196);
 
 title = Image.Text("SMD LINUX", 0.90, 0.90, 0.92);
-subtitle = Image.Text("VERSION 1.7.0", 0.55, 0.62, 0.70);
+subtitle = Image.Text("VERSION 1.7.1", 0.55, 0.62, 0.70);
 status = Image.Text("SMD Linux is loading...", 0.62, 0.66, 0.72);
 
 title_sprite = Sprite(title);

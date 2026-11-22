@@ -3,7 +3,7 @@
 
 Two windows on a workspace, ten workspaces, a third window that opens on the
 next empty one, the overflow exception when none is left, the workspace walk
-on Ctrl+Alt+Left/Right and the panel's 5-10 control are all exercised here.
+on Ctrl+Alt+Left/Right and the panel's ten workspace buttons are all exercised here.
 
 Brave windows cover the layouts - they are what the owner actually uses - and
 ordinary xfce4-terminal launches cover navigation, the ten-workspace limit and
@@ -955,6 +955,154 @@ def main():
            errors.strip()[:120])
         ok("the desktop still has no workspace above ten", state()[2] <= 10,
            state()[2])
+
+        # --- extended stability (1.7.1) -------------------------------------
+        # 1.7.0 was signed off on twenty seconds of idle time.  This runs the
+        # same policy through repeated cycles and then watches a settled
+        # desktop for a quarter of an hour, recording focus, layout and helper
+        # behaviour instead of trusting a single screenshot.
+        if os.environ.get("STABILITY") == "1":
+            minutes = int(os.environ.get("STABILITY_MINUTES", "15"))
+            record("INFO: --- stability: interaction cycles, then %d minutes idle ---"
+                   % minutes)
+
+            def tree_signature():
+                """What is on screen, exactly: window, workspace, geometry."""
+                text = shell.run("DISPLAY=:0 i3-msg -t get_tree 2>/dev/null",
+                                 timeout=90)
+                try:
+                    data = json.loads(text[text.index("{"):])
+                except (ValueError, KeyError):
+                    return None
+                found = []
+
+                def walk(node, workspace):
+                    number = (node.get("num") if node.get("type") == "workspace"
+                              else workspace)
+                    if node.get("window"):
+                        box = node.get("rect") or {}
+                        found.append("%s@ws%s:%s,%s,%s,%s" % (
+                            node.get("name"), number, box.get("x"), box.get("y"),
+                            box.get("width"), box.get("height")))
+                    for child in (node.get("nodes") or []) + \
+                            (node.get("floating_nodes") or []):
+                        walk(child, number)
+
+                walk(data, None)
+                return sorted(found)
+
+            def focus():
+                text = shell.run("DISPLAY=:0 i3-msg -t get_workspaces 2>/dev/null",
+                                 timeout=60)
+                try:
+                    data = json.loads(text[text.index("["):])
+                except (ValueError, KeyError):
+                    return None
+                for entry in data:
+                    if entry.get("focused"):
+                        return str(entry.get("num"))
+                return None
+
+            def helper_usage():
+                """(percent CPU, resident kB) of the helper, or None."""
+                text = shell.run("ps -o %cpu=,rss= -C hunter-autotile 2>/dev/null "
+                                 "| head -1", timeout=60).split()
+                if len(text) < 2:
+                    return None
+                try:
+                    return (float(text[0]), int(text[1]))
+                except ValueError:
+                    return None
+
+            def log_size():
+                text = shell.run("wc -l < ~/.cache/smd/autotile.log 2>/dev/null",
+                                 timeout=60).strip()
+                return int(text) if text.isdigit() else -1
+
+            for cycle in range(1, 6):
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                          "number 1'", timeout=60)
+                for suffix in ("a", "b", "c"):
+                    shell.run("DISPLAY=:0 xfce4-terminal --title='SMD cycle %d %s' "
+                              ">/dev/null 2>&1 &" % (cycle, suffix), timeout=60)
+                    time.sleep(6)
+                time.sleep(6)
+                places = tree_signature() or []
+                third = [entry for entry in places
+                         if entry.startswith("SMD cycle %d c@" % cycle)]
+                ok("cycle %d: the third window left workspace 1" % cycle,
+                   bool(third) and "@ws1:" not in third[0], third[:1])
+                shell.run("DISPLAY=:0 xdotool key --clearmodifiers ctrl+alt+Right",
+                          timeout=60)
+                time.sleep(4)
+                stop = focus()
+                shell.run("DISPLAY=:0 xdotool key --clearmodifiers ctrl+alt+Left",
+                          timeout=60)
+                time.sleep(4)
+                ok("cycle %d: the occupied walk skipped the empty workspace and "
+                   "came back" % cycle, stop not in (None, "1") and focus() == "1",
+                   "stopped on %s, back on %s" % (stop, focus()))
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                          "number 9'", timeout=60)
+                time.sleep(3)
+                ok("cycle %d: an empty workspace can be chosen directly" % cycle,
+                   focus() == "9", focus())
+                shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                          "number 1'", timeout=60)
+                time.sleep(3)
+                shell.run("pkill -f 'SMD cycle %d' >/dev/null 2>&1; "
+                          "pkill -x xfce4-terminal", timeout=60)
+                time.sleep(5)
+                ok("cycle %d: exactly one tiling helper is running" % cycle,
+                   helpers() == "1", helpers())
+
+            shell.run("DISPLAY=:0 i3-msg -q 'workspace --no-auto-back-and-forth "
+                      "number 1'", timeout=60)
+            shell.run("DISPLAY=:0 xfce4-terminal --title='SMD idle witness' "
+                      ">/dev/null 2>&1 &", timeout=60)
+            time.sleep(12)
+            layout0, focus0, helpers0, log0 = (tree_signature(), focus(),
+                                               helpers(), log_size())
+            record("INFO: idle start: focus %s, helpers %s, %d log lines"
+                   % (focus0, helpers0, log0))
+            drift, usage, slow = [], [], []
+            samples = max(2, minutes * 2)
+            for index in range(samples):
+                time.sleep(30)
+                if tree_signature() != layout0:
+                    drift.append("layout moved after %ds" % ((index + 1) * 30))
+                if focus() != focus0:
+                    drift.append("focus moved to %s after %ds"
+                                 % (focus(), (index + 1) * 30))
+                if helpers() != helpers0:
+                    drift.append("helpers became %s after %ds"
+                                 % (helpers(), (index + 1) * 30))
+                if log_size() != log0:
+                    drift.append("the helper acted while idle after %ds"
+                                 % ((index + 1) * 30))
+                used = helper_usage()
+                if used:
+                    usage.append(used)
+                asked = time.time()
+                shell.run("DISPLAY=:0 i3-msg -t get_version", timeout=60)
+                took = time.time() - asked - 1.5
+                if took > 2.0:
+                    slow.append("i3 answered in %.1fs at %ds" % (took, (index + 1) * 30))
+            record("INFO: helper while idle (cpu%%, rss kB): %s" % (usage[:3],))
+            record("INFO: idle drift: %s" % (drift[:6] or "none"))
+            ok("the desktop does not rearrange itself while idle", not drift,
+               drift[:3])
+            ok("no helper appeared or died while idle", not any(
+                entry.startswith("helpers") for entry in drift), drift[:3])
+            ok("the window manager stayed responsive while idle", not slow,
+               slow[:3])
+            ok("the helper stayed cheap while idle",
+               not usage or max(entry[0] for entry in usage) < 5.0,
+               max((entry[0] for entry in usage), default=0))
+            if usage:
+                ok("the helper did not grow while idle",
+                   usage[-1][1] <= max(usage[0][1] * 1.5, usage[0][1] + 4096),
+                   "%d kB -> %d kB" % (usage[0][1], usage[-1][1]))
 
         record("INFO: helper processes at the end: %s" % helpers())
         record("INFO: reflows at the end: %s" % reflows())

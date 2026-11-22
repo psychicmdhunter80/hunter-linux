@@ -306,43 +306,52 @@ def slide(path, headline, subline):
 
 
 def workspace_icons():
-    """The ten numbered workspace buttons, plain and active, plus 5-10.
+    """Ten numbered workspace buttons, each in four states.
 
-    1.7 raises the desktop to ten workspaces: 1-4 stay on the panel as direct
-    buttons, and 5-10 sit behind one compact control.  That control shows the
-    number itself - filled in the accent colour - while one of those
-    workspaces is active, a quiet grid when they hold nothing, and an accent
-    dot when something is running up there, so the active number is always
-    visible and an occupied workspace above 4 is never hidden.
+    1.7.1 replaces the text menu for workspaces 5-10 with a direct button for
+    every workspace, and answers the question the menu could not: which
+    desktops hold windows.  The state is drawn, not photographed - i3 reports
+    how many windows a workspace holds, so no capture loop, compositor or
+    extra process is needed:
+
+        smd-ws-N                    quiet tile, empty
+        smd-ws-N-occupied           quiet tile and an accent bar, holds a window
+        smd-ws-N-active             accent tile, the workspace you are on
+        smd-ws-N-occupied-active    accent tile and a white bar, on and occupied
+
+    The bar rather than a filled tile carries "occupied": it survives the
+    active state, so a workspace never looks empty just because it is current.
     """
     icon_dir = os.path.join(CHROOT, "usr", "share", "icons", "hicolor",
                             "32x32", "apps")
     for number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"):
-        for active in (False, True):
-            canvas = Canvas(32, 32, alpha=True)
-            if active:
-                canvas.round_rect(1, 1, 30, 30, 7, ACCENT, 1.0)
-                ink = (255, 255, 255)
-            else:
-                canvas.round_rect(1, 1, 30, 30, 7, MUTED, 0.30)
-                ink = INK
-            # Two digits need a smaller face to stay inside the tile: 10 is
-            # the only one, but it is a real workspace and has to be legible.
-            scale = 3 if len(number) == 1 else 2
-            width = canvas.text_width(number, scale)
-            canvas.text((32 - width) // 2, (32 - 7 * scale) // 2,
-                        number, scale, ink, 1.0)
-            name = "smd-ws-%s%s.png" % (number, "-active" if active else "")
-            canvas.save(os.path.join(icon_dir, name))
-    for busy in (False, True):
-        canvas = Canvas(32, 32, alpha=True)
-        canvas.round_rect(1, 1, 30, 30, 7, MUTED, 0.30)
-        for index in range(3):
-            colour = ACCENT if (busy and index == 2) else INK
-            canvas.round_rect(7 + index * 8, 13, 5, 5, 2, colour,
-                              1.0 if busy else 0.7)
-        canvas.save(os.path.join(icon_dir, "smd-ws-more%s.png"
-                                 % ("-busy" if busy else "")))
+        for occupied in (False, True):
+            for active in (False, True):
+                canvas = Canvas(32, 32, alpha=True)
+                if active:
+                    canvas.round_rect(1, 1, 30, 30, 7, ACCENT, 1.0)
+                    ink = (255, 255, 255)
+                else:
+                    canvas.round_rect(1, 1, 30, 30, 7, MUTED, 0.30)
+                    ink = INK
+                # Two digits need a smaller face to stay inside the tile: 10
+                # is the only one, but it is a real workspace and has to stay
+                # legible at panel size.
+                scale = 3 if len(number) == 1 else 2
+                width = canvas.text_width(number, scale)
+                digit_y = (32 - 7 * scale) // 2 - (2 if occupied else 0)
+                canvas.text((32 - width) // 2, digit_y, number, scale, ink, 1.0)
+                if occupied:
+                    # Two windows are two halves side by side, so the bar is
+                    # split by a hairline: the shape matches what a workspace
+                    # holding its two windows actually looks like.
+                    bar = (255, 255, 255) if active else ACCENT
+                    canvas.rect(7, 26, 8, 3, bar, 1.0)
+                    canvas.rect(17, 26, 8, 3, bar, 1.0)
+                suffix = ("-occupied" if occupied else "") + \
+                         ("-active" if active else "")
+                canvas.save(os.path.join(icon_dir,
+                                         "smd-ws-%s%s.png" % (number, suffix)))
 
 
 PLYMOUTH_THEME = '''[Plymouth Theme]

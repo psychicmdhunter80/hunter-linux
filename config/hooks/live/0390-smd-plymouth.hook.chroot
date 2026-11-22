@@ -1,0 +1,76 @@
+#!/bin/sh
+# SMD Linux - put the loading screen inside the initramfs, and prove it.
+#
+# 1.7.0 shipped an image whose /live/initrd.img contained no plymouth at all:
+# the package was installed (it is in the manifest) but the initramfs had been
+# generated earlier, in the middle of the package run, so the plymouth hook
+# never ran.  With `quiet` on the kernel command line that leaves nothing on
+# screen between the boot menu and the desktop - a black screen for a minute,
+# which is exactly what was reported from the real machine.  The boot test
+# only noticed that *something* had been drawn, and the boot menu satisfied it.
+#
+# So the initramfs is rebuilt here, after everything is installed and after
+# make-assets.py has written the theme, and the result is inspected: an image
+# that cannot show a loading screen fails the build instead of shipping.
+set -e
+
+THEME=smd
+THEMEDIR=/usr/share/plymouth/themes/$THEME
+
+if [ ! -f "$THEMEDIR/smd.script" ]; then
+	echo "error: the SMD loading screen is missing from $THEMEDIR" >&2
+	exit 1
+fi
+
+# The theme the daemon uses, both in the initramfs and in the installed
+# system.  plymouth-set-default-theme writes /etc/plymouth/plymouthd.conf and
+# the default.plymouth alternative together, so the two cannot disagree.
+plymouth-set-default-theme "$THEME"
+grep -q "^Theme=$THEME$" /etc/plymouth/plymouthd.conf || {
+	echo "error: plymouthd.conf does not name the $THEME theme" >&2
+	exit 1
+}
+
+# Early kernel mode setting: plymouth draws through DRM, and on a real GPU the
+# driver is not loaded yet when the initramfs starts.  Listing the common
+# drivers here pulls them into the initramfs, so the splash gets a display
+# instead of falling back to text or giving up.  Drivers for hardware that is
+# not present simply do not load.
+mkdir -p /etc/initramfs-tools
+cat > /etc/initramfs-tools/modules <<'EOF'
+# SMD Linux - load the display drivers early so the loading screen can draw.
+# (see config/hooks/live/0390-smd-plymouth.hook.chroot)
+i915
+amdgpu
+radeon
+nouveau
+virtio_gpu
+bochs
+EOF
+
+# Without KMS the framebuffer path still gives plymouth something to draw on;
+# FRAMEBUFFER=y is what asks initramfs-tools to include it.
+mkdir -p /etc/initramfs-tools/conf.d
+printf 'FRAMEBUFFER=y\n' > /etc/initramfs-tools/conf.d/smd-framebuffer.conf
+
+update-initramfs -u -k all
+
+# Prove it, rather than trusting the exit status of update-initramfs: the
+# initrd is compressed, so lsinitramfs is the only reliable question to ask.
+count=0
+for initrd in /boot/initrd.img-*; do
+	[ -f "$initrd" ] || continue
+	count=$((count + 1))
+	for want in plymouthd "themes/$THEME/smd.script" plymouth; do
+		if ! lsinitramfs "$initrd" | grep -q "$want"; then
+			echo "error: $initrd does not contain $want" >&2
+			exit 1
+		fi
+	done
+	echo "smd-plymouth: $initrd contains the $THEME loading screen"
+done
+
+[ "$count" -gt 0 ] || {
+	echo "error: no initramfs was produced, so no loading screen can show" >&2
+	exit 1
+}

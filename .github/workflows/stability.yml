@@ -1,0 +1,63 @@
+name: stability
+
+# The longer stability run: repeated launch/overflow/switch cycles with real
+# windows, then a settled desktop watched for a quarter of an hour.  Separate
+# from tile-brave so the policy run stays short.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build run whose ISO provides the live environment
+        required: true
+        type: string
+      minutes:
+        description: Idle observation, in minutes
+        required: false
+        default: "15"
+        type: string
+      mode:
+        description: Firmware
+        required: false
+        default: uefi
+        type: string
+
+jobs:
+  stability:
+    name: Stability (live session)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-utils ovmf curl imagemagick
+          ls -l /dev/kvm || echo "no /dev/kvm, using TCG"
+
+      - name: Fetch the ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" --name iso --repo "${{ github.repository }}" --dir iso
+          ls -lh iso/
+
+      - name: Run the stability sequence
+        env:
+          TILE_HELPER: image
+          STABILITY: "1"
+          STABILITY_MINUTES: ${{ inputs.minutes }}
+        run: |
+          python3 tools/ci/tile-brave.py iso/SMD-Linux-v*-amd64.iso out-stability "${{ inputs.mode }}"
+        timeout-minutes: 130
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability
+          path: out-stability/
+          retention-days: 14
+          if-no-files-found: warn
