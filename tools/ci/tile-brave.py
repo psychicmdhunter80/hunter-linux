@@ -1003,48 +1003,46 @@ def main():
                         return str(entry.get("num"))
                 return None
 
-            def helper_usage():
-                """(percent CPU, resident kB) of the helper, or None.
+            TRACKED = (("hunter-autotile", "hunter-auto[t]ile"),
+                       ("hunter-workspaces", "hunter-workspace[s]"))
+
+            clock = shell.run("getconf CLK_TCK 2>/dev/null", timeout=60).strip()
+            clock = int(clock) if clock.isdigit() else 100
+            page = shell.run("getconf PAGESIZE 2>/dev/null", timeout=60).strip()
+            page = (int(page) // 1024) if page.isdigit() else 4
+
+            def counters(pattern):
+                """(cpu ticks, resident kB) of the first matching process.
 
                 hunter-autotile is a python script, so its process name is
-                python3 and `ps -C hunter-autotile` matches nothing; the whole
-                idle sample was empty on run 44981903097 and the "cheap" check
-                passed on no data.  Resolve the pid from the command line.
+                python3 and `ps -C hunter-autotile` matched nothing: the idle
+                sample was empty on run 44981903097 and the "cheap" check then
+                passed on no data.  Resolve the pid from the command line and
+                read the counters from /proc instead of `ps -o %cpu=`, which
+                reports a lifetime average and so cannot say whether the
+                helper is idle now.  Fields 14/15 are utime/stime in ticks,
+                field 24 is resident pages.
                 """
-                pid = shell.run("pgrep -f 'hunter-auto[t]ile' | head -1",
-                                timeout=60).strip().splitlines()
-                if not pid or not pid[-1].isdigit():
-                    return None
-                text = shell.run("ps -o %cpu=,rss= -p %s" % pid[-1],
-                                 timeout=60).split()
-                if len(text) < 2:
-                    return None
-                try:
-                    return (float(text[0]), int(text[1]))
-                except ValueError:
-                    return None
-
-            def usage_of(pattern):
-                """(percent CPU, resident kB) of the first matching command."""
                 pid = shell.run("pgrep -f '%s' | head -1" % pattern,
                                 timeout=60).strip().splitlines()
                 if not pid or not pid[-1].isdigit():
                     return None
-                text = shell.run("ps -o %cpu=,rss= -p %s" % pid[-1],
-                                 timeout=60).split()
-                if len(text) < 2:
+                text = shell.run("awk '{print $14, $15, $24}' /proc/%s/stat "
+                                 "2>/dev/null" % pid[-1], timeout=60).split()
+                if len(text) < 3:
                     return None
                 try:
-                    return (float(text[0]), int(text[1]))
+                    return (int(text[0]) + int(text[1]), int(text[2]) * page)
                 except ValueError:
                     return None
 
             def record_usage(where):
-                for name, pattern in (("hunter-autotile", "hunter-auto[t]ile"),
-                                      ("hunter-workspaces",
-                                       "hunter-workspace[s]")):
-                    record("INFO: %s %s (cpu%%, rss kB): %s"
-                           % (name, where, usage_of(pattern)))
+                for name, pattern in TRACKED:
+                    got = counters(pattern)
+                    record("INFO: %s %s: %s" % (
+                        name, where,
+                        "cpu %.1fs, rss %d kB" % (got[0] / float(clock), got[1])
+                        if got else "no sample"))
 
             def log_size():
                 text = shell.run("wc -l < ~/.cache/smd/autotile.log 2>/dev/null",
@@ -1105,7 +1103,12 @@ def main():
             record("INFO: idle start: focus %s, helpers %s, %d log lines"
                    % (focus0, helpers0, log0))
             record_usage("before idle")
-            drift, usage, slow = [], [], []
+            drift, slow = [], []
+            usage = {name: [] for name, _ in TRACKED}
+            present = {name: counters(pattern) is not None
+                       for name, pattern in TRACKED}
+            started_idle = time.time()
+            previous = {name: counters(pattern) for name, pattern in TRACKED}
             samples = max(2, minutes * 2)
             for index in range(samples):
                 time.sleep(30)
@@ -1120,15 +1123,26 @@ def main():
                 if log_size() != log0:
                     drift.append("the helper acted while idle after %ds"
                                  % ((index + 1) * 30))
-                used = helper_usage()
-                if used:
-                    usage.append(used)
+                # CPU over the interval, not since the helper started: the
+                # ticks are differenced against the wall time between samples.
+                for name, pattern in TRACKED:
+                    now, was = counters(pattern), previous.get(name)
+                    if now and was and now[0] >= was[0]:
+                        share = ((now[0] - was[0]) /
+                                 (float(clock) * 30.0)) * 100.0
+                        usage[name].append((share, now[1]))
+                    previous[name] = now
                 asked = time.time()
                 shell.run("DISPLAY=:0 i3-msg -t get_version", timeout=60)
-                took = time.time() - asked - 1.5
-                if took > 2.0:
+                took = time.time() - asked
+                if took > 3.5:
                     slow.append("i3 answered in %.1fs at %ds" % (took, (index + 1) * 30))
-            record("INFO: helper while idle (cpu%%, rss kB): %s" % (usage[:3],))
+            watched = time.time() - started_idle
+            record("INFO: idle observation: %d samples over %.0fs (%.1f min)"
+                   % (samples, watched, watched / 60.0))
+            for name, _ in TRACKED:
+                record("INFO: %s while idle (cpu%%, rss kB): %s"
+                       % (name, usage[name][:3] or "no sample"))
             record("INFO: idle drift: %s" % (drift[:6] or "none"))
             ok("the desktop does not rearrange itself while idle", not drift,
                drift[:3])
@@ -1136,14 +1150,23 @@ def main():
                 entry.startswith("helpers") for entry in drift), drift[:3])
             ok("the window manager stayed responsive while idle", not slow,
                slow[:3])
+            autotile = usage["hunter-autotile"]
+            ok("every helper that was running produced idle samples",
+               bool(autotile) and all(usage[name] for name in present
+                                      if present[name]),
+               "%.0f min watched, %d autotile samples, running: %s"
+               % (watched / 60.0, len(autotile),
+                  ", ".join(sorted(n for n in present if present[n])) or "none"))
+            ok("the idle observation covered the requested %d minutes" % minutes,
+               watched >= minutes * 60 - 60, "%.1f min" % (watched / 60.0))
             ok("the helper stayed cheap while idle",
-               bool(usage) and max(entry[0] for entry in usage) < 5.0,
-               "%d samples, max %.1f%%" % (len(usage),
-                                           max((e[0] for e in usage), default=0)))
+               bool(autotile) and max(entry[0] for entry in autotile) < 5.0,
+               "%d samples, max %.1f%%" % (len(autotile),
+                                           max((e[0] for e in autotile), default=0)))
             ok("the helper did not grow while idle",
-               bool(usage) and usage[-1][1] <= max(usage[0][1] * 1.5,
-                                                  usage[0][1] + 4096),
-               "%d kB -> %d kB" % (usage[0][1], usage[-1][1]) if usage
+               bool(autotile) and autotile[-1][1] <= max(autotile[0][1] * 1.5,
+                                                         autotile[0][1] + 4096),
+               "%d kB -> %d kB" % (autotile[0][1], autotile[-1][1]) if autotile
                else "no samples")
 
             record_usage("after idle")
