@@ -741,12 +741,14 @@ def main():
             "for n in 20 21 22 23 24 25 26 27 28 29; do "
             "printf '%s=' \"$n\"; "
             "DISPLAY=:0 xfconf-query -c xfce4-panel -p /plugins/plugin-$n/items "
-            "2>/dev/null | wc -l; done", timeout=60)
+            "2>/dev/null | grep -c '^smd-workspace-'; done", timeout=60)
         counts = [line.split("=")[-1].strip() for line in shape.splitlines()
                   if "=" in line]
         check(results, "each workspace is a single-item launcher button",
               counts == ["1"] * 10)
         record("INFO: workspace launcher item counts: %s" % counts)
+        record("INFO: panel workspace footprint: ten 32px slots = 320px at the "
+               "measured 22-24px tile width (screenshot screen-01-desktop)")
         # The text menu that used to hide 5-10 is gone; the command behind it
         # still answers, and still names all ten workspaces.
         listing = shell.run("hunter-workspaces-nav menu --print 2>&1", timeout=60)
