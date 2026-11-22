@@ -1004,15 +1004,47 @@ def main():
                 return None
 
             def helper_usage():
-                """(percent CPU, resident kB) of the helper, or None."""
-                text = shell.run("ps -o %cpu=,rss= -C hunter-autotile 2>/dev/null "
-                                 "| head -1", timeout=60).split()
+                """(percent CPU, resident kB) of the helper, or None.
+
+                hunter-autotile is a python script, so its process name is
+                python3 and `ps -C hunter-autotile` matches nothing; the whole
+                idle sample was empty on run 44981903097 and the "cheap" check
+                passed on no data.  Resolve the pid from the command line.
+                """
+                pid = shell.run("pgrep -f 'hunter-auto[t]ile' | head -1",
+                                timeout=60).strip().splitlines()
+                if not pid or not pid[-1].isdigit():
+                    return None
+                text = shell.run("ps -o %cpu=,rss= -p %s" % pid[-1],
+                                 timeout=60).split()
                 if len(text) < 2:
                     return None
                 try:
                     return (float(text[0]), int(text[1]))
                 except ValueError:
                     return None
+
+            def usage_of(pattern):
+                """(percent CPU, resident kB) of the first matching command."""
+                pid = shell.run("pgrep -f '%s' | head -1" % pattern,
+                                timeout=60).strip().splitlines()
+                if not pid or not pid[-1].isdigit():
+                    return None
+                text = shell.run("ps -o %cpu=,rss= -p %s" % pid[-1],
+                                 timeout=60).split()
+                if len(text) < 2:
+                    return None
+                try:
+                    return (float(text[0]), int(text[1]))
+                except ValueError:
+                    return None
+
+            def record_usage(where):
+                for name, pattern in (("hunter-autotile", "hunter-auto[t]ile"),
+                                      ("hunter-workspaces",
+                                       "hunter-workspace[s]")):
+                    record("INFO: %s %s (cpu%%, rss kB): %s"
+                           % (name, where, usage_of(pattern)))
 
             def log_size():
                 text = shell.run("wc -l < ~/.cache/smd/autotile.log 2>/dev/null",
@@ -1072,6 +1104,7 @@ def main():
                                                helpers(), log_size())
             record("INFO: idle start: focus %s, helpers %s, %d log lines"
                    % (focus0, helpers0, log0))
+            record_usage("before idle")
             drift, usage, slow = [], [], []
             samples = max(2, minutes * 2)
             for index in range(samples):
@@ -1104,14 +1137,17 @@ def main():
             ok("the window manager stayed responsive while idle", not slow,
                slow[:3])
             ok("the helper stayed cheap while idle",
-               not usage or max(entry[0] for entry in usage) < 5.0,
-               max((entry[0] for entry in usage), default=0))
-            if usage:
-                ok("the helper did not grow while idle",
-                   usage[-1][1] <= max(usage[0][1] * 1.5, usage[0][1] + 4096),
-                   "%d kB -> %d kB" % (usage[0][1], usage[-1][1]))
+               bool(usage) and max(entry[0] for entry in usage) < 5.0,
+               "%d samples, max %.1f%%" % (len(usage),
+                                           max((e[0] for e in usage), default=0)))
+            ok("the helper did not grow while idle",
+               bool(usage) and usage[-1][1] <= max(usage[0][1] * 1.5,
+                                                  usage[0][1] + 4096),
+               "%d kB -> %d kB" % (usage[0][1], usage[-1][1]) if usage
+               else "no samples")
 
-        record("INFO: helper processes at the end: %s" % helpers())
+            record_usage("after idle")
+            record("INFO: helper processes at the end: %s" % helpers())
         record("INFO: reflows at the end: %s" % reflows())
         tail = shell.run("tail -12 ~/.cache/smd/autotile.log 2>/dev/null",
                          timeout=60)

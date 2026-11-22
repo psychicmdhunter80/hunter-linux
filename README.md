@@ -1,4 +1,4 @@
-# SMD Linux 1.7.0
+# SMD Linux 1.7.1
 
 A small, lightweight Debian 13 desktop distribution for low-power machines:
 **Xorg + i3 + the XFCE4 panel**, one browser with working codecs, PipeWire
@@ -18,39 +18,38 @@ modifier for everything else. Details, root causes and what is still unverified
 are in `REPAIR-REPORT.md`; measurements are in `Test-Report.md`.
 
 ```
- ./build.sh            # builds SMD-Linux-v1.7.0-amd64.iso in this directory
+ ./build.sh            # builds SMD-Linux-v1.7.1-amd64.iso in this directory
 ```
 
 ---
 
 ## Release status
 
-**1.7.0** is the current release. 1.6.0, 1.5.0, 1.4.1, 1.4, 1.3 and 1.2 stay
-available as rollback (`v1.6.0`, `v1.5.0`, `v1.4`, `v1.3`, `v1.2`) and none of
-their tags moved. 1.7.0 changes how windows are placed and how many workspaces
-there are: **two windows on a workspace** - the first fills it, the second makes
-equal left/right halves - and a **third opens on the next empty workspace**, one
-of **ten**, instead of being squeezed in. `Ctrl+Alt+Right`/`Left` walk the
-**occupied** workspaces in numerical order, wrapping round; the panel keeps its
-buttons `1 2 3 4` and gains one compact control for **5-10** that shows the
-active number. When all ten workspaces are full a new program stays floating,
-with a notification, rather than being closed. The panel, applications,
-installer, loading screen and the rest of the shortcuts are unchanged. What
-changed is in `RELEASE-NOTES-1.7.0.md`; the exact package list, provenance,
-configuration and known limitations are in `TECHNICAL-REFERENCE-1.7.0.md`.
+**1.7.1** is the current release. 1.7.0, 1.6.0, 1.5.0, 1.4.1, 1.4, 1.3 and 1.2
+stay available as rollback (`v1.7.0`, `v1.6.0`, `v1.5.0`, `v1.4`, `v1.3`,
+`v1.2`) and none of their tags moved. 1.7.1 fixes the **black startup screen**
+and gives all **ten workspaces their own panel button**, each showing empty,
+occupied or current. The window rule is unchanged from 1.7.0: **two windows on
+a workspace** - the first fills it, the second makes equal left/right halves -
+and a **third opens on the next empty workspace**, one of ten. `Ctrl+Alt+Right`
+/`Left` walk the **occupied** workspaces in numerical order, wrapping round.
+When all ten workspaces are full a new program stays floating, with a
+notification, rather than being closed. Applications, installer and shortcuts
+are unchanged. What changed, with the evidence for both startup faults, is in
+`RELEASE-NOTES-1.7.1.md`; the exact package list, provenance, configuration and
+known limitations are in `TECHNICAL-REFERENCE-1.7.1.md`.
 
 | | |
 | --- | --- |
-| Image | `SMD-Linux-v1.7.0-amd64.iso`, 1,207,959,552 bytes |
-| SHA-256 | `1c637e054c961b8ae9f1172dfa7db39c0290a5cd43490b58ebc70130fd4e8c11` |
-| Build | Actions run `44633739555`, image commit `b5815b83` |
-| Installed packages | 944, listed in `PACKAGE-MANIFEST-1.7.0.txt` |
-| Live boot tests | run `44637676331` - BIOS and UEFI, `240 passed, 0 failed on each` |
-| Installer version label | run `44635230275` - `12 passed, 0 failed` |
-| Window and workspace behaviour at 1366x768 | run `44651347027` - `67 passed, 0 failed` |
-| Voice typing and Jellyfin | run `44635226301` - `38 passed, 0 failed` |
-| Installation test | run `44640100443` - `108 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there`; see `Test-Report.md` |
-| Source | `SMD-Linux-Build-v1.7.0.zip`, checksums in `SHA256SUMS` |
+| Image | `SMD-Linux-v1.7.1-amd64.iso` |
+| SHA-256 | `2f01b48302287b5c55a3780f6981ec58af75985afc5766204e4447763b4a96bb` |
+| Build | Actions run `44978338982`, image commit `1c03f74` |
+| Installed packages | 945, listed in `PACKAGE-MANIFEST-1.7.1.txt` |
+| Live boot tests | run `44980323313` - BIOS and UEFI, `128 passed, 0 failed on each` |
+| Startup screen | fixed and measured; see `RELEASE-NOTES-1.7.1.md` and the diagnostic run `44980208086` |
+| Window and workspace behaviour at 1366x768 | boot test `44980323313` and stability run `44981903097`; see `Test-Report.md` |
+| Installation test | run `44979098657` - `54 passed, 0 failed: installed to a disposable disk, booted without the ISO and checked there` |
+| Source | `SMD-Linux-Build-v1.7.1.zip`, checksums in `SHA256SUMS` |
 
 **Hardware confirmation (Hunter, on Craig):** the four-window layout of 1.6.0
 was confirmed on Craig; the two-window rule is this release's change and still
@@ -148,8 +147,8 @@ The build downloads roughly 1.5 GB of Debian packages and takes 20-60 minutes
 depending on the machine and mirror. The result is:
 
 ```
-SMD-Linux-v1.7.0-amd64.iso          the bootable hybrid image
-SMD-Linux-v1.7.0-amd64.iso.sha256   its checksum
+SMD-Linux-v1.7.1-amd64.iso          the bootable hybrid image
+SMD-Linux-v1.7.1-amd64.iso.sha256   its checksum
 ```
 
 Use a different mirror without editing anything:
@@ -188,7 +187,7 @@ method (it preserves both boot paths).
 Linux:
 
 ```
-sudo dd if=SMD-Linux-v1.7.0-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=SMD-Linux-v1.7.1-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 Use the whole device (`/dev/sdX`), never a partition (`/dev/sdX1`). This
@@ -198,7 +197,7 @@ macOS:
 
 ```
 diskutil list                                  # find the disk number
-sudo dd if=SMD-Linux-v1.7.0-amd64.iso of=/dev/rdiskN bs=4m
+sudo dd if=SMD-Linux-v1.7.1-amd64.iso of=/dev/rdiskN bs=4m
 ```
 
 Windows: use [Rufus](https://rufus.ie) in **DD mode**, or balenaEtcher, and

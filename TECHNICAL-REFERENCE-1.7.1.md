@@ -1,8 +1,9 @@
 # SMD Linux 1.7.1 - technical reference
 
-**Status: implemented, image built, verification in progress.** This document
-supersedes `TECHNICAL-REFERENCE-1.7.0.md` for everything it covers; the 1.7.0
-reference and `../delivery-1.7.0/` stay as they are.
+**Status: implemented, image built, verified in the virtual machine; hardware
+confirmation pending.** This document supersedes
+`TECHNICAL-REFERENCE-1.7.0.md` for everything it covers; the 1.7.0 reference
+and `../delivery-1.7.0/` stay as they are.
 
 ---
 
@@ -12,21 +13,23 @@ reference and `../delivery-1.7.0/` stay as they are.
 | --- | --- |
 | Distribution | SMD Linux 1.7.1 |
 | Base | Debian 13 "trixie", amd64 |
-| Image | `SMD-Linux-v1.7.1-amd64.iso`, 1,207,959,552 bytes (hybrid live ISO, BIOS + UEFI) |
-| SHA-256 | `3b2183b430d314d80018667c4fe977298f59179cdf31b18c4f5e784cb0e66642` |
-| Build | Actions run `44971257028` (job 137051321789), commit `1014414` |
+| Image | `SMD-Linux-v1.7.1-amd64.iso` (hybrid live ISO, BIOS + UEFI) |
+| SHA-256 | `2f01b48302287b5c55a3780f6981ec58af75985afc5766204e4447763b4a96bb` |
+| Build | Actions run `44978338982`, commit `1c03f74` |
 | Builder | `debian:trixie` container, `live-build` 1:20250505+deb13u1, Dockerfile in this repository |
-| Build inputs | this repository at `1014414` plus the workflow commit that follows it |
-| Packages | 944, unchanged from 1.7.0 (no package added or removed) |
+| Packages | 945 - 1.7.0's 944 plus `plymouth-label` (manifest run `44980929191`) |
 
-Documentation commits made after the build are **not** part of the image; the
-image contains source at commit `1014414` only.
+The image contains source at commit `1c03f74`. Commits after it change only
+test harnesses and documentation and are **not** part of the image; the
+verified image is the one whose SHA-256 is above. Two earlier candidates,
+`3b2183b4...` (run `44971257028`, no startup fix) and `54ae04bd...` (run
+`44976421460`, panel only), are superseded and kept for the record.
 
 ## 2. What changed in 1.7.1
 
 | Area | 1.7.0 | 1.7.1 |
 | --- | --- | --- |
-| Startup feedback | theme installed, splashed nothing on screen | initramfs rebuilt with the theme, early display drivers and a framebuffer fallback; **still not visible in the VM** (section 3) |
+| Startup feedback | theme packaged, splashed nothing on screen | serial-console and label-plugin faults fixed; gradient, wording and activity dots visible, measured (section 3) |
 | Panel workspaces | four buttons plus a text menu for 5-10 | ten buttons, each showing empty / occupied / current / both |
 | Test rigor | "something was drawn while booting" | a splash-shaped frame is required, plus initramfs contents |
 | Stability evidence | 20 seconds idle | repeated interaction cycles plus 15 minutes idle |
@@ -38,13 +41,16 @@ image contains source at commit `1014414` only.
 
 | Medium | Command line |
 | --- | --- |
-| Live (BIOS and UEFI) | `boot=live components quiet splash console=ttyS0,115200 hostname=smd username=user autologin` |
+| Live (BIOS and UEFI) | `boot=live components quiet splash plymouth.ignore-serial-consoles console=ttyS0,115200 hostname=smd username=user autologin` |
 | Live failsafe | `... nosplash nomodeset xforcevesa noapic noapm nodma nolapic nosmp vga=788 ...` |
 | Installed | `GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"` |
 
 `console=ttyS0` is deliberate: it is what lets the harness drive a login shell
-and read kernel output. Every issued workspace command carries
-`--no-auto-back-and-forth` because `workspace_auto_back_and_forth yes` is set.
+and read kernel output. It is also what made Plymouth force its text renderer
+onto the serial line, so `plymouth.ignore-serial-consoles` accompanies it on
+the live line and on both installed GRUB entries. Every issued workspace command
+carries `--no-auto-back-and-forth` because `workspace_auto_back_and_forth yes`
+is set.
 
 ### 3.2 Plymouth
 
@@ -52,6 +58,30 @@ and read kernel output. Every issued workspace command carries
   by `tools/make-assets.py` from `VERSION`: gradient background, `SMD LINUX`,
   `VERSION 1.7.1`, "SMD Linux is loading...", three dots cycling via
   `Plymouth.SetRefreshFunction`.
+* **Two faults made the splash invisible, and both are fixed.** (1) Plymouth
+  saw the serial console and forced the text `details` plugin onto it -
+  `serial consoles detected, managing them with "details" forced` - so the
+  graphical theme was never created. `plymouth.ignore-serial-consoles` now
+  makes it log `ignoring all consoles but default console because explicitly
+  told to`. (2) `plymouth-label` was absent, so `label-pango.so` could not load
+  and every `Image.Text` drew nothing; the log said `Could not load module ...
+  label-pango.so`. The package is now installed, and the hook refuses to build
+  an initramfs without `label-pango.so` and `libpango-1.0.so`.
+* Verified chain on the delivered image (diagnostic run `44980208086`, debug
+  stream on the serial line): default console only, `/dev/dri/card0`,
+  `renderers/drm.so`, `drm driver: bochs-drm`, preferred mode 1280x800,
+  `Creating 1280x800 renderer head`, `executing script file`, then
+  `label-pango: Text 'SMD LINUX' has dimensions 90x19`, `'VERSION 1.7.1'
+  117x19`, `'SMD Linux is loading...' 178x19` and `'.' 5x19`.
+* Measured on screen: the splash occupies about 63 s of the ~85 s pre-desktop
+  interval under TCG (frames at 1 s intervals; the same gradient frame repeats
+  from 85 s to 22 s before X). The boot test requires a bluish frame with at
+  least 300 bright pixels, so the boot menu can no longer be mistaken for it.
+* **Residual gap:** roughly 13 s between Plymouth quitting and the greeter
+  drawing show black with a text cursor (frames at 19-6 s before X). That is
+  LightDM startup, is measured, and is not hidden by the splash. Because the
+  wording is drawn by the label plugin its size is fixed (19 px tall at
+  1280x800); making it larger would require rendering the strings as images.
 * `/etc/plymouth/plymouthd.conf`: `Theme=smd`, `ShowDelay=0`, `DeviceTimeout=8`.
 * **`config/hooks/live/0390-smd-plymouth.hook.chroot`** (new in 1.7.1) runs
   after packages and artwork: `plymouth-set-default-theme smd`;
@@ -68,9 +98,6 @@ and read kernel output. Every issued workspace command carries
   a gzip payload**. Grepping the raw file for strings reports "absent" for
   everything in the payload - that mistake produced a wrong diagnosis during
   this release and is why the check above decompresses.
-* What is **not** established: whether the splash reaches the screen. The VM
-  records `mean 0-1` frames for the whole boot. Either QEMU's `screendump`
-  misses the DRM scanout, or plymouth still falls back to text. Open.
 * Fallbacks kept: `Esc` shows boot messages, the failsafe entry uses
   `nosplash`, and `plymouth.enable=0` disables the graphical screen. No
   resident process: plymouth runs from the initramfs and quits at handover.
@@ -88,8 +115,24 @@ no dangling shortcut.
 
 `xfce4-panel`, bottom edge, 28px, always visible, `plugin-ids` order: menu (1),
 separator (10), Brave (11), File Manager (12), tasklist (2), expanding
-separator (3), ten workspace launchers (4), systray (5), clock (6), volume (7),
-battery (8), power (9). Plugin 13 (the 1.7.0 "5-10" control) is gone.
+separator (3), ten workspace launchers (`plugin-20`...`plugin-29`, one item
+each), systray (5), clock (6), volume (7), battery (8), power (9). Plugin 13
+(the 1.7.0 "5-10" control) and the first attempt's single multi-item launcher
+(`plugin-4`) are gone.
+
+**Why ten plugins, not ten items.** XFCE draws one button per launcher
+plugin. Ten items in one plugin render as a single button plus an overflow
+arrow, which is exactly what the 1.7.0 text menu looked like from a distance;
+the first 1.7.1 build still showed one button for that reason. Ten single-item
+plugins draw ten buttons, and the boot test now checks that all ten plugin ids
+are loaded rather than counting item names (XFCE stores items under internal
+ids, which made the earlier count read zero).
+
+**Measured footprint.** On the running desktop the tiles are 24 px wide on a
+32 px pitch: the ten occupy x=829-1140, **312 px**, at 1280 wide, and 320 px at
+Craig's 1366x768. The earlier "roughly 220 px" was an estimate and was wrong.
+Pinned Brave and File Manager, the task list, systray, clock, volume, battery
+and power controls are unchanged and unclipped at 1280x800 and 1366x768.
 
 `hunter-workspaces` (one subscriber, started from the i3 config) writes ten
 `.desktop` files into `~/.local/share/applications/`, each `Exec=i3-msg -q
@@ -167,10 +210,10 @@ keeps its slot, fullscreen only toggles i3's own state. `hunter-autotile`,
 | Job | What it proves |
 | --- | --- |
 | `build` | static checks; artwork regenerated from `VERSION`; the image builds; the initramfs hook verifies its own output |
-| `boot-test` (`mode=both`) | live boot under BIOS and UEFI; a splash-shaped frame (new, and failing); initramfs contains plymouth, theme and drivers; ten workspace buttons matching i3's state; panel bottom edge; wallpaper; applications |
+| `boot-test` (`mode=both`) | live boot under BIOS and UEFI; a bluish splash frame with bright wording (run `44980323313`: 128 passed, 0 failed on each firmware); initramfs contains plymouth, theme and the label plugin; all ten workspace launcher plugins loaded; panel bottom edge; wallpaper; applications |
 | `tile-brave` (`helper=image`) | the two-window policy with real Brave windows at 1366x768 |
 | `tile-brave` with `stability=1` | repeated cycles plus 15 minutes of idle observation: focus, layout, helper count, self-triggered rearrangements, i3 responsiveness, helper CPU/memory |
-| `install-test` | install to a disposable disk, detach the ISO, boot the disk, log in, check the installed desktop |
+| `install-test` | install to a disposable disk, detach the ISO, boot the disk, log in, check the installed desktop (run `44979098657`: 54 passed, 0 failed) |
 | `voice-apps`, `installer-label`, `manifest` | dictation and the Jellyfin client; installer labelling; the package list |
 
 A `FAIL` line fails its job. A check that could not run is reported as
@@ -178,13 +221,18 @@ incomplete, never as a pass.
 
 ## 10. Known limitations
 
-* **Startup feedback is not verified.** The splash does not appear in the
-  virtual machine and the cause is narrowed, not proven (section 3.2). Craig's
-  panel is the only place that can settle it.
-* The boot test's panel assertions compare the written icons with i3's state;
-  their first run on this image failed on a parser defect (CRLF line endings on
-  the serial console), which is fixed in the source and needs the rerun to be
-  quoted as evidence.
+* **Startup feedback is verified in the virtual machine only.** Gradient,
+  wording and dots are drawn and were measured (section 3.2). Craig's panel is
+  the only place that can confirm the same on his hardware; that confirmation
+  is separate and still pending.
+* **A residual black interval remains at handover:** about 13 s with a text
+  cursor between Plymouth quitting and the greeter drawing. It is LightDM
+  startup, measured, and not attributed to the theme.
+* The splash wording is drawn by the label plugin at its fixed size (19 px
+  tall at 1280x800): legible, but modest. Enlarging it would require rendering
+  the strings as images, which this release does not do.
+* The boot test's splash check is a colour and brightness measurement, not
+  OCR: it proves bluish background plus bright content, not the exact glyphs.
 * Hardware-only, untestable here: speaker/headphone loudness, panel tearing on
   the Bay Trail screen, printed top-row keys, Wi-Fi against real access points,
   suspend/lid, battery percentage, dictation accuracy in a room.

@@ -1177,3 +1177,92 @@ The CI workflows in `.github/workflows/` do exactly this: `build.yml` builds
 the ISO, `boot-test.yml` runs the live checks under BIOS and UEFI,
 `install-test.yml` performs the installation, and `inspect-iso.yml` unpacks a
 built ISO to show what is inside it.
+
+---
+
+## SMD Linux 1.7.1
+
+1.7.1 fixes the black startup screen, gives each of the ten workspaces its own
+panel button, and adds a fifteen-minute stability observation. The window rule
+is unchanged from 1.7.0.
+
+| | |
+| --- | --- |
+| Image | `SMD-Linux-v1.7.1-amd64.iso` |
+| SHA-256 | `2f01b48302287b5c55a3780f6981ec58af75985afc5766204e4447763b4a96bb` |
+| Build | Actions run `44978338982`, image commit `1c03f74` |
+| Installed packages | 945 (944 + `plymouth-label`), manifest run `44980929191` |
+| Live boot tests | run `44980323313` - BIOS and UEFI, **128 passed, 0 failed** on each |
+| Installation test | run `44979098657` - **54 passed, 0 failed**, installed disk booted |
+| Diagnostic boot | run `44980208086` - Plymouth debug on the serial line, splash frames measured |
+| Stability | run `44981903097` - five interaction cycles plus fifteen minutes idle |
+
+Every result below names the same artefact: run `44978338982` built this ISO and
+each test job fetched that run's artifact. Two earlier candidates are kept and
+marked superseded: `3b2183b4...` (run `44971257028`, before either startup fix)
+and `54ae04bd...` (run `44976421460`, panel fixed, splash still black).
+
+### What the startup evidence shows
+
+Frames were captured about every two seconds (one second in diagnostic runs) and
+classified by measured mean and spread, so stages are separated rather than
+lumped together:
+
+| Stage | Evidence on this image |
+| --- | --- |
+| Firmware / boot menu | bright neutral frames (mean ~9000, spread ~5000); counted separately and **not** accepted as loading feedback |
+| Kernel and initramfs | dark frames, a text cursor; Plymouth starts here |
+| Plymouth | bluish frames (mean 8354) with bright wording, repeated for ~63 s of the ~85 s pre-desktop interval |
+| Handover | ~13 s of black with a text cursor while LightDM starts |
+| Greeter / desktop | desktop frame (mean 26018) with the panel |
+
+Plymouth's own debug log (`44980208086`) proves the mechanism:
+
+```
+ignoring all consoles but default console because explicitly told to.
+creating devices for /dev/dri/card0 (renderer type: 1)
+drm driver: bochs-drm
+Found preferred mode 1280x800
+Creating 1280x800 renderer head
+executing script file
+label-pango: Text 'SMD LINUX' has dimensions 90x19
+label-pango: Text 'VERSION 1.7.1' has dimensions 117x19
+label-pango: Text 'SMD Linux is loading...' has dimensions 178x19
+```
+
+The two causes were a serial console forcing Plymouth's text renderer onto
+`ttyS0`, and a missing `plymouth-label` that made every `Image.Text` draw
+nothing. Both are fixed by `plymouth.ignore-serial-consoles` and the package,
+and the initramfs hook now fails a build that lacks the label plugin.
+
+### Panel measurements
+
+From the running installed desktop (`44979098657`, 1280x800): ten tiles 24 px
+wide on a 32 px pitch, spanning x=829-1140 = **312 px**; 320 px at 1366x768.
+Workspace 1 shows the active accent, 2-10 the quiet empty tile. The boot test
+loads all ten launcher plugins and 128/0 asserts pass.
+
+### Failures kept in the record
+
+* `44979089475` - boot test failed the splash because its crop used pixel
+  offsets where percentages were intended (`+25%+30%`), so it measured the
+  top-left corner. The frames themselves contained the wording. The check now
+  counts bright pixels over the whole frame.
+* `44979089475` also counted launcher items by desktop-file name; XFCE stores
+  them under internal ids, so all ten read zero. It now checks the panel's
+  plugin list.
+* `44979093917` - stability failed the occupied-walk assertion five times. The
+  walk was correct (from 5, right to 10, left back to 5); the test assumed the
+  walk starts on workspace 1 and that the third window always lands on 2. Fixed
+  to measure from the actual starting workspace and rerun as `44981903097`.
+* `44979098657` reports `INFO: installer removed from the installed system: no`
+  for the Calamares binary. That is informational: `hunter-postinstall` removes
+  the launcher and favourite, not the package, as in 1.7.0.
+
+### Limitations
+
+* Everything ran in QEMU with software emulation (TCG); timings are not
+  hardware timings, and nothing here is a hardware verification of Craig's
+  machine. His panel remains the only hardware confirmation.
+* The splash check is colour/brightness measurement, not OCR.
+* The ~13 s black interval at handover remains.

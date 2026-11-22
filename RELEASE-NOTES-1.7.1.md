@@ -1,76 +1,96 @@
 # SMD Linux 1.7.1 - release notes
 
-**Patch release, in progress.** The window rule is untouched: two windows per
-workspace, ten workspaces, the occupied-workspace walk and the overflow
-exception behave exactly as in 1.7.0. This build changes the panel's workspace
-presentation and adds the instrumentation and boot configuration needed to
-settle the startup-screen question. **The startup screen is not claimed fixed.**
+**Patch release.** The window rule is untouched: two windows per workspace, ten
+workspaces, the occupied-workspace walk and the overflow exception behave
+exactly as in 1.7.0. This build fixes the black startup screen, replaces the
+text workspace menu with ten buttons, and adds a fifteen-minute stability
+observation.
 
-## 1. Startup feedback: what was found, and what is still open
+## 1. Startup feedback: why the screen was black, and what fixes it
 
-Hunter reported that Craig's machine showed a blank screen instead of a
-loading screen.
+Two independent faults kept the loading screen off the screen. Both were proven
+from Plymouth's own debug log, not inferred from a blank photograph.
 
-### What was established
+### Cause 1: the serial console sent the splash to the wrong terminal
 
-* **The loading screen is packaged correctly, and always was.** Decompressing
-  the delivered 1.7.0 initramfs properly - it is an uncompressed early cpio
-  followed by a gzip payload, so reading it as raw bytes is misleading - shows
-  `plymouthd`, `/bin/plymouth`, `renderers/drm.so`, `script.so`, the `smd`
-  theme and a `plymouthd.conf` naming `Theme=smd`, all inside the initramfs.
-  `splash` is on both the live and the installed kernel command line.
-* **The screen really is blank for a long time.** The 1.7.0 boot frames
-  recorded `mean 0, spread 0` for about 53 seconds between the boot menu and
-  the desktop; on 1.7.1 the same shape appears (repeated `mean 0-1` frames
-  across roughly 60 seconds).
-* **The old check could not catch it**, because it accepted the boot menu as
-  "something was drawn". It now demands a splash-shaped frame: a dark
-  background with content drawn on it, distinct from the bright boot menu. It
-  fails on this image, which is why this section is open rather than closed.
+The kernel command line carried `console=ttyS0,115200` so the test harness could
+read the boot. Plymouth treats a serial console as something it must manage:
 
-### What was changed anyway, and why
+```
+serial consoles detected, managing them with "details" forced
+```
 
-Plymouth needs a display device at the moment it starts. On real hardware the
-DRM driver is frequently not loaded yet at that point, so plymouth falls back
-to its text renderer - a mostly black screen with a little text - while
-`quiet` hides the kernel's own messages. That fits both the recorded frames
-and the report from Craig's machine.
+That forces the text `details` plugin onto `/dev/ttyS0`; the graphical `smd`
+theme is never created, so the panel shows nothing while `quiet` hides the
+kernel's messages. **Fix:** `plymouth.ignore-serial-consoles` on the live and
+installed command lines. The same log now answers:
 
-The new hook `config/hooks/live/0390-smd-plymouth.hook.chroot` therefore:
+```
+ignoring all consoles but default console because explicitly told to.
+```
 
-1. makes `smd` the default theme (`plymouth-set-default-theme`);
-2. lists the common display drivers (`i915`, `amdgpu`, `radeon`, `nouveau`,
-   `virtio_gpu`, `bochs`) so they load early;
-3. requests the framebuffer fallback (`FRAMEBUFFER=y`) where KMS is late;
-4. rebuilds every initramfs and checks the result with `lsinitramfs`.
+and then opens the DRM renderer.
 
-The builder now logs the outcome: on this image the initramfs reports
-**29 plymouth entries, the smd theme and 631 display-driver entries**.
+### Cause 2: the label plugin was missing, so no text could be drawn
 
-### What is still open
+`plymouth-label` was not installed. Without `label-pango.so` every
+`Image.Text` in `smd.script` drew nothing; only the gradient background
+appeared. The debug log said so directly:
 
-No splash pixels appear in the virtual machine. Two explanations remain, and
-neither is proven:
+```
+Could not load module /usr/lib/x86_64-linux-gnu/plymouth/label-pango.so
+```
 
-* plymouth may be drawing through DRM while QEMU's `screendump` captures the
-  legacy framebuffer, so the virtual machine cannot see a splash a real panel
-  would show;
-* plymouth may still be falling back to text because no display device is
-  ready early enough.
+**Fix:** `plymouth-label` is in the package list, and the initramfs hook now
+fails the build unless `label-pango.so` and `libpango-1.0.so` are inside every
+initramfs.
 
-Neither is a claim about Craig's screen. Until the question is settled on real
-hardware, startup feedback is **not fixed**.
+### What the screen does now
 
-### The earlier diagnosis, corrected
+Plymouth's log on the delivered image shows the whole chain:
 
-An earlier draft of this document said the 1.7.0 initramfs contained no
-plymouth at all. That was wrong, and it came from grepping the compressed
-payload as if it were text. The corrected finding is the one above.
+```
+ignoring all consoles but default console because explicitly told to.
+creating devices for /dev/dri/card0 (renderer type: 1)
+drm driver: bochs-drm
+Found preferred mode 1280x800
+Creating 1280x800 renderer head
+executing script file
+label-pango: Text 'SMD LINUX' has dimensions 90x19
+label-pango: Text 'VERSION 1.7.1' has dimensions 117x19
+label-pango: Text 'SMD Linux is loading...' has dimensions 178x19
+```
+
+The visible result is the SMD gradient with **SMD LINUX**, **VERSION 1.7.1**,
+**SMD Linux is loading...** and three cycling dots. The splash is on screen for
+about 63 seconds of the roughly 85 second pre-desktop interval under software
+emulation (TCG). Nothing was added to slow or pad the boot: `ShowDelay=0`, no
+sleep, no progress percentage, and no resident process - Plymouth runs from the
+initramfs and exits at handover.
+
+### What remains
+
+* About 13 seconds between Plymouth quitting and the greeter drawing are still
+  black with a text cursor. That is LightDM starting, not the theme; it is
+  measured and documented rather than papered over.
+* One wording size is fixed by the label plugin (19 px tall at 1280x800). It is
+  legible but modest; enlarging it would mean rendering the wording as images.
+* **QEMU measures the virtual VGA only.** Craig's panel is the only place that
+  can confirm the same result on his hardware, and that confirmation is still
+  separate and pending.
+
+### Correction preserved
+
+An earlier draft said the 1.7.0 initramfs contained no Plymouth at all. That was
+wrong: the initramfs is an uncompressed early cpio followed by a gzip payload,
+and grepping the raw file misses everything inside it. Plymouth, both
+renderers, the `smd` theme and `Theme=smd` were present all along. The two
+faults above are the corrected finding.
 
 ## 2. The panel shows which workspaces hold windows
 
-The text menu behind the 5-10 control is gone. All ten workspaces are buttons
-of their own, and each icon answers "is anything there?":
+The text menu behind the 5-10 control is gone. All ten workspaces are buttons of
+their own, and each icon answers "is anything there?":
 
 | Icon | Meaning |
 | --- | --- |
@@ -79,35 +99,42 @@ of their own, and each icon answers "is anything there?":
 | accent tile, white number | the workspace you are on |
 | accent tile, white number and a white bar | you are on it and it holds a window |
 
-The bar is drawn as two halves, matching what a workspace holding its two
-windows looks like. Clicking any of the ten switches to it, including an empty
-one, so nothing above workspace 4 hides behind a list.
+The first 1.7.1 attempt put ten items into one launcher plugin and still showed
+a single button and an overflow arrow, because XFCE draws one button per
+launcher plugin, not per item. The shipped panel therefore has ten single-item
+launchers (`plugin-20`...`plugin-29`); the existing subscriber
+(`hunter-workspaces`) writes one `.desktop` per workspace and chooses among
+forty icons. Clicking any workspace switches to it, including an empty one.
 
-No screenshot loop, no compositor, no second bar, no extra process: the
-subscriber that already kept the buttons in step (`hunter-workspaces`) now
-writes an occupancy icon instead of only a highlight, and the icons are
-generated by `tools/make-assets.py`. Pinned Brave and File Manager, icon-only
-window buttons, the S menu, the bottom edge and the always-visible panel are
-unchanged.
-
-Ten 32px buttons occupy roughly 220px of a 1366px panel. That is the measured
-trade-off; the boot test reports the window-button area so a shortage would be
-visible rather than assumed.
+**Measured footprint**, from the running desktop: tiles are 24 px wide on a
+32 px pitch, so the ten occupy **312 px** (x 829-1140 at 1280 wide), not the
+"roughly 220 px" guessed earlier. At Craig's 1366x768 that is 320 px of the
+panel; the pinned Brave and File Manager, the task list, systray, clock, volume,
+battery and power controls are unchanged and unclipped.
 
 ## 3. Stability
 
 1.7.0 was signed off on twenty seconds of idle observation. The stability pass
-now drives repeated launch/overflow/switch/move cycles with real windows and
-then watches a settled desktop for **fifteen minutes**, failing on any focus
-change, window relocation, helper restart, self-triggered rearrangement, slow
-i3 reply or runaway helper CPU/memory.
+now drives five launch/overflow/switch/move cycles with real windows and then
+watches a settled desktop for **fifteen minutes**, failing on any focus change,
+window relocation, helper restart, self-triggered rearrangement, slow i3 reply
+or runaway helper CPU/memory.
+
+The first stability run on this image (`44979093917`) failed its occupied-walk
+assertion five times. The walk was correct - from workspace 5 it went right to
+10 and left back to 5 - but the test assumed the third window always lands on
+workspace 2 and that the walk starts on 1. With workspace 2 already occupied by
+an earlier check, the third window correctly went to 5. The assertion now
+measures from the workspace the walk starts on; the behaviour is unchanged.
 
 ## 4. Nothing else changed
 
 * The two-window rule, ten workspaces, occupied-workspace walk, direct
   selection, the overflow exception, dialogs, floating windows, fullscreen and
   the scratchpad are untouched.
-* No package was added or removed.
+* One package was added, `plymouth-label`; the image now has **945** packages.
+  No driver was added: the earlier speculative early-module list is not what
+  fixed the screen and is not claimed as necessary.
 * No Brave extension, Jellyfin component or dictation behaviour was touched.
 * 1.7.0 remains unchanged in `../delivery-1.7.0/`.
 
@@ -115,10 +142,13 @@ i3 reply or runaway helper CPU/memory.
 
 | Area | Status |
 | --- | --- |
-| Window policy | unchanged; the Brave policy suite passes on this ISO |
-| Panel occupancy buttons | implemented and visible in the session; the boot test's own state parser had a defect (fixed) and the panel assertions need the rerun |
-| Startup feedback | **not fixed** - packaged correctly, not visible in the VM, cause narrowed to drawing rather than packaging |
-| Craig's hardware | pending, and not inferred from any virtual machine |
+| Window policy | unchanged; boot test passes on both firmwares on this ISO |
+| Panel occupancy buttons | ten real buttons, visually checked; boot test loads all ten; footprint measured |
+| Startup feedback | **fixed in the VM** and proven from Plymouth's log; Craig's hardware still pending |
+| Boot test | run `44980323313` - BIOS and UEFI, 128 passed, 0 failed each |
+| Installation test | run `44979098657` - 54 passed, 0 failed, installed disk booted |
+| Stability | run `44981903097` - fifteen-minute observation, result in `Test-Report.md` |
+| Package manifest | run `44980929191` - 945 packages |
 
-See `Test-Report.md` for the run-by-run results of this exact image and
+See `Test-Report.md` for the run-by-run evidence of this exact image and
 `TECHNICAL-REFERENCE-1.7.1.md` for the mechanism.
