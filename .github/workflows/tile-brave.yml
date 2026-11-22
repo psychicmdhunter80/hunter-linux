@@ -20,6 +20,16 @@ on:
         required: false
         default: uefi
         type: string
+      stability:
+        description: "1 to run the extended cycles and idle observation"
+        required: false
+        default: "0"
+        type: string
+      minutes:
+        description: Idle observation minutes when stability is 1
+        required: false
+        default: "15"
+        type: string
 
 jobs:
   tiling:
@@ -46,15 +56,19 @@ jobs:
       - name: Run the Brave tiling reproduction
         env:
           TILE_HELPER: ${{ inputs.helper }}
+          STABILITY: ${{ inputs.stability }}
+          STABILITY_MINUTES: ${{ inputs.minutes }}
         run: |
-          python3 tools/ci/tile-brave.py iso/SMD-Linux-v*-amd64.iso out-brave "${{ inputs.mode }}"
-        timeout-minutes: 70
+          dir=out-brave
+          if [ "${{ inputs.stability }}" = "1" ]; then dir=out-stability; fi
+          python3 tools/ci/tile-brave.py iso/SMD-Linux-v*-amd64.iso "$dir" "${{ inputs.mode }}"
+        timeout-minutes: 130
 
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tile-brave
+          name: tile-brave${{ inputs.stability == '1' && '-stability' || '' }}
           path: out-brave/
           retention-days: 14
           if-no-files-found: warn
